@@ -1,0 +1,13 @@
+fn main() {
+    clear()
+    print("NPP INTERACTIVE CLI")
+    let name = input("Your name: ")
+    let age = input_i64("Your age: ")
+    print("Hello, " + name)
+    print("Next year: " + str_i64(age + 1))
+    let note = input("Write a note to save: ")
+    let rc = file_write("npp_note.txt", note)
+    if rc == 0 { print("Saved npp_note.txt") } else { print("Save failed") }
+    if file_exists("npp_note.txt") { print("File exists") }
+    print("Saved data: " + file_read("npp_note.txt"))
+}

@@ -1,0 +1,841 @@
+// Self-hosting step 4: LLVM IR text emission for the parser's i64/f64 subset.
+// codegen(src) -> string returns a complete .ll module. Verified with clang:
+// the output compiles and, linked with the NPP runtime, runs correctly.
+//
+// Subset: let/assignment/print, + - * / %, comparisons, && ||, unary -,
+// if/else, while, functions, calls, strings, f64. Variables are stack slots.
+import "typecheck_lib.npp"
+
+fn next_reg(cell: i64) -> string {
+    let n = ilist_get(cell, 0) + 1
+    ilist_set(cell, 0, n)
+    return "%t" + n
+}
+
+fn next_label(cell: i64) -> string {
+    let n = ilist_get(cell, 0) + 1
+    ilist_set(cell, 0, n)
+    return "L" + n
+}
+
+fn emit_line(out: i64, line: string) {
+    slist_push(out, line)
+}
+
+fn llvm_type(t: string) -> string {
+    if t == "i64" { return "i64" }
+    if t == "f64" { return "double" }
+    if t == "bool" { return "i1" }
+    if t == "string" { return "ptr" }
+    if t == "i32" { return "i32" }
+    if t == "void" { return "void" }
+    return "i64"
+}
+
+fn hex_digit(x: i64) -> string {
+    let digits = "0123456789ABCDEF"
+    return string.slice(digits, x, x + 1)
+}
+
+fn llvm_escape(s: string) -> string {
+    let n = string.len(s)
+    let mut out = ""
+    let mut i = 0
+    while i < n {
+        let b = string.byte_at(s, i)
+        if b == 92 {
+            out = out + "\\5C"
+        } else if b == 34 {
+            out = out + "\\22"
+        } else if b == 10 {
+            out = out + "\\0A"
+        } else if b == 13 {
+            out = out + "\\0D"
+        } else if b == 9 {
+            out = out + "\\09"
+        } else if b < 32 {
+            out = out + "\\" + hex_digit(b / 16) + hex_digit(b % 16)
+        } else {
+            out = out + string.slice(s, i, i + 1)
+        }
+        i = i + 1
+    }
+    return out
+}
+
+fn new_global_str(s: string, globals: i64) -> string {
+    let idx = slist_len(globals)
+    let name = "@.str." + idx
+    let escaped = llvm_escape(s)
+    let len = string.len(s) + 1
+    let line = name + " = private unnamed_addr constant [" + len + " x i8] c\"" + escaped + "\\00\", align 1"
+    slist_push(globals, line)
+    return name
+}
+
+fn ident_name(node: string) -> string {
+    let p = ilist_new()
+    ilist_push(p, 0)
+    let body = node_body(node)
+    skip_ws(body, p)
+    read_node(body, p) // ident
+    return read_node(body, p)
+}
+
+fn last_line(out: i64) -> string {
+    let n = slist_len(out)
+    if n == 0 {
+        return ""
+    }
+    return slist_get(out, n - 1)
+}
+
+fn starts_with(s: string, prefix: string) -> bool {
+    if string.len(s) < string.len(prefix) {
+        return false
+    }
+    return string.slice(s, 0, string.len(prefix)) == prefix
+}
+
+fn env_lookup_type(names: i64, types: i64, name: string) -> string {
+    let k = slist_len(names)
+    let mut i = k - 1
+    while i >= 0 {
+        if slist_get(names, i) == name {
+            return slist_get(types, i)
+        }
+        i = i - 1
+    }
+    return ""
+}
+
+fn infer_type(node: string, names: i64, types: i64, fns: i64, frets: i64) -> string {
+    let h = head_of(node)
+    if h == "int" { return "i64" }
+    if h == "float" { return "f64" }
+    if h == "str" { return "string" }
+    if h == "bool" { return "bool" }
+    if h == "ident" {
+        let name = ident_name(node)
+        let t = env_lookup_type(names, types, name)
+        if t == "" { return "i64" }
+        return t
+    }
+    if h == "neg" || h == "not" {
+        // read inner
+        let p = ilist_new()
+        ilist_push(p, 0)
+        let body = node_body(node)
+        skip_ws(body, p)
+        read_node(body, p)
+        let inner = read_node(body, p)
+        if h == "neg" {
+            let t = infer_type(inner, names, types, fns, frets)
+            if t == "f64" { return "f64" }
+            return "i64"
+        }
+        return "bool"
+    }
+    if h == "call" {
+        let p = ilist_new()
+        ilist_push(p, 0)
+        let body = node_body(node)
+        skip_ws(body, p)
+        read_node(body, p) // call
+        let callee_node = read_node(body, p)
+        let callee = ident_name(callee_node)
+        // function return type lookup
+        let k = slist_len(fns)
+        let mut i = 0
+        while i < k {
+            if slist_get(fns, i) == callee {
+                return slist_get(frets, i)
+            }
+            i = i + 1
+        }
+        return "i64"
+    }
+    if h == "+" || h == "-" || h == "*" || h == "/" || h == "%" {
+        let p = ilist_new()
+        ilist_push(p, 0)
+        let body = node_body(node)
+        skip_ws(body, p)
+        read_node(body, p)
+        let lhs = read_node(body, p)
+        let rhs = read_node(body, p)
+        let lt = infer_type(lhs, names, types, fns, frets)
+        let rt = infer_type(rhs, names, types, fns, frets)
+        if h == "+" &&(lt == "string" || rt == "string") {
+            return "string"
+        }
+        if lt == "f64" || rt == "f64" {
+            return "f64"
+        }
+        return "i64"
+    }
+    if h == "==" || h == "!=" || h == "<" || h == "<=" || h == ">" || h == ">=" {
+        return "bool"
+    }
+    if h == "&&" || h == "||" {
+        return "bool"
+    }
+    return "i64"
+}
+
+fn declare_var(name: string, ty: string, names: i64, types: i64, out: i64) {
+    emit_line(out, "  %" + name + " = alloca " + llvm_type(ty) + ", align 8")
+    slist_push(names, name)
+    slist_push(types, ty)
+}
+
+// emits expression code; returns the operand string
+fn gen_expr(node: string, names: i64, types: i64, out: i64, reg: i64, globals: i64, fns: i64, frets: i64) -> string {
+    let p = ilist_new()
+    ilist_push(p, 0)
+    let body = node_body(node)
+    skip_ws(body, p)
+    let h = read_node(body, p)
+    if h == "int" {
+        skip_ws(body, p)
+        return read_node(body, p)
+    }
+    if h == "float" {
+        skip_ws(body, p)
+        return read_node(body, p)
+    }
+    if h == "str" {
+        let s = string.slice(node, 5, string.len(node) - 1)
+        return new_global_str(s, globals)
+    }
+    if h == "bool" {
+        skip_ws(body, p)
+        let v = read_node(body, p)
+        if v == "true" { return "true" }
+        return "false"
+    }
+    if h == "ident" {
+        skip_ws(body, p)
+        let name = read_node(body, p)
+        let ty = env_lookup_type(names, types, name)
+        let lt = llvm_type(ty)
+        let r = next_reg(reg)
+        emit_line(out, "  " + r + " = load " + lt + ", ptr %" + name)
+        return r
+    }
+    if h == "neg" {
+        let inner = read_node(body, p)
+        let v = gen_expr(inner, names, types, out, reg, globals, fns, frets)
+        let t = infer_type(inner, names, types, fns, frets)
+        let r = next_reg(reg)
+        if t == "f64" {
+            emit_line(out, "  " + r + " = fneg double " + v)
+        } else {
+            emit_line(out, "  " + r + " = sub i64 0, " + v)
+        }
+        return r
+    }
+    if h == "not" {
+        let inner = read_node(body, p)
+        let v = gen_expr(inner, names, types, out, reg, globals, fns, frets)
+        let r = next_reg(reg)
+        emit_line(out, "  " + r + " = xor i1 " + v + ", true")
+        return r
+    }
+    if h == "+" || h == "-" || h == "*" || h == "/" || h == "%" {
+        let lhs = read_node(body, p)
+        let rhs = read_node(body, p)
+        let a = gen_expr(lhs, names, types, out, reg, globals, fns, frets)
+        let b = gen_expr(rhs, names, types, out, reg, globals, fns, frets)
+        let lt = infer_type(lhs, names, types, fns, frets)
+        let rt = infer_type(rhs, names, types, fns, frets)
+        let t = infer_type(node, names, types, fns, frets)
+        let r = next_reg(reg)
+        if t == "string" {
+            emit_line(out, "  " + r + " = call ptr @npp_str_concat(ptr " + a + ", ptr " + b + ")")
+            return r
+        }
+        if t == "f64" {
+            let mut op = "fadd"
+            if h == "-" { op = "fsub" }
+            else if h == "*" { op = "fmul" }
+            else if h == "/" { op = "fdiv" }
+            emit_line(out, "  " + r + " = " + op + " double " + a + ", " + b)
+            return r
+        }
+        let mut op = "add"
+        if h == "-" { op = "sub" }
+        else if h == "*" { op = "mul" }
+        else if h == "/" { op = "sdiv" }
+        else if h == "%" { op = "srem" }
+        emit_line(out, "  " + r + " = " + op + " i64 " + a + ", " + b)
+        return r
+    }
+    if h == "==" || h == "!=" || h == "<" || h == "<=" || h == ">" || h == ">=" {
+        let lhs = read_node(body, p)
+        let rhs = read_node(body, p)
+        let a = gen_expr(lhs, names, types, out, reg, globals, fns, frets)
+        let b = gen_expr(rhs, names, types, out, reg, globals, fns, frets)
+        let lt = infer_type(lhs, names, types, fns, frets)
+        let rt = infer_type(rhs, names, types, fns, frets)
+        let r = next_reg(reg)
+        if lt == "string" || rt == "string" {
+            let eq = next_reg(reg)
+            emit_line(out, "  " + eq + " = call i1 @npp_str_equal(ptr " + a + ", ptr " + b + ")")
+            if h == "!=" {
+                emit_line(out, "  " + r + " = xor i1 " + eq + ", true")
+            } else {
+                emit_line(out, "  " + r + " = or i1 " + eq + ", false")
+            }
+            return r
+        }
+        if lt == "f64" || rt == "f64" {
+            let mut cond = "oeq"
+            if h == "!=" { cond = "one" }
+            else if h == "<" { cond = "olt" }
+            else if h == "<=" { cond = "ole" }
+            else if h == ">" { cond = "ogt" }
+            else if h == ">=" { cond = "oge" }
+            emit_line(out, "  " + r + " = fcmp " + cond + " double " + a + ", " + b)
+            return r
+        }
+        let mut cond = "eq"
+        if h == "!=" { cond = "ne" }
+        else if h == "<" { cond = "slt" }
+        else if h == "<=" { cond = "sle" }
+        else if h == ">" { cond = "sgt" }
+        else if h == ">=" { cond = "sge" }
+        emit_line(out, "  " + r + " = icmp " + cond + " i64 " + a + ", " + b)
+        return r
+    }
+    if h == "&&" || h == "||" {
+        let lhs = read_node(body, p)
+        let rhs = read_node(body, p)
+        let a = gen_expr(lhs, names, types, out, reg, globals, fns, frets)
+        let b = gen_expr(rhs, names, types, out, reg, globals, fns, frets)
+        let mut op = "and"
+        if h == "||" { op = "or" }
+        let r = next_reg(reg)
+        emit_line(out, "  " + r + " = " + op + " i1 " + a + ", " + b)
+        return r
+    }
+    if h == "call" {
+        let callee_node = read_node(body, p)
+        let callee = ident_name(callee_node)
+        // return type
+        let mut ret_ty = "i64"
+        let k = slist_len(fns)
+        let mut i = 0
+        while i < k {
+            if slist_get(fns, i) == callee {
+                ret_ty = slist_get(frets, i)
+            }
+            i = i + 1
+        }
+        let mut arg_str = ""
+        let mut first = true
+        let mut arg_node = read_node(body, p)
+        while arg_node != "" {
+            let v = gen_expr(arg_node, names, types, out, reg, globals, fns, frets)
+            let at = infer_type(arg_node, names, types, fns, frets)
+            if ! first {
+                arg_str = arg_str + ", "
+            }
+            arg_str = arg_str + llvm_type(at) + " " + v
+            first = false
+            arg_node = read_node(body, p)
+        }
+        let r = next_reg(reg)
+        if ret_ty == "void" {
+            emit_line(out, "  call void @" + callee + "(" + arg_str + ")")
+            return "0"
+        }
+        emit_line(out, "  " + r + " = call " + llvm_type(ret_ty) + " @" + callee + "(" + arg_str + ")")
+        return r
+    }
+    return "0"
+}
+
+fn gen_stmt(node: string, names: i64, types: i64, out: i64, reg: i64, globals: i64, fns: i64, frets: i64, ret_ty: string, break_lbl: string, cont_lbl: string) -> bool {
+    let p = ilist_new()
+    ilist_push(p, 0)
+    let body = node_body(node)
+    skip_ws(body, p)
+    let h = read_node(body, p)
+    if h == "const" || h == "let" {
+        skip_ws(body, p)
+        let name = read_node(body, p)
+        let init = read_node(body, p)
+        let it = infer_type(init, names, types, fns, frets)
+        let v = gen_expr(init, names, types, out, reg, globals, fns, frets)
+        declare_var(name, it, names, types, out)
+        emit_line(out, "  store " + llvm_type(it) + " " + v + ", ptr %" + name)
+        return false
+    }
+    if h == "assign" {
+        skip_ws(body, p)
+        let name = read_node(body, p)
+        let value = read_node(body, p)
+        let vt = infer_type(value, names, types, fns, frets)
+        let v = gen_expr(value, names, types, out, reg, globals, fns, frets)
+        let want = env_lookup_type(names, types, name)
+        let st = want
+        if want == "" {}
+        else {
+            // store using variable's declared type
+        }
+        let store_ty = want
+        if store_ty == "" {
+            emit_line(out, "  store " + llvm_type(vt) + " " + v + ", ptr %" + name)
+        } else {
+            emit_line(out, "  store " + llvm_type(store_ty) + " " + v + ", ptr %" + name)
+        }
+        return false
+    }
+    if h == "print" || h == "expr" {
+        skip_ws(body, p)
+        let value = read_node(body, p)
+        if h == "print" {
+            let vt = infer_type(value, names, types, fns, frets)
+            if vt == "string" {
+                if head_of(value) == "str" {
+                    let s = string.slice(value, 5, string.len(value) - 1)
+                    let g = new_global_str(s, globals)
+                    emit_line(out, "  call void @npp_print_str(ptr " + g + ")")
+                } else {
+                    let v = gen_expr(value, names, types, out, reg, globals, fns, frets)
+                    emit_line(out, "  call void @npp_print_str(ptr " + v + ")")
+                }
+            } else if vt == "f64" {
+                let v = gen_expr(value, names, types, out, reg, globals, fns, frets)
+                emit_line(out, "  call void @npp_print_f64(double " + v + ")")
+            } else if vt == "bool" {
+                let v = gen_expr(value, names, types, out, reg, globals, fns, frets)
+                emit_line(out, "  call void @npp_print_bool(i1 " + v + ")")
+            } else {
+                let v = gen_expr(value, names, types, out, reg, globals, fns, frets)
+                emit_line(out, "  call void @npp_print_i64(i64 " + v + ")")
+            }
+        } else {
+            let v = gen_expr(value, names, types, out, reg, globals, fns, frets)
+        }
+        return false
+    }
+    if h == "return" {
+        skip_ws(body, p)
+        let value = read_node(body, p)
+        if value == "" {
+            if ret_ty == "void" {
+                emit_line(out, "  ret void")
+            } else {
+                emit_line(out, "  ret " + llvm_type(ret_ty) + " 0")
+            }
+        } else {
+            let vt = infer_type(value, names, types, fns, frets)
+            let v = gen_expr(value, names, types, out, reg, globals, fns, frets)
+            emit_line(out, "  ret " + llvm_type(ret_ty) + " " + v)
+        }
+        return true
+    }
+    if h == "break" {
+        if break_lbl != "" {
+            emit_line(out, "  br label %" + break_lbl)
+        }
+        return true
+    }
+    if h == "continue" {
+        if cont_lbl != "" {
+            emit_line(out, "  br label %" + cont_lbl)
+        }
+        return true
+    }
+    if h == "if" {
+        skip_ws(body, p)
+        let cond = read_node(body, p)
+        let c = gen_expr(cond, names, types, out, reg, globals, fns, frets)
+        let then_block = read_node(body, p)
+        let else_block = read_node(body, p)
+        let l_then = next_label(reg)
+        let l_else = next_label(reg)
+        let l_end = next_label(reg)
+        if else_block == "" {
+            emit_line(out, "  br i1 " + c + ", label %" + l_then + ", label %" + l_end)
+        } else {
+            emit_line(out, "  br i1 " + c + ", label %" + l_then + ", label %" + l_else)
+        }
+        emit_line(out, l_then + ":")
+        let tt = gen_block(then_block, names, types, out, reg, globals, fns, frets, ret_ty, break_lbl, cont_lbl)
+        if ! tt {
+            emit_line(out, "  br label %" + l_end)
+        }
+        let mut et = false
+        if else_block != "" {
+            emit_line(out, l_else + ":")
+            et = gen_block(else_block, names, types, out, reg, globals, fns, frets, ret_ty, break_lbl, cont_lbl)
+            if ! et {
+                emit_line(out, "  br label %" + l_end)
+            }
+        }
+        if tt &&(else_block != "" && et) {
+            return true
+        }
+        if else_block == "" {
+            // no else: not both terminated
+        }
+        emit_line(out, l_end + ":")
+        return false
+    }
+    if h == "for" {
+        skip_ws(body, p)
+        let var = read_node(body, p)
+        let start = read_node(body, p)
+        let endv = read_node(body, p)
+        let for_body = read_node(body, p)
+        let l_top = next_label(reg)
+        let l_body = next_label(reg)
+        let l_inc = next_label(reg)
+        let l_end = next_label(reg)
+        let sv = gen_expr(start, names, types, out, reg, globals, fns, frets)
+        declare_var(var, "i64", names, types, out)
+        emit_line(out, "  store i64 " + sv + ", ptr %" + var)
+        emit_line(out, "  br label %" + l_top)
+        emit_line(out, l_top + ":")
+        let ident_node = "(ident " + var + ")"
+        let lv = gen_expr(ident_node, names, types, out, reg, globals, fns, frets)
+        let ev = gen_expr(endv, names, types, out, reg, globals, fns, frets)
+        let c = next_reg(reg)
+        emit_line(out, "  " + c + " = icmp slt i64 " + lv + ", " + ev)
+        emit_line(out, "  br i1 " + c + ", label %" + l_body + ", label %" + l_end)
+        emit_line(out, l_body + ":")
+        let bt = gen_block(for_body, names, types, out, reg, globals, fns, frets, ret_ty, l_end, l_inc)
+        if ! bt {
+            emit_line(out, "  br label %" + l_inc)
+        }
+        emit_line(out, l_inc + ":")
+        let lv2 = gen_expr(ident_node, names, types, out, reg, globals, fns, frets)
+        let inc = next_reg(reg)
+        emit_line(out, "  " + inc + " = add i64 " + lv2 + ", 1")
+        emit_line(out, "  store i64 " + inc + ", ptr %" + var)
+        emit_line(out, "  br label %" + l_top)
+        emit_line(out, l_end + ":")
+        return false
+    }
+    if h == "while" {
+        skip_ws(body, p)
+        let cond = read_node(body, p)
+        let block = read_node(body, p)
+        let l_top = next_label(reg)
+        let l_body = next_label(reg)
+        let l_end = next_label(reg)
+        emit_line(out, "  br label %" + l_top)
+        emit_line(out, l_top + ":")
+        let c = gen_expr(cond, names, types, out, reg, globals, fns, frets)
+        emit_line(out, "  br i1 " + c + ", label %" + l_body + ", label %" + l_end)
+        emit_line(out, l_body + ":")
+        let bt = gen_block(block, names, types, out, reg, globals, fns, frets, ret_ty, l_end, l_top)
+        if ! bt {
+            emit_line(out, "  br label %" + l_top)
+        }
+        emit_line(out, l_end + ":")
+        return false
+    }
+    return false
+}
+
+fn gen_block(node: string, names: i64, types: i64, out: i64, reg: i64, globals: i64, fns: i64, frets: i64, ret_ty: string, break_lbl: string, cont_lbl: string) -> bool {
+    let p = ilist_new()
+    ilist_push(p, 0)
+    let body = node_body(node)
+    let mut child = read_node(body, p)
+    let mut terminated = false
+    while child != "" && !terminated {
+        terminated = gen_stmt(child, names, types, out, reg, globals, fns, frets, ret_ty, break_lbl, cont_lbl)
+        child = read_node(body, p)
+    }
+    return terminated
+}
+
+fn collect_fn_nodes(nodes: i64, fns: i64, frets: i64) {
+    let mut i = 0
+    while i < slist_len(nodes) {
+        let nd = slist_get(nodes, i)
+        if head_of(nd) == "fn" {
+            let bp = ilist_new()
+            ilist_push(bp, 0)
+            let b = node_body(nd)
+            skip_ws(b, bp)
+            read_node(b, bp) // fn
+            read_node(b, bp) // name
+            read_node(b, bp) // params
+            let ret_node = read_node(b, bp)
+            let rrp = ilist_new()
+            ilist_push(rrp, 0)
+            let rb = node_body(ret_node)
+            skip_ws(rb, rrp)
+            read_node(rb, rrp) // ret
+            let rt = read_node(rb, rrp)
+            let mut rty = rt
+            if rty == "" { rty = "i64" }
+            // name
+            let bp2 = ilist_new()
+            ilist_push(bp2, 0)
+            let b2 = node_body(nd)
+            skip_ws(b2, bp2)
+            read_node(b2, bp2) // fn
+            let nm = read_node(b2, bp2)
+            slist_push(fns, nm)
+            slist_push(frets, rty)
+        }
+        i = i + 1
+    }
+}
+
+fn codegen(src: string) -> string {
+    let tree = parse(src)
+    if string.slice(tree, 0, 5) == "error" {
+        return tree
+    }
+    let nodes = slist_new()
+    let tp = ilist_new()
+    ilist_push(tp, 0)
+    let mut node = read_node(tree, tp)
+    while node != "" {
+        slist_push(nodes, node)
+        node = read_node(tree, tp)
+    }
+
+    let fns = slist_new()
+    let frets = slist_new()
+    collect_fn_nodes(nodes, fns, frets)
+
+    let mut has_fn = false
+    let mut has_main = false
+    let mut i = 0
+    while i < slist_len(nodes) {
+        let nd = slist_get(nodes, i)
+        if head_of(nd) == "fn" {
+            has_fn = true
+            let qp = ilist_new()
+            ilist_push(qp, 0)
+            let b = node_body(nd)
+            skip_ws(b, qp)
+            read_node(b, qp) // fn
+            let nm = read_node(b, qp)
+            if nm == "main" {
+                has_main = true
+            }
+        }
+        i = i + 1
+    }
+
+    let mod = slist_new()
+    let globals = slist_new()
+    let funcs = slist_new()
+
+    emit_line(mod, "; ModuleID = 'npp-selfhost'")
+    emit_line(mod, "target datalayout = \"e-m:w-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128\"")
+    emit_line(mod, "target triple = \"x86_64-pc-windows-msvc\"")
+    emit_line(mod, "")
+    emit_line(mod, "declare void @npp_print_i64(i64)")
+    emit_line(mod, "declare void @npp_print_f64(double)")
+    emit_line(mod, "declare void @npp_print_bool(i1)")
+    emit_line(mod, "declare void @npp_print_str(ptr)")
+    emit_line(mod, "declare ptr @npp_str_concat(ptr, ptr)")
+    emit_line(mod, "declare i1 @npp_str_equal(ptr, ptr)")
+    emit_line(mod, "")
+
+    if ! has_fn {
+        let body_lines = slist_new()
+        emit_line(body_lines, "define i32 @main() {")
+        emit_line(body_lines, "entry:")
+        let names = slist_new()
+        let types = slist_new()
+        let reg = ilist_new()
+        ilist_push(reg, 0)
+        let mut k = 0
+        while k < slist_len(nodes) {
+            gen_stmt(slist_get(nodes, k), names, types, body_lines, reg, globals, fns, frets, "i32", "", "")
+            k = k + 1
+        }
+        if ! starts_with(last_line(body_lines), "  ret ") {
+            emit_line(body_lines, "  ret i32 0")
+        }
+        emit_line(body_lines, "}")
+        let mut func_text = ""
+        let nbl = slist_len(body_lines)
+        let mut x = 0
+        while x < nbl {
+            func_text = func_text + slist_get(body_lines, x) + "\n"
+            x = x + 1
+        }
+        slist_push(funcs, func_text)
+    } else {
+        let mut i2 = 0
+        while i2 < slist_len(nodes) {
+            let nd = slist_get(nodes, i2)
+            if head_of(nd) == "fn" {
+                let bp = ilist_new()
+                ilist_push(bp, 0)
+                let b = node_body(nd)
+                skip_ws(b, bp)
+                read_node(b, bp) // fn
+                let name = read_node(b, bp)
+                let params_node = read_node(b, bp)
+                let ret_node = read_node(b, bp)
+                let fn_body = read_node(b, bp)
+
+                // params
+                let param_names = slist_new()
+                let param_types = slist_new()
+                let pp = ilist_new()
+                ilist_push(pp, 0)
+                let params_body = node_body(params_node)
+                skip_ws(params_body, pp)
+                read_node(params_body, pp) // params
+                let mut pr = read_node(params_body, pp)
+                while pr != "" {
+                    let rpp = ilist_new()
+                    ilist_push(rpp, 0)
+                    let pb = node_body(pr)
+                    skip_ws(pb, rpp)
+                    read_node(pb, rpp) // param
+                    let pname = read_node(pb, rpp)
+                    let ptype = read_node(pb, rpp)
+                    slist_push(param_names, pname)
+                    slist_push(param_types, ptype)
+                    pr = read_node(params_body, pp)
+                }
+
+                // ret type
+                let rrp = ilist_new()
+                ilist_push(rrp, 0)
+                let rb = node_body(ret_node)
+                skip_ws(rb, rrp)
+                read_node(rb, rrp) // ret
+                let ret_type_atom = read_node(rb, rrp)
+                let mut ret_ty = ret_type_atom
+                if ret_ty == "" {
+                    if name == "main" {
+                        ret_ty = "i32"
+                    } else {
+                        ret_ty = "i64"
+                    }
+                }
+                if name == "main" {
+                    ret_ty = "i32"
+                }
+
+                let body_lines = slist_new()
+                let mut sig = ""
+                let np = slist_len(param_names)
+                let mut j = 0
+                while j < np {
+                    if j > 0 {
+                        sig = sig + ", "
+                    }
+                    let ty = slist_get(param_types, j)
+                    sig = sig + llvm_type(ty) + " %arg" + j
+                    j = j + 1
+                }
+                emit_line(body_lines, "define " + llvm_type(ret_ty) + " @" + name + "(" + sig + ") {")
+                emit_line(body_lines, "entry:")
+                let names = slist_new()
+                let types = slist_new()
+                let reg = ilist_new()
+                ilist_push(reg, 0)
+                j = 0
+                while j < np {
+                    let pname = slist_get(param_names, j)
+                    let ptype = slist_get(param_types, j)
+                    let lty = llvm_type(ptype)
+                    emit_line(body_lines, "  %" + pname + " = alloca " + lty + ", align 8")
+                    slist_push(names, pname)
+                    slist_push(types, ptype)
+                    emit_line(body_lines, "  store " + lty + " %arg" + j + ", ptr %" + pname)
+                    j = j + 1
+                }
+                let term = gen_block(fn_body, names, types, body_lines, reg, globals, fns, frets, ret_ty, "", "")
+                if ! term && !starts_with(last_line(body_lines), "  ret ") {
+                    if name == "main" {
+                        emit_line(body_lines, "  ret i32 0")
+                    } else {
+                        emit_line(body_lines, "  ret " + llvm_type(ret_ty) + " 0")
+                    }
+                }
+                emit_line(body_lines, "}")
+
+                let mut func_text = ""
+                let nbl = slist_len(body_lines)
+                let mut x = 0
+                while x < nbl {
+                    func_text = func_text + slist_get(body_lines, x) + "\n"
+                    x = x + 1
+                }
+                slist_push(funcs, func_text)
+            }
+            i2 = i2 + 1
+        }
+
+        // implicit main from top-level statements if no explicit main
+        if ! has_main {
+            let stmts = slist_new()
+            let mut j = 0
+            while j < slist_len(nodes) {
+                let nd = slist_get(nodes, j)
+                if head_of(nd) != "fn" {
+                    slist_push(stmts, nd)
+                }
+                j = j + 1
+            }
+            if slist_len(stmts) > 0 {
+                let body_lines = slist_new()
+                emit_line(body_lines, "define i32 @main() {")
+                emit_line(body_lines, "entry:")
+                let names = slist_new()
+                let types = slist_new()
+                let reg = ilist_new()
+                ilist_push(reg, 0)
+                let mut k = 0
+                while k < slist_len(stmts) {
+                    gen_stmt(slist_get(stmts, k), names, types, body_lines, reg, globals, fns, frets, "i32", "", "")
+                    k = k + 1
+                }
+                if ! starts_with(last_line(body_lines), "  ret ") {
+                    emit_line(body_lines, "  ret i32 0")
+                }
+                emit_line(body_lines, "}")
+                let mut func_text = ""
+                let nbl = slist_len(body_lines)
+                let mut x = 0
+                while x < nbl {
+                    func_text = func_text + slist_get(body_lines, x) + "\n"
+                    x = x + 1
+                }
+                slist_push(funcs, func_text)
+            }
+        }
+    }
+
+    let mut text = ""
+    let nm = slist_len(mod)
+    let mut mi = 0
+    while mi < nm {
+        text = text + slist_get(mod, mi) + "\n"
+        mi = mi + 1
+    }
+    let ng = slist_len(globals)
+    if ng > 0 {
+        let mut gi = 0
+        while gi < ng {
+            text = text + slist_get(globals, gi) + "\n"
+            gi = gi + 1
+        }
+        text = text + "\n"
+    }
+    let nf = slist_len(funcs)
+    let mut fi = 0
+    while fi < nf {
+        text = text + slist_get(funcs, fi)
+        fi = fi + 1
+    }
+    return text
+}

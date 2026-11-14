@@ -1,0 +1,7 @@
+fn main() {
+    let ok = file_write("/tmp/npp-regression.txt", "regression")
+    print(ok)
+    print(file_exists("/tmp/npp-regression.txt"))
+    let text = file_read("/tmp/npp-regression.txt")
+    print(text)
+}

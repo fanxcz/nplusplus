@@ -1,0 +1,62 @@
+name: NPP Studio desktop builds
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'apps/studio/**'
+      - '.github/workflows/studio.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            command: npm run dist:win
+          - os: ubuntu-latest
+            command: npm run dist:linux
+          - os: macos-latest
+            command: npm run dist:mac
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    defaults:
+      run:
+        working-directory: apps/studio
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm run check
+      - run: npm install --no-audit --no-fund
+      - run: ${{ matrix.command }}
+      - name: Verify Windows Studio EXE metadata and checksums
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $manifest = Get-Content -LiteralPath 'package.json' -Raw | ConvertFrom-Json
+          $expectedVersion = [string]$manifest.version
+          if ($expectedVersion -notmatch '^[0-9]+[.][0-9]+[.][0-9]+$') { throw "Invalid Studio package version: $expectedVersion" }
+          $installers = @(Get-ChildItem -LiteralPath 'release' -Filter '*.exe' -File)
+          if ($installers.Count -eq 0) { throw 'electron-builder did not produce any Windows EXE installers.' }
+          foreach ($installer in $installers) {
+            $metadata = [System.Diagnostics.FileVersionInfo]::GetVersionInfo($installer.FullName)
+            if ($metadata.ProductVersion -notlike "$expectedVersion*") {
+              throw "Studio installer version mismatch in $($installer.Name): expected $expectedVersion, got '$($metadata.ProductVersion)'"
+            }
+            $digest = (Get-FileHash -LiteralPath $installer.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
+            "$digest  $($installer.Name)" | Set-Content -LiteralPath ($installer.FullName + '.sha256.txt') -Encoding ASCII
+            Write-Host "Verified Studio installer $($installer.Name): $($metadata.ProductVersion) ($digest)"
+          }
+      - uses: actions/upload-artifact@v4
+        with:
+          name: npp-studio-${{ runner.os }}
+          path: apps/studio/release/*
+          if-no-files-found: error
+          retention-days: 30

@@ -1,0 +1,163 @@
+if(NOT DEFINED NPP_BIN)
+  message(FATAL_ERROR "NPP_BIN is required")
+endif()
+
+set(DIAGNOSTIC_DIR "${CMAKE_BINARY_DIR}/diagnostics-smoke")
+file(REMOVE_RECURSE "${DIAGNOSTIC_DIR}")
+file(MAKE_DIRECTORY "${DIAGNOSTIC_DIR}")
+
+set(BROKEN_SOURCE "${DIAGNOSTIC_DIR}/broken.npp")
+file(WRITE "${BROKEN_SOURCE}" "fn main() {\n  let value = 1\n  print(value\n}\n")
+
+execute_process(
+  COMMAND "${NPP_BIN}" check "${BROKEN_SOURCE}"
+  RESULT_VARIABLE rc
+  OUTPUT_VARIABLE out
+  ERROR_VARIABLE err
+)
+set(combined "${out}\n${err}")
+if(rc EQUAL 0)
+  message(FATAL_ERROR "Malformed source unexpectedly passed check: ${combined}")
+endif()
+if(NOT combined MATCHES "broken.npp:4:1: error\\[NX1001\\]")
+  message(FATAL_ERROR "Expected file/line/column syntax diagnostic, got: ${combined}")
+endif()
+string(FIND "${combined}" "4 | }" excerpt_index)
+if(excerpt_index EQUAL -1 OR NOT combined MATCHES "\\^")
+  message(FATAL_ERROR "Expected offending source line and caret, got: ${combined}")
+endif()
+
+# Independent semantic errors should be reported together and retain source ranges.
+set(SEMANTIC_SOURCE "${DIAGNOSTIC_DIR}/semantic.npp")
+file(WRITE "${SEMANTIC_SOURCE}" "fn main() {\n  print(missingOne)\n  print(missingTwo)\n}\n")
+execute_process(
+  COMMAND "${NPP_BIN}" check "${SEMANTIC_SOURCE}"
+  RESULT_VARIABLE rc
+  OUTPUT_VARIABLE out
+  ERROR_VARIABLE err
+)
+set(semantic_combined "${out}\n${err}")
+if(rc EQUAL 0 OR NOT semantic_combined MATCHES "semantic.npp:2:9: error\\[NX2001\\]"
+   OR NOT semantic_combined MATCHES "semantic.npp:3:9: error\\[NX2001\\]"
+   OR NOT semantic_combined MATCHES "unknown variable: missingOne"
+   OR NOT semantic_combined MATCHES "unknown variable: missingTwo")
+  message(FATAL_ERROR "Expected two independent semantic diagnostics with source positions: ${semantic_combined}")
+endif()
+
+# Declaration validation must not mask independent errors later in the file.
+set(DECLARATION_SOURCE "${DIAGNOSTIC_DIR}/declarations.npp")
+file(WRITE "${DECLARATION_SOURCE}" "struct Broken { value: MissingType, value: i64 }\nfn main() { print(missingA); print(missingB) }\n")
+execute_process(
+  COMMAND "${NPP_BIN}" check "${DECLARATION_SOURCE}"
+  RESULT_VARIABLE rc
+  OUTPUT_VARIABLE out
+  ERROR_VARIABLE err
+)
+set(declaration_combined "${out}\n${err}")
+if(rc EQUAL 0 OR NOT declaration_combined MATCHES "duplicate field 'value' in struct 'Broken'"
+   OR NOT declaration_combined MATCHES "unknown type: MissingType"
+   OR NOT declaration_combined MATCHES "unknown variable: missingA"
+   OR NOT declaration_combined MATCHES "unknown variable: missingB")
+  message(FATAL_ERROR "Semantic analysis did not aggregate declaration and body errors: ${declaration_combined}")
+endif()
+
+# Struct initializers must name every field exactly once.
+set(DUPLICATE_INIT_SOURCE "${DIAGNOSTIC_DIR}/duplicate-init.npp")
+file(WRITE "${DUPLICATE_INIT_SOURCE}"
+  "struct Pair { left: i64, right: i64 }\nfn main() { let pair = Pair { left: 1, left: 2 } }\n")
+execute_process(
+  COMMAND "${NPP_BIN}" check "${DUPLICATE_INIT_SOURCE}"
+  RESULT_VARIABLE rc OUTPUT_VARIABLE out ERROR_VARIABLE err)
+set(duplicate_init_combined "${out}\n${err}")
+if(rc EQUAL 0 OR NOT duplicate_init_combined MATCHES "duplicate field initializer 'left' in 'Pair'")
+  message(FATAL_ERROR "Duplicate struct initializer field was not rejected: ${duplicate_init_combined}")
+endif()
+
+set(MISSING_INIT_SOURCE "${DIAGNOSTIC_DIR}/missing-init.npp")
+file(WRITE "${MISSING_INIT_SOURCE}"
+  "struct Pair { left: i64, right: i64 }\nfn main() { let pair = Pair { left: 1 } }\n")
+execute_process(
+  COMMAND "${NPP_BIN}" check "${MISSING_INIT_SOURCE}"
+  RESULT_VARIABLE rc OUTPUT_VARIABLE out ERROR_VARIABLE err)
+set(missing_init_combined "${out}\n${err}")
+if(rc EQUAL 0 OR NOT missing_init_combined MATCHES "missing field 'right' in initializer for 'Pair'")
+  message(FATAL_ERROR "Missing struct initializer field was not identified: ${missing_init_combined}")
+endif()
+
+set(UNKNOWN_INIT_SOURCE "${DIAGNOSTIC_DIR}/unknown-init.npp")
+file(WRITE "${UNKNOWN_INIT_SOURCE}"
+  "struct Pair { left: i64, right: i64 }\nfn main() { let pair = Pair { left: 1, height: 2 } }\n")
+execute_process(
+  COMMAND "${NPP_BIN}" check "${UNKNOWN_INIT_SOURCE}"
+  RESULT_VARIABLE rc OUTPUT_VARIABLE out ERROR_VARIABLE err)
+set(unknown_init_combined "${out}\n${err}")
+if(rc EQUAL 0 OR NOT unknown_init_combined MATCHES "unknown field 'height' in initializer for 'Pair'")
+  message(FATAL_ERROR "Unknown struct initializer field was not identified: ${unknown_init_combined}")
+endif()
+
+# Repeating a literal or enum case makes later match arms unreachable.
+set(DUPLICATE_MATCH_SOURCE "${DIAGNOSTIC_DIR}/duplicate-match.npp")
+file(WRITE "${DUPLICATE_MATCH_SOURCE}"
+  "enum Color { Red, Green }\nfn main() { let color = Color::Red; match color { Color::Red => {}, Color::Red => {}, _ => {} } }\n")
+execute_process(
+  COMMAND "${NPP_BIN}" check "${DUPLICATE_MATCH_SOURCE}"
+  RESULT_VARIABLE rc OUTPUT_VARIABLE out ERROR_VARIABLE err)
+set(duplicate_match_combined "${out}\n${err}")
+if(rc EQUAL 0 OR NOT duplicate_match_combined MATCHES "duplicate match pattern 'Color::Red'")
+  message(FATAL_ERROR "Duplicate enum match pattern was not rejected: ${duplicate_match_combined}")
+endif()
+
+# Recover from multiple malformed statements within one function body.
+set(MULTI_SYNTAX_SOURCE "${DIAGNOSTIC_DIR}/syntax-multiple.npp")
+file(WRITE "${MULTI_SYNTAX_SOURCE}"
+  "fn main() { let = 1; print(2; let other = ; print(3) }\n")
+execute_process(
+  COMMAND "${NPP_BIN}" check "${MULTI_SYNTAX_SOURCE}"
+  RESULT_VARIABLE rc OUTPUT_VARIABLE out ERROR_VARIABLE err)
+set(multi_syntax_combined "${out}\n${err}")
+string(REGEX MATCHALL "error\\[NX1001\\]" syntax_error_codes "${multi_syntax_combined}")
+list(LENGTH syntax_error_codes syntax_error_count)
+if(rc EQUAL 0 OR NOT syntax_error_count EQUAL 3)
+  message(FATAL_ERROR "Parser did not recover all three syntax errors inside one function: ${multi_syntax_combined}")
+endif()
+
+# A literal zero divisor is always a bug; reject it at compile time instead of
+# letting the program crash with a hardware exception at run time.
+set(DIVIDE_BY_ZERO_SOURCE "${DIAGNOSTIC_DIR}/divide-by-zero.npp")
+file(WRITE "${DIVIDE_BY_ZERO_SOURCE}"
+  "fn main() { let bad = 10 / 0; print(bad) }\n")
+execute_process(
+  COMMAND "${NPP_BIN}" check "${DIVIDE_BY_ZERO_SOURCE}"
+  RESULT_VARIABLE rc OUTPUT_VARIABLE out ERROR_VARIABLE err)
+set(divide_by_zero_combined "${out}\n${err}")
+if(rc EQUAL 0 OR NOT divide_by_zero_combined MATCHES "division by zero")
+  message(FATAL_ERROR "Constant division by zero was not rejected: ${divide_by_zero_combined}")
+endif()
+
+# `match` over a finite domain must cover every value. bool and enum domains
+# are provable at compile time; i64 domains still require an explicit catch-all
+# from the author, so they are not checked here.
+set(BOOL_MATCH_SOURCE "${DIAGNOSTIC_DIR}/non-exhaustive-bool.npp")
+file(WRITE "${BOOL_MATCH_SOURCE}"
+  "fn main() { let flag = true; match flag { true => { print(1) } } }\n")
+execute_process(
+  COMMAND "${NPP_BIN}" check "${BOOL_MATCH_SOURCE}"
+  RESULT_VARIABLE rc OUTPUT_VARIABLE out ERROR_VARIABLE err)
+set(bool_match_combined "${out}\n${err}")
+if(rc EQUAL 0 OR NOT bool_match_combined MATCHES "match on bool is not exhaustive")
+  message(FATAL_ERROR "Non-exhaustive bool match was not rejected: ${bool_match_combined}")
+endif()
+
+set(ENUM_MATCH_SOURCE "${DIAGNOSTIC_DIR}/non-exhaustive-enum.npp")
+file(WRITE "${ENUM_MATCH_SOURCE}"
+  "enum Color { Red, Green, Blue }\nfn main() { let color = Color::Red; match color { Color::Red => {}, Color::Green => {} } }\n")
+execute_process(
+  COMMAND "${NPP_BIN}" check "${ENUM_MATCH_SOURCE}"
+  RESULT_VARIABLE rc OUTPUT_VARIABLE out ERROR_VARIABLE err)
+set(enum_match_combined "${out}\n${err}")
+if(rc EQUAL 0 OR NOT enum_match_combined MATCHES "match on enum 'Color' is not exhaustive: missing Color::Blue")
+  message(FATAL_ERROR "Non-exhaustive enum match was not rejected: ${enum_match_combined}")
+endif()
+
+file(REMOVE_RECURSE "${DIAGNOSTIC_DIR}")
+message(STATUS "NPP diagnostics smoke test: PASS")

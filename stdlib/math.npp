@@ -1,0 +1,66 @@
+// Scalar math helpers shared by gameplay, animation and simulation modules.
+fn math_clamp(value: f64, minimum: f64, maximum: f64) -> f64 {
+    // Accept reversed bounds by normalizing them first.
+    if minimum <= maximum {
+        if value < minimum { return minimum }
+        if value > maximum { return maximum }
+        return value
+    }
+    if value < maximum { return maximum }
+    if value > minimum { return minimum }
+    return value
+}
+
+fn math_min(a: f64, b: f64) -> f64 {
+    if a < b { return a }
+    return b
+}
+
+fn math_max(a: f64, b: f64) -> f64 {
+    if a > b { return a }
+    return b
+}
+
+fn math_floor(value: f64) -> i64 {
+    // NPP to_i64 rounds, so correct values whose rounded integer is too high.
+    let mut whole = to_i64(value)
+    if to_f64(whole) > value {
+        whole = whole - 1
+    }
+    return whole
+}
+
+fn math_lerp(start: f64, finish: f64, amount: f64) -> f64 {
+    return start +(finish - start) * math_clamp(amount, 0.0, 1.0)
+}
+
+fn math_approach(value: f64, target: f64, amount: f64) -> f64 {
+    if amount < 0.0 { return value }
+    if value < target {
+        let next = value + amount
+        if next > target { return target }
+        return next
+    }
+    if value > target {
+        let next = value - amount
+        if next < target { return target }
+        return next
+    }
+    return target
+}
+
+fn math_sign(value: f64) -> f64 {
+    if value < 0.0 { return-1.0 }
+    if value > 0.0 { return 1.0 }
+    return 0.0
+}
+
+// Thin, discoverable namespaced wrappers around the core math built-ins.
+// Angles are measured in radians.
+fn math_sin(radians: f64) -> f64 { return sin(radians) }
+fn math_cos(radians: f64) -> f64 { return cos(radians) }
+fn math_tan(radians: f64) -> f64 { return tan(radians) }
+fn math_atan2(y: f64, x: f64) -> f64 { return atan2(y, x) }
+fn math_pow(base: f64, exponent: f64) -> f64 { return pow(base, exponent) }
+fn math_floor_f64(value: f64) -> f64 { return floor(value) }
+fn math_ceil_f64(value: f64) -> f64 { return ceil(value) }

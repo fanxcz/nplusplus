@@ -1,0 +1,268 @@
+#include "lexer/lexer.hpp"
+#include "parser/parser.hpp"
+
+#include <cstddef>
+#include <cstdint>
+#include <exception>
+#include <iostream>
+#include <random>
+#include <string>
+#include <utility>
+#include <vector>
+
+int main() {
+    // A fixed seed makes failures reproducible on Windows, Linux and macOS.
+    constexpr std::uint64_t seed = 0x4e455855535f4655ULL;
+    constexpr std::size_t iterations = 5000;
+    constexpr std::size_t maxLength = 256;
+    const std::string alphabet = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_"
+                                 "{}()[],:;.+-*/%!=&|<>#\"' \t\r\n";
+    std::mt19937_64 random(seed);
+
+    for (std::size_t caseIndex = 0; caseIndex < iterations; ++caseIndex) {
+        const auto length =
+            static_cast<std::size_t>(random() % static_cast<std::uint64_t>(maxLength + 1));
+        std::string source;
+        source.reserve(length);
+        for (std::size_t i = 0; i < length; ++i) {
+            const auto character =
+                static_cast<std::size_t>(random() % static_cast<std::uint64_t>(alphabet.size()));
+            source.push_back(alphabet[character]);
+        }
+
+        try {
+            auto tokens = npp::Lexer(source).tokenize();
+            try {
+                (void)npp::Parser(std::move(tokens)).parseProgram();
+            } catch (const std::exception&) {
+                // Invalid generated programs are expected to be rejected.
+            }
+        } catch (const std::exception&) {
+            // Lexical errors are valid outcomes for malformed input.
+        }
+    }
+
+    const auto rejects = [](const std::string& source) {
+        try {
+            auto tokens = npp::Lexer(source).tokenize();
+            (void)npp::Parser(std::move(tokens)).parseProgram();
+            return false;
+        } catch (const std::exception&) {
+            return true;
+        }
+    };
+
+    // Numeric conversion errors must remain ordinary, location-aware parser
+    // diagnostics rather than escaping as an unclassified standard exception.
+    // Scientific-notation literals must be tokenized as one floating-point token.
+    const std::vector<std::string> validScientific = {"1e3", "2E+4", "1.25e-3"};
+    for (const auto& literal : validScientific) {
+        try {
+            const auto tokens = npp::Lexer(literal).tokenize();
+            if (tokens.size() < 2 || tokens[0].kind != npp::TokenKind::Float ||
+                tokens[0].text != literal || tokens[1].kind != npp::TokenKind::End) {
+                std::cerr << "scientific-notation tokenization failed for: " << literal << "\n";
+                return 10;
+            }
+        } catch (const std::exception& error) {
+            std::cerr << "valid scientific-notation literal rejected: " << literal
+                      << ": " << error.what() << "\n";
+            return 11;
+        }
+    }
+    for (const std::string literal : {"1e", "1E+", "5.2e-"}) {
+        try {
+            (void)npp::Lexer(literal).tokenize();
+            std::cerr << "malformed exponent was accepted: " << literal << "\n";
+            return 12;
+        } catch (const std::exception&) {
+            // Malformed literals must be rejected by the lexer.
+        }
+    }
+    if (!rejects("fn main(){ print(1e309) }")) {
+        std::cerr << "out-of-range floating-point literal was accepted\n";
+        return 13;
+    }
+
+    // Numeric separators are allowed only between digits and are removed
+    // before conversion to the compiler's integer/floating-point AST values.
+    for (const std::string literal : {"1_000", "12_345_678", "1_000.25", "1.2_5e1_0"}) {
+        try {
+            const auto tokens = npp::Lexer(literal).tokenize();
+            if (tokens.size() < 2 || tokens[0].text != literal ||
+                tokens[1].kind != npp::TokenKind::End) {
+                std::cerr << "numeric-separator tokenization failed for: " << literal << "\n";
+                return 14;
+            }
+            const auto expectedKind = literal.find_first_of(".eE") == std::string::npos
+                                          ? npp::TokenKind::Integer
+                                          : npp::TokenKind::Float;
+            if (tokens[0].kind != expectedKind) {
+                std::cerr << "numeric-separator token kind mismatch for: " << literal << "\n";
+                return 15;
+            }
+        } catch (const std::exception& error) {
+            std::cerr << "valid numeric literal rejected: " << literal << ": "
+                      << error.what() << "\n";
+            return 16;
+        }
+    }
+    for (const std::string literal : {"1_", "1__0", "1_.0", "1e_3", "1.2e3_"}) {
+        try {
+            (void)npp::Lexer(literal).tokenize();
+            std::cerr << "malformed numeric separator was accepted: " << literal << "\n";
+            return 17;
+        } catch (const std::exception&) {
+            // Separators at invalid positions must be rejected by the lexer.
+        }
+    }
+    // Numeric separators must also normalize in parser-only contexts such as
+    // fixed-array lengths, not just expression literals.
+    const std::vector<std::string> validNumericPrograms = {
+        "fn main(){ print(1_000_000) }",
+        "fn main(){ let ratio: f64 = 1.25e-3 }",
+        "fn main(value: [i64;1_0]) {}"
+    };
+    for (const auto& source : validNumericPrograms) {
+        try {
+            (void)npp::Parser(npp::Lexer(source).tokenize()).parseProgram();
+        } catch (const std::exception& error) {
+            std::cerr << "valid numeric source rejected: " << error.what() << "\n";
+            return 18;
+        }
+    }
+
+    for (const std::string source : {
+             "fn main(){ let value = -9223372036854775808 }",
+             "fn main(){ let value = -9_223_372_036_854_775_808 }"}) {
+        try {
+            (void)npp::Parser(npp::Lexer(source).tokenize()).parseProgram();
+        } catch (const std::exception& error) {
+            std::cerr << "valid INT64_MIN literal was rejected: " << error.what() << "\\n";
+            return 19;
+        }
+    }
+    // 2^63 is a valid token/parser integer now because an expected u64 type
+    // may contextualize it later. The semantic phase rejects it when left at
+    // its default i64 type; that negative case is covered by the compiler smoke test.
+    try {
+        (void)npp::Parser(
+            npp::Lexer("fn main(){ print(9223372036854775808) }").tokenize())
+            .parseProgram();
+    } catch (const std::exception& error) {
+        std::cerr << "u64-capable integer literal was rejected by the parser: "
+                  << error.what() << "\n";
+        return 20;
+    }
+    if (!rejects("fn main(value: [i64;999999999999999999999999999999999]) {}")) {
+        std::cerr << "out-of-range array length was accepted\n";
+        return 2;
+    }
+    // Integer literals support explicit hexadecimal, binary, and octal bases.
+    const std::vector<std::string> validRadixLiterals = {
+        "0x2A", "0X2a", "0b101010", "0B10_1010", "0o52", "0O5_2",
+        "0xFFFF_FFFF_FFFF_FFFF"
+    };
+    for (const auto& literal : validRadixLiterals) {
+        try {
+            const auto tokens = npp::Lexer(literal).tokenize();
+            if (tokens.size() != 2 || tokens[0].kind != npp::TokenKind::Integer ||
+                tokens[0].text != literal || tokens[1].kind != npp::TokenKind::End) {
+                std::cerr << "radix integer tokenization failed for: " << literal << "\n";
+                return 21;
+            }
+        } catch (const std::exception& error) {
+            std::cerr << "valid radix integer rejected: " << literal << ": "
+                      << error.what() << "\n";
+            return 22;
+        }
+    }
+    const std::vector<std::string> invalidRadixLiterals = {
+        "0x", "0b", "0o", "0b102", "0o89", "0x_FF", "0xFF_", "0x1__F"
+    };
+    for (const auto& literal : invalidRadixLiterals) {
+        try {
+            (void)npp::Lexer(literal).tokenize();
+            std::cerr << "malformed radix integer was accepted: " << literal << "\n";
+            return 23;
+        } catch (const std::exception&) {
+            // Invalid digits and separators must be rejected by the lexer.
+        }
+    }
+    const std::vector<std::string> validRadixPrograms = {
+        "fn main(){ let value: u64 = 0xFFFF_FFFF_FFFF_FFFF }",
+        "fn main(){ let value: u32 = 0b1111_0000 }",
+        "fn main(){ let value: u16 = 0o17 }",
+        "fn main(value: [u8; 0x10]) {}",
+        "fn main(){ let value = -0x8000_0000_0000_0000 }"
+    };
+    for (const auto& source : validRadixPrograms) {
+        try {
+            (void)npp::Parser(npp::Lexer(source).tokenize()).parseProgram();
+        } catch (const std::exception& error) {
+            std::cerr << "valid radix integer source rejected: " << error.what() << "\n";
+            return 24;
+        }
+    }
+    if (!rejects("fn main(){ let value = 0x1_0000_0000_0000_0000 }") ||
+        !rejects("fn main(value: [u8; 0x10000000000000000]) {}")) {
+        std::cerr << "out-of-range radix integer or array length was accepted\n";
+        return 25;
+    }
+
+
+    // Block comments nest, so an inner closing delimiter must not end the outer comment.
+    try {
+        const auto tokens =
+            npp::Lexer("/* outer /* inner /* deepest */ tail */ done */ 42").tokenize();
+        if (tokens.size() != 2 || tokens[0].kind != npp::TokenKind::Integer ||
+            tokens[0].text != "42" || tokens[1].kind != npp::TokenKind::End) {
+            std::cerr << "nested block comments were not skipped as one comment\n";
+            return 26;
+        }
+    } catch (const std::exception& error) {
+        std::cerr << "valid nested block comment was rejected: " << error.what() << "\n";
+        return 27;
+    }
+    bool unterminatedNestedCommentRejected = false;
+    try {
+        (void)npp::Lexer("/* outer /* inner */").tokenize();
+    } catch (const std::exception&) {
+        unterminatedNestedCommentRejected = true;
+    }
+    if (!unterminatedNestedCommentRejected) {
+        std::cerr << "unterminated nested block comment was accepted\n";
+        return 28;
+    }
+
+    if (rejects("fn main(){ print((((1 + 2)))) }")) {
+        std::cerr << "ordinary nested expression was rejected\n";
+        return 3;
+    }
+    std::string deeplyNested = "fn main(){ print(";
+    deeplyNested.append(400, '(');
+    deeplyNested += "1";
+    deeplyNested.append(400, ')');
+    deeplyNested += ") }";
+    if (!rejects(deeplyNested)) {
+        std::cerr << "deeply nested expression was not rejected\n";
+        return 4;
+    }
+
+    std::string deeplyNestedBlocks = "fn main()";
+    for (std::size_t i = 0; i < 300; ++i)
+        deeplyNestedBlocks += "{ if true ";
+    deeplyNestedBlocks += "{ print(1) }";
+    for (std::size_t i = 0; i < 300; ++i)
+        deeplyNestedBlocks += " }";
+    deeplyNestedBlocks += " }";
+    if (!rejects(deeplyNestedBlocks)) {
+        std::cerr << "deeply nested blocks were not rejected\n";
+        return 5;
+    }
+
+    std::cout << "NPP frontend fuzz smoke: PASS (" << iterations
+              << " deterministic inputs plus parser depth/range regressions, seed " << seed
+              << ")\n";
+    return 0;
+}

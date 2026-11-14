@@ -1,0 +1,130 @@
+import std.engine2d
+import std.math
+import std.tilemap
+import std.collision2d
+import std.tilemap_render
+import std.animation2d
+import std.sprite2d
+import std.camera2d
+import std.audio2d
+import std.physics2d
+
+fn main() {
+    if math_floor(-0.2) != -1 || math_floor(1.9) != 1 {
+        print("NPP game libraries: FAIL floor")
+        return
+    }
+    if math_clamp(9.0, 1.0, 4.0) != 4.0 {
+        print("NPP game libraries: FAIL clamp")
+        return
+    }
+    if math_clamp(2.0, 4.0, 1.0) != 2.0 {
+        print("NPP game libraries: FAIL reversed clamp")
+        return
+    }
+    if animation2d_frame_at(0.0, 4, 10.0, true) != 0 {
+        print("NPP game libraries: FAIL animation start")
+        return
+    }
+    if animation2d_frame_at(0.29, 4, 10.0, true) != 2 {
+        print("NPP game libraries: FAIL animation time")
+        return
+    }
+    if animation2d_frame_at(100.0, 4, 10.0, false) != 3 {
+        print("NPP game libraries: FAIL animation clamp")
+        return
+    }
+    if animation2d_next_frame(3, 4, true) != 0 || animation2d_next_frame(3, 4, false) != 3 {
+        print("NPP game libraries: FAIL animation advance")
+        return
+    }
+
+    let map = tilemap_create(4, 4)
+    if map <= 0 {
+        print("NPP game libraries: FAIL tilemap create")
+        return
+    }
+    tilemap_set(map, 4, 4, 1, 2, 1)
+    if ! tilemap_fill_rect(map, 4, 4, 0, 0, 2, 2, 3) {
+        print("NPP game libraries: FAIL tilemap fill rect")
+        return
+    }
+    if tilemap_count(map, 4, 4, 3) != 4 {
+        print("NPP game libraries: FAIL tilemap count")
+        return
+    }
+    if ! tilemap_fill(map, 4, 4, 2) || tilemap_count(map, 4, 4, 2) != 16 {
+        print("NPP game libraries: FAIL tilemap fill")
+        return
+    }
+    tilemap_set(map, 4, 4, 1, 2, 1)
+    if ! collision2d_aabb(0.0, 0.0, 10.0, 10.0, 5.0, 5.0, 10.0, 10.0) {
+        print("NPP game libraries: FAIL AABB")
+        return
+    }
+    if ! collision2d_circle(0.0, 0.0, 10.0, 15.0, 0.0, 6.0) {
+        print("NPP game libraries: FAIL circle")
+        return
+    }
+    if ! collision2d_point_aabb(5.0, 5.0, 0.0, 0.0, 10.0, 10.0) ||
+    collision2d_point_aabb(11.0, 5.0, 0.0, 0.0, 10.0, 10.0) {
+        print("NPP game libraries: FAIL point AABB")
+        return
+    }
+    if ! collision2d_circle_aabb(5.0, 5.0, 2.0, 0.0, 0.0, 10.0, 10.0) ||
+    collision2d_circle_aabb(13.0, 5.0, 2.0, 0.0, 0.0, 10.0, 10.0) {
+        print("NPP game libraries: FAIL circle AABB")
+        return
+    }
+    if collision2d_aabb_overlap_area(0.0, 0.0, 10.0, 10.0, 10.0, 0.0, 5.0, 5.0) != 0.0 ||
+    collision2d_aabb_overlap_area(0.0, 0.0, 10.0, 10.0, 5.0, 5.0, 10.0, 10.0) != 25.0 {
+        print("NPP game libraries: FAIL overlap area")
+        return
+    }
+    if collision2d_map_overlaps(map, 4, 4, 32.0, 32.0, 64.0, 0.0, 24.0) {
+        print("NPP game libraries: FAIL zero-width map overlap")
+        return
+    }
+    if collision2d_move_x(map, 4, 4, 0.0, 32.0, 64.0, 24.0, 24.0, 12.0) != 32.0 ||
+    collision2d_move_y(map, 4, 4, 0.0, 32.0, 64.0, 24.0, 24.0, 12.0) != 64.0 {
+        print("NPP game libraries: FAIL invalid movement input")
+        return
+    }
+    if ! collision2d_map_overlaps(map, 4, 4, 32.0, 32.0, 64.0, 24.0, 24.0) {
+        print("NPP game libraries: FAIL tile collision")
+        return
+    }
+    if physics2d_on_ground(map, 4, 4, 0.0, 32.0, 64.0, 24.0, 24.0) {
+        print("NPP game libraries: FAIL ground check invalid tile size")
+        return
+    }
+    if physics2d_on_ground(map, 4, 4, 32.0, 32.0, 64.0, 0.0, 24.0) {
+        print("NPP game libraries: FAIL ground check zero-width box")
+        return
+    }
+    if physics2d_on_ground(map, 4, 4, 32.0, 1.0e308, 64.0, 1.0e308, 24.0) {
+        print("NPP game libraries: FAIL ground check overflowing bounds")
+        return
+    }
+
+    if physics2d_jump_velocity(800.0, 64.0) != -320.0 {
+        print("NPP game libraries: FAIL jump velocity")
+        return
+    }
+    if physics2d_apply_friction(50.0, 100.0, 1.0) != 0.0 ||
+    physics2d_apply_friction(-80.0, 20.0, 2.0) != -40.0 {
+        print("NPP game libraries: FAIL friction")
+        return
+    }
+    if physics2d_clamp_vertical(-600.0, 300.0, 500.0) != -300.0 ||
+    physics2d_clamp_vertical(800.0, 300.0, 500.0) != 500.0 {
+        print("NPP game libraries: FAIL vertical clamp")
+        return
+    }
+    if animation2d_progress(1.25, 1.0, true) != 0.25 ||
+    animation2d_progress(2.0, 1.0, false) != 1.0 {
+        print("NPP game libraries: FAIL animation progress")
+        return
+    }
+    print("NPP game libraries: PASS")
+}

@@ -1,0 +1,188 @@
+name: build
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js for repository-wide static checks
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Audit tracked repository files
+        run: python scripts/audit_repository.py
+
+
+      - name: Install Linux toolchain
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y cmake ninja-build clang lld
+
+      - name: Install Windows toolchain
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: choco install ninja llvm -y
+
+      - name: Install macOS toolchain
+        if: runner.os == 'macOS'
+        run: brew install ninja llvm
+
+      - name: Configure
+        run: cmake -S . -B build -G Ninja -DNPP_BUILD_TESTS=ON
+
+      - name: Build
+        run: cmake --build build
+
+      - name: Check Vector Lab example (POSIX)
+        if: runner.os != 'Windows'
+        run: ./build/npp check examples/vector_lab.npp
+
+      - name: Check Vector Lab example (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: .\build\npp.exe check examples/vector_lab.npp
+
+      - name: Test
+        run: ctest --test-dir build --output-on-failure
+
+      # CTest's npp_repository_sources test runs per-file format and lint
+      # checks while intentionally excluding invalid fuzz-corpus inputs.
+
+      - name: Smoke test (POSIX)
+        if: runner.os != 'Windows'
+        run: ./build/npp --version
+
+      - name: Smoke test (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: .\build\npp.exe --version
+
+      - name: Builtin native backend test (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          set -e
+          ./build/npp build tests/native_programs/arith.npp -o /tmp/npp-native-arith --backend native
+          /tmp/npp-native-arith > /tmp/npp-native-arith.txt
+          printf '14\n20\n42\n3\n2\n-3\n-2\n-5\n-42\ntrue\nfalse\ntrue\ntrue\nfalse\nfalse\nfalse\ntrue\nfalse\nfalse\ntrue\n' > /tmp/npp-native-arith.want
+          diff -u /tmp/npp-native-arith.want /tmp/npp-native-arith.txt
+          ./build/npp build tests/native_programs/calls.npp -o /tmp/npp-native-calls --backend native
+          /tmp/npp-native-calls
+          # Subset violations must fail with an actionable reason, not a crash.
+          if ./build/npp build tests/regression_programs/types.npp -o /tmp/npp-native-reject --backend native 2>/tmp/reject.err; then
+            echo 'native backend unexpectedly accepted types.npp' >&2
+            exit 1
+          fi
+          grep -q 'outside the builtin native v0 subset' /tmp/reject.err
+
+      - name: Builtin native backend test (Linux cross-check from Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          .\build\npp.exe build tests\native_programs\arith.npp -o "$env:RUNNER_TEMP\npp-native-arith.exe" --backend native
+          $output = & "$env:RUNNER_TEMP\npp-native-arith.exe"
+          if (($output -join "`n") -notmatch '14') { throw "native arith output mismatch: $($output -join "`n")" }
+          .\build\npp.exe build tests\native_programs\calls.npp -o "$env:RUNNER_TEMP\npp-native-calls.exe" --backend native
+          $calls = & "$env:RUNNER_TEMP\npp-native-calls.exe"
+          if (($calls -join "`n") -notmatch '55') { throw "native calls output mismatch: $($calls -join "`n")" }
+          # Linux ELF cross-emission must at least produce a valid ELF image.
+          .\build\npp.exe build tests\native_programs\arith.npp -o "$env:RUNNER_TEMP\npp-native-arith-elf" --target x86_64-linux --backend native
+          $bytes = [System.IO.File]::ReadAllBytes("$env:RUNNER_TEMP\npp-native-arith-elf")
+          if ($bytes[0] -ne 0x7F -or $bytes[1] -ne [byte][char]'E' -or $bytes[2] -ne [byte][char]'L' -or $bytes[3] -ne [byte][char]'F') {
+            throw 'cross-emitted Linux image is not an ELF file'
+          }
+
+      - name: Builtin native backend without any compiler on PATH (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $oldPath = $env:PATH
+          $oldCxx = $env:NPP_CXX
+          try {
+            $env:PATH = (@($env:SystemRoot, (Join-Path $env:SystemRoot 'System32')) -join ';')
+            $env:NPP_CXX = $null
+            $output = & .\build\npp.exe run tests\native_programs\print_types.npp --backend native 2>&1
+            if ($LASTEXITCODE -ne 0 -or (($output -join "`n") -notmatch 'literal line')) {
+              throw "toolchain-free native run failed: $($output -join "`n")"
+            }
+            Write-Host 'NPP compiled and ran a native program with no compiler on PATH and NPP_CXX unset.'
+          } finally {
+            $env:PATH = $oldPath
+            $env:NPP_CXX = $oldCxx
+          }
+
+      - name: Builtin native backend without any compiler on PATH (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          set -e
+          oldPath="$PATH"
+          unset NPP_CXX || true
+          PATH="/usr/bin:/bin"
+          ./build/npp run tests/native_programs/print_types.npp --backend native
+          PATH="$oldPath"
+
+      - name: Native backend gracefully declines on macOS
+        if: runner.os == 'macOS'
+        run: |
+          set -e
+          if ./build/npp build tests/native_programs/arith.npp -o /tmp/npp-native-mac --backend native 2>/tmp/mac-reject.err; then
+            echo 'native backend unexpectedly produced a macOS image' >&2
+            exit 1
+          fi
+          grep -q 'no emitter' /tmp/mac-reject.err
+
+      - name: Test self-contained Windows C++ backend
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $zigVersion = '0.14.1'
+          $archive = Join-Path $env:RUNNER_TEMP "zig-test-$zigVersion.zip"
+          $extract = Join-Path $env:RUNNER_TEMP "zig-test-$zigVersion"
+          Invoke-WebRequest "https://ziglang.org/download/$zigVersion/zig-x86_64-windows-$zigVersion.zip" -OutFile $archive
+          Expand-Archive -LiteralPath $archive -DestinationPath $extract -Force
+          $zigRoot = Get-ChildItem -LiteralPath $extract -Directory | Select-Object -First 1
+          if (-not $zigRoot) { throw 'Zig archive directory missing.' }
+
+          $toolDir = Join-Path $env:RUNNER_TEMP 'npp-self-contained-toolchain'
+          New-Item -ItemType Directory -Path $toolDir -Force | Out-Null
+          Copy-Item -LiteralPath (Join-Path $zigRoot.FullName 'zig.exe') -Destination $toolDir -Force
+          Copy-Item -LiteralPath (Join-Path $zigRoot.FullName 'lib') -Destination $toolDir -Recurse -Force
+          @'
+          @echo off
+          setlocal
+          "%~dp0zig.exe" c++ %*
+          exit /b %ERRORLEVEL%
+          '@ | Set-Content -LiteralPath (Join-Path $toolDir 'clang++.cmd') -Encoding ASCII
+          # Match the actual package layout: compiler and bundled backend are siblings.
+          Copy-Item -LiteralPath '.\build\npp.exe' -Destination (Join-Path $toolDir 'npp.exe') -Force
+
+          $source = Join-Path $env:RUNNER_TEMP 'npp-self-contained-smoke.npp'
+          Set-Content -LiteralPath $source -Value 'fn main() { print("NPP_SELF_CONTAINED_BACKEND_OK") }' -Encoding utf8
+          $oldPath = $env:PATH
+          try {
+            # Deliberately exclude $toolDir from PATH. NPP must find clang++.cmd
+            # beside its own executable instead of relying on a globally installed compiler.
+            $env:PATH = (@(
+              $env:SystemRoot,
+              (Join-Path $env:SystemRoot 'System32'),
+              (Join-Path $env:SystemRoot 'System32/WindowsPowerShell/v1.0')
+            ) -join ';')
+            $output = & (Join-Path $toolDir 'npp.exe') $source 2>&1
+            if ($LASTEXITCODE -ne 0 -or (($output -join "`n") -notmatch 'NPP_SELF_CONTAINED_BACKEND_OK')) {
+              throw "Bundled Zig backend failed without system LLVM/MSVC in PATH: $($output -join "`n")"
+            }
+            Write-Host 'NPP compiled and launched a native .exe with external developer tools removed from PATH.'
+          } finally {
+            $env:PATH = $oldPath
+          }

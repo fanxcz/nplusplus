@@ -1,0 +1,2 @@
+import "cycle-b.npp"
+fn cycle_a() {}

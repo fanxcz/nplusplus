@@ -1,0 +1,92 @@
+// Core 2D window, frame, input and primitive-drawing helpers.
+// Textures, cameras, collision, tilemaps and audio live in separate std modules.
+fn engine2d_init(width: i64, height: i64, title: string) -> bool {
+    return gfx_init(width, height, title)
+}
+
+fn engine2d_shutdown() {
+    gfx_shutdown()
+}
+
+fn engine2d_begin_frame(red: f64, green: f64, blue: f64, alpha: f64) {
+    gfx_poll()
+    gfx_begin()
+    gfx_clear(red, green, blue, alpha)
+}
+
+fn engine2d_end_frame() {
+    gfx_end()
+}
+
+fn engine2d_delta_time() -> f64 {
+    let dt = gfx_dt()
+    if dt < 0.0 { return 0.0 }
+    if dt > 0.05 { return 0.05 }
+    return dt
+}
+
+fn engine2d_key_down(key: string) -> bool {
+    return gfx_key_down(key)
+}
+
+// True only during the frame a non-repeated key-down event arrives.
+fn engine2d_key_pressed(key: string) -> bool {
+    return gfx_key_pressed(key)
+}
+
+fn engine2d_mouse_x() -> f64 {
+    return gfx_mouse_x()
+}
+
+fn engine2d_mouse_y() -> f64 {
+    return gfx_mouse_y()
+}
+
+fn engine2d_mouse_down(button: i64) -> bool {
+    return gfx_mouse_down(button)
+}
+
+// True only on the frame the button was pressed, so one click fires once.
+fn engine2d_mouse_clicked(button: i64) -> bool {
+    return gfx_mouse_clicked(button)
+}
+
+fn engine2d_mouse_over(x: f64, y: f64, width: f64, height: f64) -> bool {
+    let mx = gfx_mouse_x()
+    let my = gfx_mouse_y()
+    return mx >= x && mx <= x + width && my >= y && my <= y + height
+}
+
+fn engine2d_mouse_clicked_in(x: f64, y: f64, width: f64, height: f64) -> bool {
+    return engine2d_mouse_over(x, y, width, height) && gfx_mouse_clicked(1)
+}
+
+fn engine2d_draw_rect(x: f64, y: f64, width: f64, height: f64,
+red: f64, green: f64, blue: f64, alpha: f64) {
+    gfx_rect(x, y, width, height, red, green, blue, alpha)
+}
+
+fn engine2d_draw_circle(x: f64, y: f64, radius: f64,
+red: f64, green: f64, blue: f64, alpha: f64) {
+    gfx_circle(x, y, radius, red, green, blue, alpha)
+}
+
+fn engine2d_draw_text(x: f64, y: f64, scale: f64, value: string,
+red: f64, green: f64, blue: f64, alpha: f64) {
+    gfx_text(x, y, scale, value, red, green, blue, alpha)
+}
+
+fn engine2d_should_close() -> bool {
+    return gfx_should_close()
+}
+
+
+fn engine2d_vsync(enabled: bool) {
+    gfx_vsync(enabled)
+}
+
+fn engine2d_draw_line(x1: f64, y1: f64, x2: f64, y2: f64,
+thickness: f64, red: f64, green: f64, blue: f64, alpha: f64) {
+    if thickness <= 0.0 { return }
+    gfx_line(x1, y1, x2, y2, thickness, red, green, blue, alpha)
+}

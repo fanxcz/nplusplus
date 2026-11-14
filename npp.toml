@@ -1,0 +1,13 @@
+# Repository-wide manifest. It exists so `npp fmt --all`, `npp check` and
+# `npp lint` can cover the whole checkout from its root; it is tooling
+# metadata, not a published package.
+
+[package]
+name = "npp-repository"
+version = "0.0.0"
+description = "Source tree of the NPP programming language"
+
+[build]
+entry = "examples/hello.npp"
+artifact = "npp-repository"
+target = "native"

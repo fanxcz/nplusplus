@@ -1,0 +1,61 @@
+name: Scoped Feature Work Item
+description: Track an actionable feature after its idea has been discussed with the maintainer
+title: "[Feature task]: "
+labels: ["enhancement", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        New ideas and language RFCs belong in [GitHub Discussions](https://github.com/fanxcz/nplusplus/discussions/categories/ideas).
+        Use this issue form only after the proposal has been discussed and the maintainer wants a concrete work item tracked here.
+  - type: input
+    id: discussion
+    attributes:
+      label: Related Discussion / Accepted RFC
+      description: Link the design discussion or accepted proposal.
+      placeholder: "https://github.com/fanxcz/nplusplus/discussions/..."
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes: 
+      label: Problem Statement
+      description: What user problem does this scoped task solve?
+      placeholder: Describe the concrete problem...
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes: 
+      label: Proposed Scope
+      description: Describe the implementation scope and affected compiler/runtime areas.
+      placeholder: Include relevant backend and platform constraints...
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance Criteria
+      description: List observable outcomes and required tests/documentation.
+      placeholder: |
+        - [ ] Implementation is complete.
+        - [ ] Focused tests pass.
+        - [ ] Documentation and backend support matrix are updated.
+      render: markdown
+    validations:
+      required: true
+  - type: dropdown
+    id: component
+    attributes:
+      label: Component
+      options:
+        - Compiler frontend / semantic analysis
+        - Built-in native backend
+        - LLVM backend
+        - Runtime / standard library
+        - Tooling / package manager
+        - Build system / CI
+        - Documentation
+        - Other
+    validations:
+      required: true

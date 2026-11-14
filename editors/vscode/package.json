@@ -1,0 +1,73 @@
+{
+  "name": "npp-language",
+  "displayName": "NPP Language Support",
+  "description": "NPP syntax highlighting, snippets, diagnostics, completion, signature help, hover, navigation, formatting and quick fixes.",
+  "version": "1.0.0",
+  "publisher": "fanxcz",
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.100.0"
+  },
+  "main": "./extension.js",
+  "icon": "icon.png",
+  "activationEvents": [
+    "onLanguage:npp",
+    "onCommand:npp.showServerOutput"
+  ],
+  "categories": [
+    "Programming Languages",
+    "Snippets"
+  ],
+  "dependencies": {
+    "vscode-languageclient": "^9.0.1"
+  },
+  "contributes": {
+    "languages": [
+      {
+        "id": "npp",
+        "aliases": [
+          "NPP",
+          "npp"
+        ],
+        "extensions": [
+          ".npp"
+        ],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "npp",
+        "scopeName": "source.npp",
+        "path": "./syntaxes/npp.tmLanguage.json"
+      }
+    ],
+    "snippets": [
+      {
+        "language": "npp",
+        "path": "./snippets/npp.json"
+      }
+    ],
+    "configuration": {
+      "title": "NPP",
+      "properties": {
+        "npp.serverPath": {
+          "type": "string",
+          "default": "npp",
+          "description": "Path to the NPP executable or launcher. The extension starts it with the lsp argument."
+        }
+      }
+    },
+    "commands": [
+      {
+        "command": "npp.showServerOutput",
+        "title": "NPP: Show Language Server Output"
+      }
+    ]
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/fanxcz/nplusplus.git",
+    "directory": "editors/vscode"
+  }
+}
