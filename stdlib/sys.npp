@@ -1,0 +1,31 @@
+// Process and console system helpers.
+// Thin wrappers over the runtime builtins so programs do not depend on
+// raw builtin names. For command execution see std.shell; for OS
+// arguments see std.os.
+
+// Exits the process immediately with the given status code.
+// Prefer returning from main() when possible; exit() skips destructors
+// and deferred cleanup.
+fn sys_exit(code: i64) { exit(code) }
+
+// Emits a short beep through the default audio device, when available.
+// Useful for CLI notifications and simple audio feedback.
+fn sys_beep() { beep() }
+
+// Returns true when a key press is pending in the console input buffer.
+// Pair with sys_read_key() to consume it. Games usually poll this once
+// per frame inside the main loop.
+fn sys_key_pending() -> bool { return key_pressed() }
+
+// Blocks until a key is pressed and returns its character code
+// (for example 119 for 'w', 13 for Enter). Returns -1 on EOF or when
+// the terminal does not support raw key reads.
+fn sys_read_key() -> i64 { return read_key() }
+
+// Convenience: read a key and decode it as a one-character string.
+// Returns an empty string when sys_read_key() reports EOF (-1).
+fn sys_read_key_char() -> string {
+    let code = read_key()
+    if code < 0 { return "" }
+    return string.from_char(code)
+}

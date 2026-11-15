@@ -7,6 +7,11 @@ Pre-built archives for Windows, Linux and macOS are attached to
 contains the `npp` compiler plus the runtime, standard library and project
 templates, with a `.sha256` checksum sidecar.
 
+On Windows an NSIS installer (`npp-setup-*-windows-x86_64.exe`) is also
+published: it installs into `%LOCALAPPDATA%\Programs\N++`, adds `bin` to
+your user `PATH` and creates Start-menu shortcuts. N++ Studio desktop
+installers (`NPP-Studio-*-Windows-*.exe`) are attached to the same release.
+
 One-line installers download the latest release, verify the checksum and
 place the tools on disk:
 
@@ -22,7 +27,8 @@ irm https://raw.githubusercontent.com/fanxcz/nplusplus/main/scripts/install.ps1 
 
 Set `NPP_VERSION` to pin a specific tag and `NPP_PREFIX` to choose the install
 root (default `~/.local/npp` on Unix, `%LOCALAPPDATA%\NPP` on Windows). The
-scripts print the `PATH` update to apply afterwards.
+scripts print the `PATH` update to apply afterwards. `scripts/uninstall.sh`
+and `scripts/uninstall.ps1` remove the installation again.
 
 To install manually, download the archive for your platform, verify the
 `.sha256` sidecar, and extract it so that `bin/npp` and `share/npp/` sit side

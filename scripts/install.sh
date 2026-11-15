@@ -31,10 +31,14 @@ case "$arch" in
   arm64|aarch64) arch=arm64 ;;
   *) die "unsupported architecture: $arch" ;;
 esac
-[ "$os" = linux ] && [ "$arch" = arm64 ] && info "note: linux/arm64 builds may not be published yet"
-
-asset="npp-${os}-${arch}"
-if [ "$os" = macos ]; then asset="${asset}.tar.gz"; else asset="${asset}.tar.gz"; fi
+asset="npp-${os}-${arch}.tar.gz"
+# Only macOS arm64 binaries are published; Linux is x86_64-only for now.
+if [ "$os" = macos ] && [ "$arch" = x86_64 ]; then
+  die "no macOS x86_64 build is published; use Rosetta with the arm64 build or build from source"
+fi
+if [ "$os" = linux ] && [ "$arch" = arm64 ]; then
+  info "note: linux/arm64 builds may not be published yet"
+fi
 
 if [ -n "${NPP_VERSION:-}" ]; then
   tag="$NPP_VERSION"

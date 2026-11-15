@@ -19,11 +19,14 @@ implement generic `Vec<T>`, slices, iterators, or user-defined generic types.
 | `int_list_len(handle) -> i64` | Number of elements (zero for an invalid handle) |
 | `int_list_clear(handle) -> bool` | Remove all elements but keep the handle |
 | `int_list_free(handle) -> bool` | Release the list handle |
+| `int_list_shuffle(handle) -> bool` | In-place Fisher-Yates shuffle using `random_i64` |
+| `int_list_pick(handle, &out) -> bool` | Copy a uniformly random element into `out`; false when empty |
 
 ## String lists
 
 The same operations are available as `string_list_*` functions, with
-`string` values and an output parameter of type `*string`. For example,
+`string` values and an output parameter of type `*string`, including
+`string_list_shuffle` and `string_list_pick`. For example,
 `string_list_try_pop(handle, &value)` returns false for an empty list and
 does not overwrite the output value on failure.
 

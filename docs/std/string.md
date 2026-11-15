@@ -1,10 +1,14 @@
 # `std.string`
 
-The current `stdlib/string.npp` module exposes byte-oriented helpers:
+The current `stdlib/string.npp` module exposes byte- and code-point-oriented helpers:
 
-- `len(s: string) -> i64`
-- `byte_len(s: string) -> i64`
-- `byte_at(s: string, index: i64) -> i64`
+- `len(s: string) -> i64` — UTF-8 byte length
+- `byte_len(s: string) -> i64` — alias of `len`
+- `byte_at(s: string, index: i64) -> i64` — byte value (0–255) or -1
+- `char_count(s: string) -> i64` — number of Unicode code points
+- `char_at(s: string, index: i64) -> i64` — code point at a character index, or -1
+- `from_char(code: i64) -> string` — encode one code point
+- `valid_utf8(s: string) -> bool` — validate the UTF-8 encoding
 
 Both length functions currently return the number of UTF-8 bytes, not Unicode code points or user-perceived characters. `byte_at` uses a zero-based index and returns the byte value (0–255) or -1 when the index is outside the string.
 

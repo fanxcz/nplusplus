@@ -1,0 +1,42 @@
+// std.collections: checked int/string lists plus shuffle and pick.
+import std.collections
+
+fn main() {
+    let mut scores = int_list_new()
+    defer int_list_dispose(scores)
+    int_list_push(scores, 120)
+    int_list_push(scores, 87)
+    int_list_push(scores, 240)
+    int_list_push(scores, 56)
+
+    // Fisher-Yates shuffle in place.
+    int_list_shuffle(scores)
+
+    // Uniformly random element without removing it.
+    let mut pick: i64 = 0
+    if int_list_pick(scores,&pick) {
+        print("random score: " + str_i64(pick))
+    }
+
+    let mut i: i64 = 0
+    while i < int_list_len(scores) {
+        let mut v: i64 = 0
+        int_list_try_get(scores, i,&v)
+        print("score " + str_i64(i) + ": " + str_i64(v))
+        i = i + 1
+    }
+
+    // Same helpers for string lists.
+    let mut words = string_list_new()
+    defer string_list_dispose(words)
+    string_list_push(words, "npp")
+    string_list_push(words, "llvm")
+    string_list_push(words, "native")
+    string_list_shuffle(words)
+
+    let mut word: string = ""
+    if string_list_pick(words,&word) {
+        print("picked: " + word)
+    }
+    print("words: " + str_i64(string_list_len(words)))
+}

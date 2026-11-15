@@ -34,7 +34,7 @@ fn text_starts_with(s: string, prefix: string) -> bool {
 fn text_ends_with(s: string, suffix: string) -> bool {
     if string.len(suffix) > string.len(s) { return false }
     let start = string.len(s) - string.len(suffix)
-    return string.slice(s, start, string.len(suffix)) == suffix
+    return string.slice(s, start, string.len(s)) == suffix
 }
 
 fn text_repeat(s: string, count: i64) -> string {
@@ -73,4 +73,42 @@ fn text_join(list: i64, sep: string) -> string {
         i = i + 1
     }
     return out
+}
+
+// Unicode-aware helpers; see std.string for the raw builtins.
+
+fn text_char_count(s: string) -> i64 { return string.chars(s) }
+
+fn text_valid_utf8(s: string) -> bool { return string.valid_utf8(s) }
+
+// Splits s on "\n" and returns a string list handle (std.collections
+// string_list_*). The caller owns the handle and should free it with
+// string_list_free when done.
+fn text_lines(s: string) -> i64 {
+    let list = slist_new()
+    let count = string.split_count(s, "\n")
+    let mut i: i64 = 0
+    while i < count {
+        slist_push(list, string.split_at(s, "\n", i))
+        i = i + 1
+    }
+    return list
+}
+
+// Returns s without a leading prefix, or s unchanged when it does not
+// start with prefix.
+fn text_remove_prefix(s: string, prefix: string) -> string {
+    if text_starts_with(s, prefix) {
+        return string.slice(s, string.len(prefix), string.len(s))
+    }
+    return s
+}
+
+// Returns s without a trailing suffix, or s unchanged when it does not
+// end with suffix.
+fn text_remove_suffix(s: string, suffix: string) -> string {
+    if text_ends_with(s, suffix) {
+        return string.slice(s, 0, string.len(s) - string.len(suffix))
+    }
+    return s
 }

@@ -6,7 +6,7 @@
 
 [![CI](https://github.com/fanxcz/nplusplus/actions/workflows/build.yml/badge.svg)](https://github.com/fanxcz/nplusplus/actions/workflows/build.yml)
 [![Quality gates](https://github.com/fanxcz/nplusplus/actions/workflows/quality.yml/badge.svg)](https://github.com/fanxcz/nplusplus/actions/workflows/quality.yml)
-[![Version](https://img.shields.io/badge/version-1.0.0-informational.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-1.1.0-informational.svg)](CHANGELOG.md)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/fanxcz/nplusplus/blob/main/LICENSE)
 ![C++20](https://img.shields.io/badge/C%2B%2B-20-blue.svg)
 
@@ -25,7 +25,27 @@ Highlights:
 - **Self-hosting.** `selfhost/` contains lexer, parser, type-checker and codegen stages written in N++ itself.
 - **Tooling.** `npp new|build|run|check|fmt|lint|doc|bench|test|pkg|lsp|doctor|repl`, plus a VS Code extension in `editors/vscode/` and the N++ Studio desktop workspace in `apps/studio/`.
 
-## Quick start
+## Install
+
+Prebuilt binaries are attached to every [GitHub Release](https://github.com/fanxcz/nplusplus/releases):
+
+- **Windows** — `npp-windows-x86_64.zip` or the `npp-setup-*-windows-x86_64.exe` installer (adds `npp` to your user PATH)
+- **Linux** — `npp-linux-x86_64.tar.gz`
+- **macOS (Apple Silicon)** — `npp-macos-arm64.tar.gz`
+
+Every archive ships `npp` plus `share/npp/` (runtime, stdlib, templates, assets) and a `.sha256` sidecar. Install scripts automate download, verification and PATH setup:
+
+```bash
+# Linux / macOS
+curl -fsSL https://raw.githubusercontent.com/fanxcz/nplusplus/main/scripts/install.sh | bash
+
+# Windows (PowerShell)
+irm https://raw.githubusercontent.com/fanxcz/nplusplus/main/scripts/install.ps1 | iex
+```
+
+Matching `scripts/uninstall.sh` / `uninstall.ps1` remove the installation. N++ Studio desktop installers are published on the same release page.
+
+## Build from source
 
 ```bash
 git clone https://github.com/fanxcz/nplusplus.git

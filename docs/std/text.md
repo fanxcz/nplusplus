@@ -20,6 +20,11 @@ case conversion, trimming, searching, padding, repeating and joining.
 | `text_pad_left(s, width, fill) -> string` | Left-pad to `width` bytes |
 | `text_pad_right(s, width, fill) -> string` | Right-pad to `width` bytes |
 | `text_join(list, sep) -> string` | Join a `std.collections` string list |
+| `text_char_count(s) -> i64` | Number of Unicode code points |
+| `text_valid_utf8(s) -> bool` | UTF-8 validity check |
+| `text_lines(s) -> i64` | Split on `"\n"` into a `string_list_*` handle (caller frees it) |
+| `text_remove_prefix(s, prefix) -> string` | Strip `prefix` when present |
+| `text_remove_suffix(s, suffix) -> string` | Strip `suffix` when present |
 
 ## Example
 

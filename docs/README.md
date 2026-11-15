@@ -3,6 +3,8 @@
 - [Language reference](language-spec.md) — formal syntax and semantics
 - [Manual](manual.md) — guided tour of the language and toolchain
 - [Migration from Rust](migration-from-rust.md) — conceptual mapping for Rust users
+- [Cheat sheet](cheatsheet.md) — CLI, builtins and stdlib at a glance
+- [Guides](guides/index.md) — task-oriented walkthroughs (graphics, audio, game loop, UI)
 
 ## Getting started
 
@@ -31,7 +33,7 @@
 | Page | Contents |
 |---|---|
 | [Overview](std/overview.md) | Module map and limitations |
-| [std.io](std/io.md) · [std.fs](std/fs.md) · [std.os](std/os.md) · [std.env](std/env.md) | Console, files, arguments, environment |
+| [std.io](std/io.md) · [std.fs](std/fs.md) · [std.os](std/os.md) · [std.env](std/env.md) · [std.sys](std/sys.md) | Console, files, arguments, environment, process/keys |
 | [std.text](std/text.md) · [std.string](std/string.md) · [std.math](std/math.md) | Text and math helpers |
 | [std.time](std/time.md) · [std.random](std/random.md) · [std.shell](std/shell.md) | Clock, randomness, processes |
 | [std.json](std/json.md) · [std.db](std/db.md) · [std.net](std/net.md) · [std.crypto](std/crypto.md) | Data and networking |

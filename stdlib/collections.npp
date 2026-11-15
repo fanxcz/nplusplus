@@ -48,3 +48,50 @@ fn string_list_try_pop(handle: i64, out: *string) -> bool {
 fn string_list_clear(handle: i64) -> bool { return slist_clear(handle) }
 fn string_list_free(handle: i64) -> bool { return slist_free(handle) }
 fn string_list_dispose(handle: i64) { string_list_free(handle) }
+
+// Random helpers built on random_i64. shuffling is in-place Fisher-Yates;
+// pick returns a uniformly random element without removing it.
+
+fn int_list_shuffle(handle: i64) -> bool {
+    let n = int_list_len(handle)
+    let mut i = n - 1
+    while i > 0 {
+        let j = random_i64(0, i)
+        let mut a: i64 = 0
+        let mut b: i64 = 0
+        if int_list_try_get(handle, i,&a) && int_list_try_get(handle, j,&b) {
+            int_list_set(handle, i, b)
+            int_list_set(handle, j, a)
+        }
+        i = i - 1
+    }
+    return true
+}
+
+fn int_list_pick(handle: i64, out: *i64) -> bool {
+    let n = int_list_len(handle)
+    if n <= 0 { return false }
+    return int_list_try_get(handle, random_i64(0, n - 1), out)
+}
+
+fn string_list_shuffle(handle: i64) -> bool {
+    let n = string_list_len(handle)
+    let mut i = n - 1
+    while i > 0 {
+        let j = random_i64(0, i)
+        let mut a: string = ""
+        let mut b: string = ""
+        if string_list_try_get(handle, i,&a) && string_list_try_get(handle, j,&b) {
+            string_list_set(handle, i, b)
+            string_list_set(handle, j, a)
+        }
+        i = i - 1
+    }
+    return true
+}
+
+fn string_list_pick(handle: i64, out: *string) -> bool {
+    let n = string_list_len(handle)
+    if n <= 0 { return false }
+    return string_list_try_get(handle, random_i64(0, n - 1), out)
+}

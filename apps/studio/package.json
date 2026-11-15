@@ -1,6 +1,6 @@
 {
   "name": "npp-studio",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "The N++ desktop IDE with multi-file editing, project navigation, compiler diagnostics and an integrated terminal",
   "private": true,
   "main": "main.cjs",

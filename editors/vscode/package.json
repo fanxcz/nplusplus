@@ -2,7 +2,7 @@
   "name": "npp-language",
   "displayName": "N++ Language Support",
   "description": "N++ syntax highlighting, snippets, diagnostics, completion, signature help, hover, navigation, formatting and quick fixes.",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "publisher": "fanxcz",
   "license": "MIT",
   "engines": {
@@ -12,7 +12,11 @@
   "icon": "icon.png",
   "activationEvents": [
     "onLanguage:npp",
-    "onCommand:npp.showServerOutput"
+    "onCommand:npp.showServerOutput",
+    "onCommand:npp.check",
+    "onCommand:npp.build",
+    "onCommand:npp.run",
+    "onCommand:npp.fmt"
   ],
   "categories": [
     "Programming Languages",
@@ -55,6 +59,11 @@
           "type": "string",
           "default": "npp",
           "description": "Path to the N++ executable or launcher. The extension starts it with the lsp argument."
+        },
+        "npp.compilerPath": {
+          "type": "string",
+          "default": "npp",
+          "description": "Path to the npp compiler executable used by the N++: Check/Build/Fmt/Run commands."
         }
       }
     },
@@ -62,6 +71,44 @@
       {
         "command": "npp.showServerOutput",
         "title": "N++: Show Language Server Output"
+      },
+      {
+        "command": "npp.check",
+        "title": "N++: Check File"
+      },
+      {
+        "command": "npp.build",
+        "title": "N++: Build File"
+      },
+      {
+        "command": "npp.run",
+        "title": "N++: Run File"
+      },
+      {
+        "command": "npp.fmt",
+        "title": "N++: Format File"
+      }
+    ],
+    "keybindings": [
+      {
+        "command": "npp.check",
+        "key": "ctrl+alt+c",
+        "when": "editorLangId == npp"
+      },
+      {
+        "command": "npp.build",
+        "key": "ctrl+alt+b",
+        "when": "editorLangId == npp"
+      },
+      {
+        "command": "npp.run",
+        "key": "ctrl+alt+r",
+        "when": "editorLangId == npp"
+      },
+      {
+        "command": "npp.fmt",
+        "key": "ctrl+alt+shift+f",
+        "when": "editorLangId == npp"
       }
     ]
   },

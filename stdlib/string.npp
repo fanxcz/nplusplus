@@ -1,4 +1,19 @@
-// String manipulation functions
+// String inspection and low-level access helpers.
+// These wrap the string.* builtins; for composition helpers
+// (pad, repeat, join, ...) see std.text.
+
 fn len(s: string) -> i64 { return string.len(s) }
-fn byte_at(s: string, index: i64) -> i64 { return string.byte_at(s, index) }
+
 fn byte_len(s: string) -> i64 { return string.len(s) }
+
+fn byte_at(s: string, index: i64) -> i64 { return string.byte_at(s, index) }
+
+// Number of Unicode code points (differs from byte length for non-ASCII).
+fn char_count(s: string) -> i64 { return string.chars(s) }
+
+fn char_at(s: string, index: i64) -> i64 { return string.char_at(s, index) }
+
+fn from_char(code: i64) -> string { return string.from_char(code) }
+
+// True when the string is well-formed UTF-8.
+fn valid_utf8(s: string) -> bool { return string.valid_utf8(s) }

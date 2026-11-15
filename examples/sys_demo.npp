@@ -1,0 +1,24 @@
+// std.sys: process exit, beep and console key input.
+// sys_read_key blocks — run interactively, not in CI.
+import std.sys
+
+fn main() {
+    print("N++ sys demo")
+
+    // Non-blocking poll: reports whether a key is already buffered.
+    if sys_key_pending() {
+        print("A key was already pressed")
+    } else {
+        print("No key pending (expected in scripts/CI)")
+    }
+
+    sys_beep()
+    print("Beep emitted.")
+
+    // Uncomment for interactive use:
+    // let code = sys_read_key()
+    // print("key code: " + str_i64(code))
+
+    // sys_exit(0) would terminate here immediately; returning from main
+    // is the normal way to finish with status 0.
+}

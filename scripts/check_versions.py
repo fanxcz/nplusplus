@@ -54,6 +54,19 @@ def main() -> int:
         print("FAIL versions disagree", file=sys.stderr)
         return 1
     print(f"versions OK: {sources['compiler (CMakeLists.txt)']}")
+
+    # Every stdlib module must have a matching docs/std page.
+    stdlib = ROOT / "stdlib"
+    docs_std = ROOT / "docs" / "std"
+    missing = [
+        f"stdlib/{p.name}"
+        for p in sorted(stdlib.glob("*.npp"))
+        if not (docs_std / f"{p.stem}.md").is_file()
+    ]
+    if missing:
+        for item in missing:
+            print(f"FAIL missing docs page for {item}", file=sys.stderr)
+        return 1
     return 0
 
 

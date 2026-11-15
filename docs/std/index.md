@@ -15,11 +15,12 @@ The checked-in standard library is deliberately small. Each `import std.NAME` lo
 | [std.memory](memory.md) | `memory_alloc`, `memory_free` |
 | [std.crypto](crypto.md) | `hash_sha256` |
 | [std.os](os.md) | `args_count`, `args_get` |
-| [std.string](string.md) | `len`, `byte_at`, `byte_len` |
+| [std.string](string.md) | `len`, `byte_at`, `char_count`, `valid_utf8`, … |
+| [std.sys](sys.md) | `sys_exit`, `sys_beep`, console key input |
 | [std.math](math.md) | Scalar math and trigonometry helpers |
 | [std.vec2](vec2.md) | Vec2 construction and 2D vector math |
 | [std.vec3](vec3.md) | Vec3 construction and 3D vector math |
-| [std.collections](collections.md) | Checked integer and string growable lists |
+| [std.collections](collections.md) | Checked integer/string lists, shuffle and pick |
 | [std.ui](ui.md) | Immediate-mode widgets and rectangle layout helpers |
 | [std.option](option.md) | Concrete `Option` enum with checked extraction and fallback helpers |
 | [std.result](result.md) | Concrete `Result` enum with checked extraction and error-text retrieval |
@@ -31,7 +32,7 @@ The checked-in standard library is deliberately small. Each `import std.NAME` lo
 | [std.time](time.md) | Clock, sleep and elapsed-time helpers |
 | [std.random](random.md) | `rand_range`, `rand_f64`, `rand_bool`, `rand_chance` |
 | [std.env](env.md) | Environment variables: `env_get`, `env_has`, `env_int` |
-| [std.text](text.md) | String composition: pad, repeat, join, starts/ends with |
+| [std.text](text.md) | String composition: pad, repeat, join, lines, prefix/suffix |
 | [std.shell](shell.md) | Process execution: `shell_run`, `shell_output`, `shell_ok` |
 | [std.animation2d](animation2d.md) | Time-based sprite frame selection |
 | [std.sprite2d](sprite2d.md) | Texture and sprite-sheet drawing |

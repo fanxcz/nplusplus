@@ -3,6 +3,9 @@ import std.random
 import std.env
 import std.text
 import std.shell
+import std.sys
+import std.string
+import std.collections
 
 fn main() {
     // std.time
@@ -86,6 +89,49 @@ fn main() {
         print("shell_run: FAIL")
         return
     }
+
+    // std.sys (non-blocking helpers only; read_key would block)
+    sys_beep()
+    let _pending = sys_key_pending()
+    if string.valid_utf8("n++") != true {
+        print("valid_utf8: FAIL")
+        return
+    }
+    if char_count("hé") != 2 {
+        print("char_count: FAIL")
+        return
+    }
+    if text_char_count("hé") != 2 {
+        print("text_char_count: FAIL")
+        return
+    }
+    if text_remove_prefix("main.npp", "main.") != "npp" {
+        print("text_remove_prefix: FAIL")
+        return
+    }
+    if text_remove_suffix("main.npp", ".npp") != "main" {
+        print("text_remove_suffix: FAIL")
+        return
+    }
+    let lines = text_lines("a\nb\nc")
+    if string_list_len(lines) != 3 {
+        print("text_lines: FAIL")
+        return
+    }
+    string_list_free(lines)
+
+    // std.collections random helpers
+    let bag = int_list_new()
+    int_list_push(bag, 1)
+    int_list_push(bag, 2)
+    int_list_push(bag, 3)
+    int_list_shuffle(bag)
+    let mut picked: i64 = 0
+    if ! int_list_pick(bag,&picked) {
+        print("int_list_pick: FAIL")
+        return
+    }
+    int_list_free(bag)
 
     print("stdlib modules: PASS")
 }
