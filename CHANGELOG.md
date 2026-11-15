@@ -5,7 +5,29 @@ All notable changes to N++ are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.1.0] - Unreleased
+## [1.2.0] - Unreleased
+
+### Added
+
+- Native backend builtins: `exit`, `time_ms`, `sleep`, `random_i64`,
+  `str_bool`, `input_i64`, `file_exists`, `os.args_count`,
+  `os.args_get`, `string.len`, `string.byte_at`, plus reworked Windows
+  `ReadFile`/`WriteFile` paths and Linux syscall I/O.
+- New native smoke fixtures: `sys_io.npp`, `exit_builtin.npp`,
+  `input_i64.npp`.
+
+### Removed
+
+- N++ Studio (`apps/studio`) and its CI workflow. Releases now contain
+  only the compiler toolchain.
+
+### Changed
+
+- NSIS installer registers `.npp` files under `HKCU\Software\Classes`
+  with `open` and `run` shell verbs (`npp <file>` runs the program) and
+  removes the PATH entry plus associations on uninstall.
+
+## [1.1.0] - 2026-11-15
 
 ### Added
 
