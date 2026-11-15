@@ -9,8 +9,8 @@ templates, with a `.sha256` checksum sidecar.
 
 On Windows an NSIS installer (`npp-setup-*-windows-x86_64.exe`) is also
 published: it installs into `%LOCALAPPDATA%\Programs\N++`, adds `bin` to
-your user `PATH` and creates Start-menu shortcuts. N++ Studio desktop
-installers (`NPP-Studio-*-Windows-*.exe`) are attached to the same release.
+your user `PATH`, creates Start-menu shortcuts and registers `.npp` files
+so double-clicking a source file builds and runs it with `npp`.
 
 One-line installers download the latest release, verify the checksum and
 place the tools on disk:

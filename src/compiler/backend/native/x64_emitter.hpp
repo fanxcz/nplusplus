@@ -811,6 +811,114 @@ namespace npp::native {
             void movRbpFromR11(std::int64_t off) {
                 memToReg(0x4C, 0x89, 0x5D, 0x9D, off);
             }
+            void movRbpFromRcx(std::int64_t off) {
+                memToReg(0x48, 0x89, 0x4D, 0x8D, off);
+            }
+            void movRbpFromRdx(std::int64_t off) {
+                memToReg(0x48, 0x89, 0x55, 0x95, off);
+            }
+            void cmpRaxFromRbp(std::int64_t off) {
+                memToReg(0x48, 0x3B, 0x45, 0x85, off);
+            }
+            void movRaxFromR10() {
+                b(0x49);
+                b(0x8B);
+                b(0x02);
+            }
+            void movRdiRax() {
+                b(0x48);
+                b(0x89);
+                b(0xC7);
+            }
+            void movRaxRcx() {
+                b(0x48);
+                b(0x89);
+                b(0xC8);
+            }
+            void movRcxImm64(std::uint64_t v) {
+                b(0x48);
+                b(0xB9);
+                i64(v);
+            }
+            void movRcxImm32(std::uint32_t v) {
+                b(0x48);
+                b(0xC7);
+                b(0xC1);
+                i32(v);
+            }
+            void shrRcxImm8(std::uint8_t v) {
+                b(0x48);
+                b(0xC1);
+                b(0xE9);
+                b(v);
+            }
+            void shlRdxImm8(std::uint8_t v) {
+                b(0x48);
+                b(0xC1);
+                b(0xE2);
+                b(v);
+            }
+            void addRaxR11() {
+                b(0x4C);
+                b(0x01);
+                b(0xD8);
+            }
+            void addRaxRdx() {
+                b(0x48);
+                b(0x01);
+                b(0xD0);
+            }
+            void addRdxRax() {
+                b(0x48);
+                b(0x01);
+                b(0xC2);
+            }
+            void imulRdxRcx() {
+                b(0x48);
+                b(0x0F);
+                b(0xAF);
+                b(0xD1); // imul rdx, rcx (reg=rdx, rm=rcx)
+            }
+            void negRdx() {
+                b(0x48);
+                b(0xF7);
+                b(0xDA);
+            }
+            void subAlImm8(std::uint8_t v) {
+                b(0x2C);
+                b(v);
+            }
+            void cmpAlImm8(std::uint8_t v) {
+                b(0x3C);
+                b(v);
+            }
+            void cmpEaxImm8(std::uint8_t v) {
+                b(0x83);
+                b(0xF8);
+                b(v);
+            }
+            void xorEsi() {
+                b(0x31);
+                b(0xF6);
+            }
+            void rdtsc() {
+                b(0x0F);
+                b(0x31);
+            }
+            void movR11Rax() {
+                b(0x49);
+                b(0x89);
+                b(0xC3);
+            }
+            void testR10dImm32(std::uint32_t v) {
+                b(0x41);
+                b(0xF7);
+                b(0xC2);
+                i32(v);
+            }
+            void leaRdiFromRbp(std::int64_t off) {
+                leaFromRbp(0x7D, 0xBD, off);
+            }
 
         private:
             void memToReg(std::uint8_t rex,
@@ -848,7 +956,7 @@ namespace npp::native {
         constexpr std::uint8_t CC_E = 0x94, CC_NE = 0x95, CC_L = 0x9C, CC_LE = 0x9E;
         constexpr std::uint8_t CC_G = 0x9F, CC_GE = 0x9D;
         constexpr std::uint8_t J_E = 0x84, J_NE = 0x85, J_NS = 0x89;
-        constexpr std::uint8_t J_L = 0x8C, J_AE = 0x83;
+        constexpr std::uint8_t J_L = 0x8C, J_AE = 0x83, J_B = 0x82, J_G = 0x8F;
         constexpr std::uint8_t J_A = 0x87, J_LE = 0x8E;
         constexpr std::uint32_t kArenaSize = 0x1000000; // 16 MiB bump arena for strings
 

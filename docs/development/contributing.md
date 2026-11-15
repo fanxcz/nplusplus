@@ -61,8 +61,7 @@ Use prefixes such as `feat/`, `fix/`, `docs/`, `test/`, or `refactor/`. Keep a c
 The repository versions its components independently:
 
 - the compiler version is `project(npp VERSION x.y.z)` in `CMakeLists.txt`;
-- the VS Code extension version is `version` in `editors/vscode/package.json`;
-- the N++ Studio desktop version is `version` in `apps/studio/package.json`.
+- the VS Code extension version is `version` in `editors/vscode/package.json`.
 
 When you change a version source, keep the matching documentation and release
 notes in sync and verify the change with `npp --version` after rebuilding.

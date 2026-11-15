@@ -309,6 +309,51 @@ namespace npp::native {
                     out_.call("__nx_string_byte_at");
                     return;
                 }
+                if (c->callee == "exit" || c->callee == "sleep") {
+                    genExpr(c->args[0].get());
+                    out_.movRcxRax();
+                    out_.call(c->callee == "exit" ? "__nx_exit" : "__nx_sleep");
+                    return;
+                }
+                if (c->callee == "time_ms") {
+                    out_.call("__nx_time_ms");
+                    return;
+                }
+                if (c->callee == "random_i64") {
+                    genExpr(c->args[0].get());
+                    out_.pushRax();
+                    genExpr(c->args[1].get());
+                    out_.movRdxRax();
+                    out_.popRcx();
+                    out_.call("__nx_random_i64");
+                    return;
+                }
+                if (c->callee == "str_bool") {
+                    genExpr(c->args[0].get());
+                    const std::size_t t = internString("true");
+                    const std::size_t f = internString("false");
+                    out_.testRaxRax();
+                    const std::string isFalse = out_.label("sbool.false");
+                    const std::string go = out_.label("sbool.go");
+                    out_.jcc(J_E, isFalse);
+                    out_.leaRaxRip("str" + std::to_string(t));
+                    out_.jmp(go);
+                    out_.def(isFalse);
+                    out_.leaRaxRip("str" + std::to_string(f));
+                    out_.def(go);
+                    return;
+                }
+                if (c->callee == "input_i64") {
+                    genExpr(c->args[0].get());
+                    out_.call("__nx_input_i64");
+                    return;
+                }
+                if (c->callee == "file_exists") {
+                    genExpr(c->args[0].get());
+                    out_.movRcxRax();
+                    out_.call("__nx_file_exists");
+                    return;
+                }
                 for (const auto& a : c->args) {
                     genExpr(a.get());
                     out_.pushRax();
@@ -354,7 +399,8 @@ namespace npp::native {
                 return b->op == TokenKind::Plus && exprIsString(b->lhs.get()) &&
                        exprIsString(b->rhs.get());
             if (const auto* c = dynamic_cast<const CallExpr*>(e)) {
-                if (c->callee == "input" || c->callee == "str_i64")
+                if (c->callee == "input" || c->callee == "str_i64" ||
+                    c->callee == "str_bool")
                     return true;
                 if (c->callee == "print")
                     return false;
@@ -394,6 +440,8 @@ namespace npp::native {
             if (const auto* c = dynamic_cast<const CallExpr*>(e)) {
                 if (c->callee == "print")
                     return false;
+                if (c->callee == "file_exists")
+                    return true;
                 const auto it = sigs_.find(c->callee);
                 return it != sigs_.end() && it->second.ret == Kind::Bool;
             }
@@ -458,8 +506,11 @@ namespace npp::native {
                 }
             }
             if (const auto* c = dynamic_cast<const CallExpr*>(e)) {
-                if (c->callee == "input" || c->callee == "str_i64")
+                if (c->callee == "input" || c->callee == "str_i64" ||
+                    c->callee == "str_bool")
                     return Kind::Str;
+                if (c->callee == "file_exists")
+                    return Kind::Bool;
                 const auto it = sigs_.find(c->callee);
                 if (it != sigs_.end())
                     return it->second.ret;

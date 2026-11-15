@@ -38,7 +38,7 @@ The CLI accepts a source-file path directly; `npp run --example NAME` is not a s
 | `terminal_game.npp` | Minimal terminal-grid movement game |
 | `npp_studio.npp` | Terminal menu demo containing calculator, guessing and mini-battle routines |
 
-The file `examples/npp_studio.npp` is a terminal menu demonstration; it is separate from the Electron desktop IDE documented in [N++ Studio](../../apps/studio/README.md). The names describe individual sample programs, not claims that each is a complete production product or game framework.
+The file `examples/npp_studio.npp` is a terminal menu demonstration. The names describe individual sample programs, not claims that each is a complete production product or game framework.
 
 ## Graphics and runtime
 

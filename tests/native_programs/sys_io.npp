@@ -1,0 +1,28 @@
+fn main() {
+    let mut ok = true
+
+    // random_i64 stays inside [min, max], handles equal and swapped bounds.
+    let a = random_i64(1, 6)
+    if a < 1 || a > 6 {
+        ok = false
+    }
+    if random_i64(10, 10) != 10 {
+        ok = false
+    }
+    let swapped = random_i64(5, 1)
+    if swapped < 1 || swapped > 5 {
+        ok = false
+    }
+
+    // time_ms is monotonic-ish and non-negative on supported hosts.
+    let t0 = time_ms()
+    sleep(1)
+    if time_ms() < t0 {
+        ok = false
+    }
+
+    print(str_bool(true))
+    print(str_bool(false))
+    print(file_exists("definitely_missing_file_xyz.npp"))
+    print(ok)
+}

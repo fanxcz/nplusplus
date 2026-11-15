@@ -6,7 +6,7 @@ N++ is focused first on native desktop applications, command-line utilities, and
 
 - **Native windowed app template:** creates a small windowed program with an event loop, keyboard/mouse polling, and drawing primitives.
 - **CLI template:** a simple starting point for command-line utilities.
-- **Application examples:** [N++ Paint](https://github.com/fanxcz/nplusplus/blob/main/examples/npp_paint.npp), [the native app sample](https://github.com/fanxcz/nplusplus/blob/main/examples/native_app.npp), and [N++ Studio](../apps/studio/README.md), a separately packaged desktop workspace.
+- **Application examples:** [N++ Paint](https://github.com/fanxcz/nplusplus/blob/main/examples/npp_paint.npp), [the native app sample](https://github.com/fanxcz/nplusplus/blob/main/examples/native_app.npp).
 - **Core libraries:** file operations, filesystem helpers, string operations, networking helpers, JSON access, SQLite, hashing, and memory utilities. Each module has limits documented in the [standard-library reference](std/index.md).
 - **Immediate-mode UI:** panels, labels, buttons, checkboxes, sliders, progress bars, layout helpers and a basic UTF-8 text field. The field supports click focus, Backspace, and Enter/Tab to finish editing; caret/selection, full keyboard traversal and native dialogs are not available yet.
 - **Developer workflow:** project templates, checks, builds, run commands, formatting, linting, diagnostics, and editor/LSP support.

@@ -46,6 +46,46 @@ namespace npp::native {
             }
         }
 
+        // __nx_write_err: rcx = pointer, rdx = length. Writes to stderr.
+        void Generator::genWriteErr() {
+            out_.def("__nx_write_err");
+            if (target_ == NativeTarget::WindowsX64) {
+                out_.pushRbp();
+                out_.movRbpRsp();
+                out_.subRsp(96);
+                out_.andRspMinus16();
+                out_.movRcxToRbp(-8);
+                out_.movRdxToRbp(-16);
+                // handle = GetStdHandle(STD_ERROR_HANDLE = -12)
+                out_.movEcxImm32(static_cast<std::uint32_t>(-12));
+                out_.subRsp(32);
+                out_.callIAT("__iat_GetStdHandle");
+                out_.addRsp(32);
+                out_.movRbpFromRax(-24);
+                out_.movRcxFromRbp(-24);
+                out_.movRdxFromRbp(-8);
+                out_.movR8FromRbp(-16);
+                out_.xorR9d();
+                out_.subRsp(48);
+                out_.storeQwordRsp32Imm0();
+                out_.callIAT("__iat_WriteFile");
+                out_.addRsp(48);
+                out_.movRspRbp();
+                out_.popRbp();
+                out_.ret();
+            } else {
+                out_.pushRbp();
+                out_.movRbpRsp();
+                out_.movRsiRcx();
+                out_.movEaxImm32(1); // sys_write
+                out_.movEdiImm32(2); // fd = 2 (stderr)
+                out_.syscall();
+                out_.movRspRbp();
+                out_.popRbp();
+                out_.ret();
+            }
+        }
+
         // __nx_print_i64: rax = value. Prints decimal + newline.
         void Generator::genPrintI64() {
             out_.def("__nx_print_i64");
@@ -384,24 +424,25 @@ namespace npp::native {
                 out_.addRsp(32);
                 out_.movRbpFromRax(-16);
             }
+            // Read one byte at a time straight into the arena. Chunked reads
+            // would silently drop bytes past the first '\n', which breaks
+            // multi-line piped input and input_i64 retries.
             const std::string readLoop = out_.label("in.read");
-            const std::string scan = out_.label("in.scan");
-            const std::string chunkDone = out_.label("in.chunk");
             const std::string foundNl = out_.label("in.nl");
             const std::string eof = out_.label("in.eof");
             const std::string oom = out_.label("in.oom");
             out_.def(readLoop);
             out_.leaR10Rip("__nx_arena");
             out_.movRaxRsi();
-            out_.addRaxImm32(4097);
+            out_.addRaxImm32(2);
             out_.movR11FromR10();
             out_.addR11Imm32(kArenaSize);
             out_.cmpRaxR11();
             out_.jcc(J_A, oom);
             if (target_ == NativeTarget::WindowsX64) {
-                out_.movRcxFromRbp(-16);
-                out_.movRdxRsi();
-                out_.movR8Imm32(4096);
+                out_.movRcxFromRbp(-16); // stdin handle
+                out_.movRdxRsi();        // one byte straight into the arena
+                out_.movR8Imm32(1);
                 out_.subRsp(64);
                 out_.storeQwordRsp32Imm0();
                 out_.leaR9FromRsp8(0x28);
@@ -410,26 +451,18 @@ namespace npp::native {
                 out_.addRsp(64);
                 out_.testRaxRax();
                 out_.jcc(J_E, eof);
-                out_.movEcxEax();
             } else {
                 out_.movEaxImm32(0); // sys_read
                 out_.xorEdi();       // fd 0
-                out_.movRdxImm32(4096);
+                out_.movRdxImm32(1);
                 out_.syscall();
                 out_.testRaxRax();
                 out_.jcc(J_LE, eof);
-                out_.movEcxEax();
             }
-            out_.def(scan);
-            out_.testEcxEcx();
-            out_.jcc(J_E, chunkDone);
             out_.movAlFromRsi();
             out_.cmpAlImm10();
             out_.jcc(J_E, foundNl);
             out_.incRsi();
-            out_.decEcx();
-            out_.jmp(scan);
-            out_.def(chunkDone);
             out_.jmp(readLoop);
             out_.def(foundNl);
             // total = cursor - start; drop a preceding '\r' (Windows console).
@@ -452,6 +485,353 @@ namespace npp::native {
             out_.ret();
             out_.def(oom);
             out_.jmp("__nx_oom");
+        }
+
+        // __nx_str_to_i64: rax = NUL-terminated string. Parses optional
+        // whitespace, an optional '+'/'-' sign and decimal digits. Returns the
+        // value in rax and a validity flag in edx (1 = valid, 0 = invalid),
+        // mirroring strtoll + full-consumption semantics of npp_input_i64.
+        void Generator::genStrToI64() {
+            out_.def("__nx_str_to_i64");
+            out_.pushRbp();
+            out_.movRbpRsp();
+            out_.subRsp(32);
+            out_.movRsiRax(); // cursor
+            const std::string lead = out_.label("atoi.lead");
+            const std::string advLead = out_.label("atoi.advlead");
+            const std::string sign = out_.label("atoi.sign");
+            const std::string plus = out_.label("atoi.plus");
+            const std::string minus = out_.label("atoi.minus");
+            const std::string digits = out_.label("atoi.digits");
+            const std::string dig = out_.label("atoi.dig");
+            const std::string fin = out_.label("atoi.fin");
+            const std::string trail = out_.label("atoi.trail");
+            const std::string advTrail = out_.label("atoi.advtrail");
+            const std::string tend = out_.label("atoi.tend");
+            const std::string apply = out_.label("atoi.apply");
+            const std::string noNeg = out_.label("atoi.noneg");
+            const std::string invalid = out_.label("atoi.invalid");
+            const std::string out = out_.label("atoi.out");
+            // Skip leading spaces/tabs.
+            out_.def(lead);
+            out_.cmpBytePtrRsi(0x20);
+            out_.jcc(J_E, advLead);
+            out_.cmpBytePtrRsi(0x09);
+            out_.jcc(J_NE, sign);
+            out_.def(advLead);
+            out_.incRsi();
+            out_.jmp(lead);
+            // Optional sign: r10d = 0 none, 1 '+', 2 '-'.
+            out_.def(sign);
+            out_.xorR10d();
+            out_.cmpBytePtrRsi(0x2B);
+            out_.jcc(J_E, plus);
+            out_.cmpBytePtrRsi(0x2D);
+            out_.jcc(J_E, minus);
+            out_.jmp(digits);
+            out_.def(plus);
+            out_.incRsi();
+            out_.movR10Imm32(1);
+            out_.jmp(digits);
+            out_.def(minus);
+            out_.incRsi();
+            out_.movR10Imm32(2);
+            out_.def(digits);
+            out_.xorEdx(); // result = 0
+            out_.xorR8d(); // digit count = 0
+            out_.def(dig);
+            out_.movAlFromRsi();
+            out_.cmpAlImm8(0x30); // '0'
+            out_.jcc(J_B, fin);
+            out_.cmpAlImm8(0x39); // '9'
+            out_.jcc(J_A, fin);
+            out_.subAlImm8(0x30);
+            out_.movzxEaxAl();
+            out_.movRcxImm32(10);
+            out_.imulRdxRcx();
+            out_.addRdxRax();
+            out_.incRsi();
+            out_.incR8();
+            out_.jmp(dig);
+            out_.def(fin);
+            // Skip trailing spaces/tabs; the next byte must be NUL.
+            out_.def(trail);
+            out_.cmpBytePtrRsi(0x20);
+            out_.jcc(J_E, advTrail);
+            out_.cmpBytePtrRsi(0x09);
+            out_.jcc(J_NE, tend);
+            out_.def(advTrail);
+            out_.incRsi();
+            out_.jmp(trail);
+            out_.def(tend);
+            out_.cmpBytePtrRsi(0);
+            out_.jcc(J_NE, invalid);
+            // Valid iff digits were seen, or no sign was consumed at all
+            // (empty/whitespace-only input parses as 0, like strtoll).
+            out_.testR8R8();
+            out_.jcc(J_NE, apply);
+            out_.testR10d();
+            out_.jcc(J_NE, invalid);
+            out_.def(apply);
+            out_.testR10dImm32(2);
+            out_.jcc(J_E, noNeg);
+            out_.negRdx();
+            out_.def(noNeg);
+            out_.movRaxRdx();
+            out_.movEdxImm32(1);
+            out_.jmp(out);
+            out_.def(invalid);
+            out_.xorEax();
+            out_.xorEdx();
+            out_.def(out);
+            out_.movRspRbp();
+            out_.popRbp();
+            out_.ret();
+        }
+
+        // __nx_input_i64: rax = prompt. Prints it, reads lines until a valid
+        // integer is entered, and returns the parsed i64 in rax.
+        void Generator::genInputI64() {
+            out_.def("__nx_input_i64");
+            out_.pushRbp();
+            out_.movRbpRsp();
+            out_.subRsp(64);
+            out_.andRspMinus16();
+            out_.movRbpFromRax(-8); // prompt
+            const std::string loop = out_.label("in64.loop");
+            const std::string done = out_.label("in64.done");
+            out_.def(loop);
+            out_.movRaxFromRbp(-8);
+            out_.call("__nx_input");
+            out_.call("__nx_str_to_i64");
+            out_.testRdxRdx();
+            out_.jcc(J_NE, done);
+            const std::size_t msg = internString("Invalid integer. Try again.\n");
+            out_.leaRcxRip("str" + std::to_string(msg));
+            out_.movRdxImm32(static_cast<std::uint32_t>(image_.strings[msg].size()));
+            stubCall("__nx_write_err");
+            out_.jmp(loop);
+            out_.def(done);
+            out_.movRspRbp();
+            out_.popRbp();
+            out_.ret();
+        }
+
+        // __nx_exit: rcx = exit code. Terminates the process.
+        void Generator::genExit() {
+            out_.def("__nx_exit");
+            if (target_ == NativeTarget::WindowsX64) {
+                out_.andRspMinus16();
+                out_.subRsp(32);
+                out_.callIAT("__iat_ExitProcess");
+                out_.ud2();
+            } else {
+                out_.movRdiRcx();
+                out_.movEaxImm32(60); // sys_exit
+                out_.syscall();
+            }
+        }
+
+        // __nx_time_ms: returns monotonic milliseconds in rax.
+        void Generator::genTimeMs() {
+            out_.def("__nx_time_ms");
+            out_.pushRbp();
+            out_.movRbpRsp();
+            out_.subRsp(96);
+            out_.andRspMinus16();
+            if (target_ == NativeTarget::WindowsX64) {
+                out_.subRsp(32);
+                out_.callIAT("__iat_GetTickCount64");
+                out_.addRsp(32);
+            } else {
+                // clock_gettime(CLOCK_MONOTONIC=1, &ts at rbp-16) = syscall 228.
+                out_.movEdiImm32(1);
+                out_.leaRsiFromRbp(-16);
+                out_.movEaxImm32(228);
+                out_.syscall();
+                out_.movRaxFromRbp(-16); // tv_sec
+                out_.movRcxImm32(1000);
+                out_.imulRaxRcx();
+                out_.movR11Rax();
+                out_.movRaxFromRbp(-8); // tv_nsec
+                out_.movRcxImm32(1000000);
+                out_.xorEdx();
+                out_.divRcx();
+                out_.addRaxR11();
+            }
+            out_.movRspRbp();
+            out_.popRbp();
+            out_.ret();
+        }
+
+        // __nx_sleep: rcx = milliseconds. ms <= 0 returns immediately.
+        void Generator::genSleep() {
+            out_.def("__nx_sleep");
+            out_.testRcxRcx();
+            const std::string done = out_.label("sleep.done");
+            out_.jcc(J_LE, done);
+            out_.pushRbp();
+            out_.movRbpRsp();
+            out_.subRsp(96);
+            out_.andRspMinus16();
+            if (target_ == NativeTarget::WindowsX64) {
+                out_.subRsp(32);
+                out_.callIAT("__iat_Sleep"); // ecx = low 32 bits of ms
+                out_.addRsp(32);
+            } else {
+                // nanosleep(&ts, NULL) = syscall 35; ts at rbp-16.
+                out_.movRaxRcx(); // ms
+                out_.movRcxImm32(1000);
+                out_.xorEdx();
+                out_.divRcx(); // rax = sec, rdx = rem
+                out_.movRbpFromRax(-16);
+                out_.movRaxRdx(); // rem (< 1000)
+                out_.movRcxImm32(1000000);
+                out_.imulRaxRcx();
+                out_.movRbpFromRax(-8);
+                out_.leaRdiFromRbp(-16);
+                out_.xorEsi();
+                out_.movEaxImm32(35);
+                out_.syscall();
+            }
+            out_.movRspRbp();
+            out_.popRbp();
+            out_.ret();
+            out_.def(done);
+            out_.ret();
+        }
+
+        // __nx_rng_next: SplitMix64 step over the __nx_rng state word (the
+        // second qword of the writable TOC page). Returns rax.
+        void Generator::genRngNext() {
+            out_.def("__nx_rng_next");
+            out_.leaR10Rip("__nx_rng");
+            out_.movRaxFromR10();
+            out_.testRaxRax();
+            const std::string have = out_.label("rng.have");
+            out_.jcc(J_NE, have);
+            // First call: seed from the time-stamp counter.
+            out_.rdtsc(); // eax = low, edx = high
+            out_.shlRdxImm8(32);
+            out_.movRcxRdx();
+            out_.orRaxRcx();
+            out_.movRcxImm64(0x9E3779B97F4A7C15ULL);
+            out_.addRaxRcx();
+            out_.movR10FromRax();
+            out_.def(have);
+            out_.movRaxFromR10();
+            out_.movRcxImm64(0x9E3779B97F4A7C15ULL);
+            out_.addRaxRcx();
+            out_.movR10FromRax(); // state += golden gamma
+            // SplitMix64 finalizer.
+            out_.movRcxRax();
+            out_.shrRcxImm8(30);
+            out_.xorRaxRcx();
+            out_.movRcxImm64(0xBF58476D1CE4E5B9ULL);
+            out_.imulRaxRcx();
+            out_.movRcxRax();
+            out_.shrRcxImm8(27);
+            out_.xorRaxRcx();
+            out_.movRcxImm64(0x94D049BB133111EBULL);
+            out_.imulRaxRcx();
+            out_.movRcxRax();
+            out_.shrRcxImm8(31);
+            out_.xorRaxRcx();
+            out_.ret();
+        }
+
+        // __nx_random_i64: rcx = min, rdx = max. Unbiased value in [min, max],
+        // matching npp_random_i64 (swap on inverted bounds, rejection sampling,
+        // wrapping add for the full i64 range).
+        void Generator::genRandomI64() {
+            out_.def("__nx_random_i64");
+            out_.pushRbp();
+            out_.movRbpRsp();
+            out_.subRsp(64);
+            out_.movRcxToRbp(-8);  // min
+            out_.movRdxToRbp(-16); // max
+            // Swap when min > max (signed).
+            out_.movRaxRcx();
+            out_.cmpRaxFromRbp(-16);
+            const std::string cont = out_.label("rnd.cont");
+            out_.jcc(J_LE, cont);
+            out_.movRaxFromRbp(-8);
+            out_.movRcxFromRbp(-16);
+            out_.movRbpFromRcx(-8);
+            out_.movRbpFromRax(-16);
+            out_.def(cont);
+            // span = max - min + 1 (unsigned; 0 means the full i64 range).
+            out_.movRaxFromRbp(-16);
+            out_.subRaxFromRbp(-8);
+            out_.incRax();
+            out_.movRbpFromRax(-24);
+            out_.movRaxFromRbp(-24);
+            out_.testRaxRax();
+            const std::string full = out_.label("rnd.full");
+            out_.jcc(J_E, full);
+            // threshold = (0 - span) % span; resample while value < threshold.
+            out_.xorRax();
+            out_.subRaxFromRbp(-24);
+            out_.movRcxFromRbp(-24);
+            out_.xorEdx();
+            out_.divRcx();
+            out_.movRaxRdx(); // threshold = remainder, not quotient
+            out_.movRbpFromRax(-32);
+            const std::string again = out_.label("rnd.again");
+            const std::string have = out_.label("rnd.have");
+            out_.def(again);
+            out_.call("__nx_rng_next");
+            out_.cmpRaxFromRbp(-32);
+            out_.jcc(J_B, again);
+            out_.movRcxFromRbp(-24);
+            out_.xorEdx();
+            out_.divRcx(); // rdx = value % span
+            out_.movRaxRdx();
+            const std::string done = out_.label("rnd.done");
+            out_.jmp(done);
+            out_.def(full);
+            out_.call("__nx_rng_next");
+            out_.def(done);
+            // result = min + offset; wrapping add matches the runtime.
+            out_.movRdxRax();
+            out_.movRaxFromRbp(-8);
+            out_.addRaxRdx();
+            out_.movRspRbp();
+            out_.popRbp();
+            out_.ret();
+        }
+
+        // __nx_file_exists: rcx = NUL-terminated path. Returns 0/1 in rax.
+        void Generator::genFileExists() {
+            out_.def("__nx_file_exists");
+            out_.pushRbp();
+            out_.movRbpRsp();
+            out_.subRsp(96);
+            out_.andRspMinus16();
+            if (target_ == NativeTarget::WindowsX64) {
+                // GetFileAttributesA(path): rcx already holds the path.
+                out_.subRsp(32);
+                out_.callIAT("__iat_GetFileAttributesA");
+                out_.addRsp(32);
+                out_.cmpEaxImm8(0xFF); // INVALID_FILE_ATTRIBUTES == -1
+                out_.setcc(CC_NE);
+                out_.movzxEaxAl();
+            } else {
+                // faccessat(AT_FDCWD=-100, path, F_OK=0, 0) = syscall 269.
+                out_.movRaxImm64(0xFFFFFFFFFFFFFF9CULL);
+                out_.movRdiRax();
+                out_.movRsiRcx();
+                out_.xorEdx();
+                out_.xorR10d();
+                out_.movEaxImm32(269);
+                out_.syscall();
+                out_.testRaxRax();
+                out_.setcc(CC_E);
+                out_.movzxEaxAl();
+            }
+            out_.movRspRbp();
+            out_.popRbp();
+            out_.ret();
         }
 
         // __nx_oom: clean out-of-string-memory failure (stderr + exit 1).

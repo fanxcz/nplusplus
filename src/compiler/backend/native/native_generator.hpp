@@ -78,6 +78,9 @@ namespace npp::native {
             // __nx_write: rcx = pointer, rdx = length. Writes to stdout.
             void genWrite();
 
+            // __nx_write_err: rcx = pointer, rdx = length. Writes to stderr.
+            void genWriteErr();
+
             // __nx_print_i64: rax = value. Prints decimal + newline.
             void genPrintI64();
 
@@ -108,6 +111,35 @@ namespace npp::native {
             // __nx_input: rax = prompt (NUL-terminated). Prints it, reads one line
             // from stdin, and returns a fresh arena string without the newline.
             void genInput();
+
+            // __nx_input_i64: rax = prompt. Prints it, reads a line and parses
+            // it as i64 (same semantics as the LLVM runtime input_i64).
+            void genInputI64();
+
+            // __nx_str_to_i64: rax = NUL-terminated string. Parses an optional
+            // sign and decimal digits; trailing garbage stops the parse.
+            void genStrToI64();
+
+            // __nx_exit: rcx = exit code. Terminates the process.
+            void genExit();
+
+            // __nx_time_ms: returns monotonic milliseconds in rax.
+            void genTimeMs();
+
+            // __nx_sleep: rcx = milliseconds. Sleeps (ms <= 0 returns at once).
+            void genSleep();
+
+            // __nx_rng_next: SplitMix64 step over the __nx_rng state word.
+            // Returns the next pseudo-random u64 in rax.
+            void genRngNext();
+
+            // __nx_random_i64: rcx = min, rdx = max. Returns a value in
+            // [min, max] using unbiased rejection sampling, matching the
+            // runtime's npp_random_i64 semantics.
+            void genRandomI64();
+
+            // __nx_file_exists: rcx = NUL-terminated path. Returns 0/1 in rax.
+            void genFileExists();
 
             // Clean runtime failures for allocation and integer division.
             void genOom();

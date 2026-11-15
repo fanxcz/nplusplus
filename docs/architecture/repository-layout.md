@@ -7,10 +7,8 @@ N++ (tooling prefix `npp`) is organized as a layered native toolchain. The sourc
 ```text
 nplusplus/
 ├── .github/
-│   ├── workflows/        # CI: build, quality gates, Studio packaging
+│   ├── workflows/        # CI: build, quality gates, releases
 │   └── ISSUE_TEMPLATE/
-├── apps/
-│   └── studio/           # N++ Studio desktop application (Electron)
 ├── docs/                 # User, architecture and contributor documentation
 ├── editors/
 │   └── vscode/           # VS Code language extension
@@ -46,7 +44,6 @@ retain the user-facing `project-templates/` directory name for compatibility.
 | `examples/` | Runnable language and runtime examples |
 | `tests/` | Unit and CLI regression tests |
 | `docs/` | User and contributor guides |
-| `apps/studio/` | N++ Studio desktop application |
 | `editors/vscode/` | VS Code extension: grammar, snippets, language configuration |
 
 ## Dependency direction

@@ -23,7 +23,7 @@ Highlights:
 - **Statically checked.** Types, ownership-style mutability rules, exhaustiveness-checked `match`, and compile-time diagnostics are enforced before code generation.
 - **Batteries included.** `stdlib/` provides modules for I/O, files, JSON, networking, SQLite, crypto, math, collections, UI, sprites, tilemaps, physics, particles, and audio.
 - **Self-hosting.** `selfhost/` contains lexer, parser, type-checker and codegen stages written in N++ itself.
-- **Tooling.** `npp new|build|run|check|fmt|lint|doc|bench|test|pkg|lsp|doctor|repl`, plus a VS Code extension in `editors/vscode/` and the N++ Studio desktop workspace in `apps/studio/`.
+- **Tooling.** `npp new|build|run|check|fmt|lint|doc|bench|test|pkg|lsp|doctor|repl`, plus a VS Code extension in `editors/vscode/`.
 
 ## Install
 
@@ -43,7 +43,7 @@ curl -fsSL https://raw.githubusercontent.com/fanxcz/nplusplus/main/scripts/insta
 irm https://raw.githubusercontent.com/fanxcz/nplusplus/main/scripts/install.ps1 | iex
 ```
 
-Matching `scripts/uninstall.sh` / `uninstall.ps1` remove the installation. N++ Studio desktop installers are published on the same release page.
+Matching `scripts/uninstall.sh` / `uninstall.ps1` remove the installation.
 
 ## Build from source
 
@@ -76,7 +76,6 @@ npp run
 | `examples/` | Runnable examples plus `templates/` used by `npp new` |
 | `tests/` | Unit tests, smoke tests, fixtures, fuzz harnesses |
 | `docs/` | Language reference, runtime docs, architecture, contributor guides |
-| `apps/studio/` | N++ Studio desktop application |
 | `editors/vscode/` | VS Code extension |
 | `scripts/` | Repository maintenance scripts |
 

@@ -23,7 +23,7 @@ The CI matrix describes the runner environments configured in `.github/workflows
 | Area | Current constraint |
 |---|---|
 | Graphics, audio, and graphics-related runtime APIs | SDL2 and its optional companion libraries must be found and linked for corresponding features. The build can otherwise complete with those features unavailable. |
-| Windows GUI applications | Current downloadable Studio and Paint binaries are Windows x64 artifacts. Their dependency and packaging requirements are separate from the compiler's CI build matrix. |
+| Windows GUI applications | Current downloadable N++ binaries are Windows x64 artifacts. Their dependency and packaging requirements are separate from the compiler's CI build matrix. |
 | Android and WebAssembly | These are not currently documented as first-class, tested release targets. They need target-specific runtime/ABI work and dedicated CI before being advertised as supported. |
 | Other CPU architectures | The built-in executable emitter is x86-64-specific. Do not infer ARM64 support from the existence of LLVM IR generation. |
 

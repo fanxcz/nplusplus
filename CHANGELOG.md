@@ -23,8 +23,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Examples: `sys_demo.npp`, `collections_demo.npp`.
 - VS Code extension: Check/Build/Run/Format commands with keybindings and
   a configurable `npp.compilerPath`.
-- Release pipeline: NSIS `npp-setup` Windows installer, N++ Studio
-  installer artifacts, SHA-256 sidecars for every asset.
+- Release pipeline: NSIS `npp-setup` Windows installer (registers `.npp`
+  files), SHA-256 sidecars for every asset.
 - `scripts/uninstall.sh` / `uninstall.ps1`; `check_versions.py` now also
   enforces a docs page per stdlib module.
 - `.clang-format`: `SortIncludes` disabled — runtime `.inc` files depend
@@ -47,7 +47,6 @@ First release of N++, the renamed continuation of the NEXUS language project.
   `bench`, `test`, `pkg`, `lsp`, `doctor`, `repl` and `self-test`.
 - Language server (`npp lsp`), interactive REPL, and a VS Code extension in
   `editors/vscode/`.
-- N++ Studio desktop workspace in `apps/studio/`.
 - Self-hosted compiler stages (lexer, parser, type checker, codegen) in
   `selfhost/`.
 - Comprehensive test suite: unit tests, per-feature smoke tests, negative

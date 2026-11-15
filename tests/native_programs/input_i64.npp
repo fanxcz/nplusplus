@@ -1,0 +1,4 @@
+fn main() {
+    let n = input_i64("Number: ")
+    print(n)
+}

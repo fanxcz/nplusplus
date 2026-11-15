@@ -103,4 +103,4 @@ python scripts/audit_repository.py
 
 The audit inventories every Git-tracked path, verifies that files are present, checks recognized text files for UTF-8 validity and unresolved merge-conflict markers, parses all tracked JSON and Python files, syntax-checks tracked JavaScript with Node.js, and checks stylesheet block structure. CI runs this before the compiler build on Ubuntu, Windows, and macOS.
 
-This preflight is intentionally lightweight. It complements rather than replaces the CMake/CTest suite, sanitizer runs, VS Code and Studio checks, Markdown link checks, strict MkDocs build, and download/package validation.
+This preflight is intentionally lightweight. It complements rather than replaces the CMake/CTest suite, sanitizer runs, VS Code checks, Markdown link checks, strict MkDocs build, and download/package validation.

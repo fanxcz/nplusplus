@@ -29,6 +29,7 @@ namespace npp::native {
             for (const auto& f : program.functions)
                 genFunction(f);
             genWrite();
+            genWriteErr();
             genWriteCstr();
             genStrEq();
             genStringLen();
@@ -36,6 +37,14 @@ namespace npp::native {
             genStrCat();
             genStrI64();
             genInput();
+            genStrToI64();
+            genInputI64();
+            genExit();
+            genTimeMs();
+            genSleep();
+            genRngNext();
+            genRandomI64();
+            genFileExists();
             genOom();
             genDivZero();
             genDivOverflow();

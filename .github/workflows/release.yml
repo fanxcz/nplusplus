@@ -125,35 +125,8 @@ jobs:
           if-no-files-found: error
           retention-days: 30
 
-  studio:
-    runs-on: windows-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-      - name: Build N++ Studio installer
-        working-directory: apps/studio
-        run: |
-          npm ci --no-audit --no-fund
-          npm run dist:win
-      - name: Checksums for Studio installers
-        shell: pwsh
-        working-directory: apps/studio
-        run: |
-          Get-ChildItem -Path 'release' -Filter '*.exe' -File | ForEach-Object {
-            $hash = (Get-FileHash -Algorithm SHA256 -Path $_.FullName).Hash.ToLowerInvariant()
-            "$hash  $($_.Name)" | Set-Content -Path "$($_.FullName).sha256" -Encoding ASCII
-          }
-      - uses: actions/upload-artifact@v4
-        with:
-          name: npp-studio-windows
-          path: apps/studio/release/*.exe*
-          if-no-files-found: error
-          retention-days: 30
-
   release:
-    needs: [build, studio]
+    needs: [build]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/download-artifact@v4

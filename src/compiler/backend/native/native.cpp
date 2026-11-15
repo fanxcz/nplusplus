@@ -90,8 +90,9 @@ namespace npp::native {
             throw std::runtime_error(reason);
         CodeImage image;
         if (target == NativeTarget::WindowsX64) {
-            image.imports = {
-                "GetStdHandle", "WriteFile", "ExitProcess", "VirtualAlloc", "ReadFile"};
+            image.imports = {"GetStdHandle", "WriteFile", "ExitProcess", "VirtualAlloc",
+                             "ReadFile",      "GetTickCount64", "Sleep",
+                             "GetFileAttributesA"};
         }
         detail::Generator gen(image, target);
         gen.generate(program);

@@ -38,7 +38,13 @@ bundled wrapper — see `npp doctor`).
 - Expressions: integer `+ - * / %`, comparisons, boolean `&& || !`,
   unary minus, string concatenation (`+`), string `==`/`!=`, calls.
 - I/O: `print(i64 | bool | string)` (trailing newline, like the runtime),
-  `input(prompt)` (one stdin line, no trailing newline), `str_i64(i64)`.
+  `input(prompt)` and `input_i64(prompt)` (one stdin line, no trailing
+  newline; invalid integers re-prompt on stderr), `str_i64(i64)`,
+  `str_bool(bool)`.
+- System: `exit(code)`, `time_ms()` (monotonic milliseconds),
+  `sleep(ms)`, `random_i64(min, max)` (SplitMix64, unbiased over the full
+  `i64` range, swapped bounds like the runtime), `file_exists(path)`,
+  `os.args_count()`, `os.args_get(i)`, `string.len(s)`, `string.byte_at(s, i)`.
 - Memory: strings live in a 16 MiB bump arena reserved at startup and
   released at process exit. Exhausting it ends the program with a clean
   `out of string memory` error instead of corrupting memory. There is no

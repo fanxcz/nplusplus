@@ -128,11 +128,13 @@ namespace npp::native {
 
         const std::uint32_t rdataFileSize =
             alignUp(static_cast<std::uint32_t>(rdata.size()), kFileAlign);
-        // Writable arena TOC: __nx_arena[0] = base, __nx_arena[1] = pos.
+        // Writable TOC: __nx_arena[0] = base, __nx_arena[1] = pos,
+        // __nx_rng = SplitMix64 state word for random_i64.
         const std::uint32_t dataRva =
             rdataRva + alignUp(static_cast<std::uint32_t>(rdata.size()), kSectionAlign);
         const std::uint32_t dataFileSize = kFileAlign;
         dataAddr["__nx_arena"] = dataRva;
+        dataAddr["__nx_rng"] = dataRva + 16;
         const std::uint32_t textFileOff = alignUp(64 + 4 + 20 + 240 + 3 * 40, kFileAlign);
         const std::uint32_t rdataFileOff = textFileOff + textFileSize;
         const std::uint32_t dataFileOff = rdataFileOff + rdataFileSize;
@@ -244,7 +246,7 @@ namespace npp::native {
         w.w32(0x40000040);                               // INITIALIZED_DATA | READ
         w.text(".data");
         w.pad(8 - 5);
-        w.w32(16);           // VirtualSize: __nx_arena base + pos
+        w.w32(32);           // VirtualSize: __nx_arena base + pos + __nx_rng
         w.w32(dataRva);      // VirtualAddress
         w.w32(dataFileSize); // SizeOfRawData
         w.w32(dataFileOff);  // PointerToRawData
@@ -301,6 +303,7 @@ namespace npp::native {
         const std::uint64_t writableOff = alignPage(dataOff + data.size());
         const std::uint64_t writableAddr = kBase + writableOff;
         sym["__nx_arena"] = writableAddr;
+        sym["__nx_rng"] = writableAddr + 16;
 
         std::vector<std::uint8_t> code = image.bytes;
         for (const auto& fx : image.fixups) {
@@ -364,8 +367,8 @@ namespace npp::native {
         w.w64(writableOff);
         w.w64(writableAddr);
         w.w64(writableAddr);
-        w.w64(16);
-        w.w64(16);
+        w.w64(32);
+        w.w64(32);
         w.w64(0x1000);
         if (w.out.size() != kHdrSize)
             throw std::runtime_error("builtin native v0: ELF header size mismatch");
@@ -374,7 +377,7 @@ namespace npp::native {
         w.pad(static_cast<std::size_t>(dataOff - w.out.size()));
         w.bytes(data.data(), data.size());
         w.pad(static_cast<std::size_t>(writableOff - w.out.size()));
-        w.pad(16); // zeroed __nx_arena
+        w.pad(32); // zeroed __nx_arena + __nx_rng
         return w.out;
     }
 

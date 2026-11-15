@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
-"""Verify that compiler, VS Code extension and Studio versions agree.
+"""Verify that compiler and VS Code extension versions agree.
 
 Reads ``project(npp VERSION x.y.z)`` from CMakeLists.txt and the ``version``
-fields of editors/vscode/package.json and apps/studio/package.json, then
-fails when they disagree.
+field of editors/vscode/package.json, then fails when they disagree.
 """
 from __future__ import annotations
 
@@ -41,7 +40,6 @@ def main() -> int:
     sources = {
         "compiler (CMakeLists.txt)": read_version(ROOT / "CMakeLists.txt", "cmake"),
         "VS Code extension": read_version(ROOT / "editors/vscode/package.json", "json"),
-        "N++ Studio": read_version(ROOT / "apps/studio/package.json", "json"),
     }
     for name, version in sources.items():
         if not SEMVER_RE.match(version):

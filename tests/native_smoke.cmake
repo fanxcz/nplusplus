@@ -63,6 +63,7 @@ check_native(string_edges "string.len: 5\nstring.byte_at: 72\nstring.byte_at OOB
 check_native(short_circuit "false\ntrue\nrhs\ntrue\nrhs\ntrue\nguard\n3")
 check_native(statement_lines "2")
 check_native(bitwise "8\n15\n6\n32\n16\n-4\n20\n1\n-4\n1")
+check_native(sys_io "true\nfalse\nfalse\ntrue")
 
 # input.npp reads one line from stdin; pipe a fixed name in.
 if(WIN32)
@@ -111,6 +112,64 @@ if(NOT rc EQUAL 45)
   message(FATAL_ERROR "native exit code mismatch: got ${rc}, want 45")
 endif()
 message(STATUS "  PASS exit_code.npp (exit 45)")
+
+# exit_builtin.npp calls exit(7) mid-program; "after" must never print.
+if(WIN32)
+  set(EXITB_EXE "${SCRATCH}/exit_builtin.exe")
+else()
+  set(EXITB_EXE "${SCRATCH}/exit_builtin")
+endif()
+execute_process(
+  COMMAND "${NPP_BIN}" build "${PROGRAM_DIR}/exit_builtin.npp" -o "${EXITB_EXE}" --backend native
+  RESULT_VARIABLE rc
+)
+if(NOT rc EQUAL 0)
+  message(FATAL_ERROR "native build failed for exit_builtin")
+endif()
+execute_process(COMMAND "${EXITB_EXE}" RESULT_VARIABLE rc OUTPUT_VARIABLE got)
+if(NOT rc EQUAL 7)
+  message(FATAL_ERROR "native exit() builtin mismatch: got ${rc}, want 7")
+endif()
+string(REGEX REPLACE "\r\n" "\n" got "${got}")
+string(REGEX REPLACE "\n+$" "" got "${got}")
+if(NOT got STREQUAL "before")
+  message(FATAL_ERROR "native exit() builtin printed unexpected output: ${got}")
+endif()
+message(STATUS "  PASS exit_builtin.npp (exit 7)")
+
+# input_i64.npp prompts, skips invalid lines on stderr, parses "  -17 ".
+if(WIN32)
+  set(IN64_EXE "${SCRATCH}/input_i64.exe")
+else()
+  set(IN64_EXE "${SCRATCH}/input_i64")
+endif()
+file(WRITE "${SCRATCH}/input_i64.txt" "abc\n  -17 \n")
+execute_process(
+  COMMAND "${NPP_BIN}" build "${PROGRAM_DIR}/input_i64.npp" -o "${IN64_EXE}" --backend native
+  RESULT_VARIABLE rc
+)
+if(NOT rc EQUAL 0)
+  message(FATAL_ERROR "native build failed for input_i64")
+endif()
+execute_process(
+  COMMAND "${IN64_EXE}"
+  INPUT_FILE "${SCRATCH}/input_i64.txt"
+  RESULT_VARIABLE rc
+  OUTPUT_VARIABLE got
+  ERROR_VARIABLE goterr
+)
+if(NOT rc EQUAL 0)
+  message(FATAL_ERROR "native input_i64 executable failed (exit ${rc})")
+endif()
+string(REGEX REPLACE "\r\n" "\n" got "${got}")
+string(REGEX REPLACE "\n+$" "" got "${got}")
+if(NOT got STREQUAL "Number: Number: -17")
+  message(FATAL_ERROR "native input_i64 output mismatch:\n--- got ---\n${got}")
+endif()
+if(NOT "${goterr}" MATCHES "Invalid integer")
+  message(FATAL_ERROR "native input_i64 did not reject 'abc' on stderr: ${goterr}")
+endif()
+message(STATUS "  PASS input_i64.npp")
 
 # Programs outside the subset must fail with an actionable error.
 execute_process(

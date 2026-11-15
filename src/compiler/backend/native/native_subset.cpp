@@ -119,6 +119,86 @@ namespace npp::native {
                     }
                     return Kind::I64;
                 }
+                if (c->callee == "exit" || c->callee == "sleep") {
+                    if (c->args.size() != 1) {
+                        reason = c->callee + "() takes exactly 1 argument (i64)";
+                        return Kind::Void;
+                    }
+                    const Kind a = checkExpr(c->args[0].get(), env, fns, reason);
+                    if (!reason.empty())
+                        return Kind::Void;
+                    if (a != Kind::I64) {
+                        reason = c->callee + "() takes an i64 argument";
+                        return Kind::Void;
+                    }
+                    return Kind::Void;
+                }
+                if (c->callee == "time_ms") {
+                    if (c->args.size() != 0) {
+                        reason = "time_ms() takes no arguments";
+                        return Kind::Void;
+                    }
+                    return Kind::I64;
+                }
+                if (c->callee == "random_i64") {
+                    if (c->args.size() != 2) {
+                        reason = "random_i64() takes exactly 2 arguments (min, max)";
+                        return Kind::Void;
+                    }
+                    const Kind a = checkExpr(c->args[0].get(), env, fns, reason);
+                    if (!reason.empty())
+                        return Kind::Void;
+                    const Kind b = checkExpr(c->args[1].get(), env, fns, reason);
+                    if (!reason.empty())
+                        return Kind::Void;
+                    if (a != Kind::I64 || b != Kind::I64) {
+                        reason = "random_i64() takes two i64 arguments";
+                        return Kind::Void;
+                    }
+                    return Kind::I64;
+                }
+                if (c->callee == "str_bool") {
+                    if (c->args.size() != 1) {
+                        reason = "str_bool() takes exactly 1 argument (bool)";
+                        return Kind::Void;
+                    }
+                    const Kind a = checkExpr(c->args[0].get(), env, fns, reason);
+                    if (!reason.empty())
+                        return Kind::Void;
+                    if (a != Kind::Bool) {
+                        reason = "str_bool() takes a bool argument";
+                        return Kind::Void;
+                    }
+                    return Kind::Str;
+                }
+                if (c->callee == "input_i64") {
+                    if (c->args.size() != 1) {
+                        reason = "input_i64() takes exactly 1 argument (the prompt)";
+                        return Kind::Void;
+                    }
+                    const Kind a = checkExpr(c->args[0].get(), env, fns, reason);
+                    if (!reason.empty())
+                        return Kind::Void;
+                    if (a != Kind::Str) {
+                        reason = "input_i64() takes a string prompt";
+                        return Kind::Void;
+                    }
+                    return Kind::I64;
+                }
+                if (c->callee == "file_exists") {
+                    if (c->args.size() != 1) {
+                        reason = "file_exists() takes exactly 1 argument (path)";
+                        return Kind::Void;
+                    }
+                    const Kind a = checkExpr(c->args[0].get(), env, fns, reason);
+                    if (!reason.empty())
+                        return Kind::Void;
+                    if (a != Kind::Str) {
+                        reason = "file_exists() takes a string path";
+                        return Kind::Void;
+                    }
+                    return Kind::Bool;
+                }
                 reason = "call to '" + c->callee +
                          "' is outside the builtin native v0 subset (unknown function or "
                          "unsupported builtin; use --backend llvm)";

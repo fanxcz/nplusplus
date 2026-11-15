@@ -78,5 +78,5 @@
 | [Compiler pipeline](architecture/compiler-pipeline.md) · [Memory model](architecture/memory-model.md) · [Runtime design](architecture/runtime-design.md) | Internals |
 | [Building](development/building.md) · [Testing](development/testing.md) · [Debugging](development/debugging.md) · [Platform support](development/platform-support.md) · [Roadmap](development/roadmap.md) · [Contributing](development/contributing.md) | Contributor guides |
 | [CMake](build/cmake.md) · [Targets](build/targets.md) · [Cross-compilation](build/cross-compilation.md) | Build system |
-| [Applications](applications.md) · [Studio](../apps/studio/README.md) | Desktop apps |
+| [Applications](applications.md) | Desktop apps |
 | [Style guide](style-guide-npp.md) · [Troubleshooting](troubleshooting.md) · [Versioning](versioning.md) · [Reproducible builds](reproducible-builds.md) · [Backend matrix](backend-support-matrix.md) | Reference |
