@@ -1,12 +1,13 @@
 ; N++ compiler installer (NSIS).
 ; Packages the staged `dist/` prefix produced by `cmake --install`.
 ;
-;   makensis /DNPP_VERSION=1.0.0 scripts/npp-setup.nsi
+;   makensis /DNPP_VERSION=1.0.0 /DDIST_DIR=D:\path\to\dist scripts/npp-setup.nsi
 ;
-; Run from the repository root so the relative `dist\` path resolves.
+; DIST_DIR may be relative to the repository root or absolute; CI passes
+; an absolute path because NSIS resolves File paths relative to the script.
 
 !include "MUI2.nsh"
-!include "FileFunc.nsh"
+!include "LogicLib.nsh"
 
 !ifndef NPP_VERSION
   !define NPP_VERSION "0.0.0"
@@ -35,21 +36,24 @@ Section "Install"
   SetOutPath "$INSTDIR"
   File /r "${DIST_DIR}\*.*"
 
-  ; Add <install>\bin to the user PATH (idempotent).
-  ClearErrors
+  ; Prepend <install>\bin to the user PATH, once.
+  ; $R4 tracks whether the registry value changed.
+  StrCpy $R4 "0"
   ReadRegStr $R1 HKCU "Environment" "Path"
-  ${IfNot} ${Errors}
-    ${If} $R1 != ""
-      StrStr $R2 $R1 "$INSTDIR\bin"
-      ${If} $R2 == ""
-        StrCpy $R1 "$INSTDIR\bin;$R1"
-        WriteRegStr HKCU "Environment" "Path" $R1
-        SendMessage ${HWND_BROADCAST} ${WM_SETTINGCHANGE} 0 "STR:Environment" /TIMEOUT=5000
-      ${EndIf}
-    ${Else}
-      WriteRegStr HKCU "Environment" "Path" "$INSTDIR\bin"
-      SendMessage ${HWND_BROADCAST} ${WM_SETTINGCHANGE} 0 "STR:Environment" /TIMEOUT=5000
+  ${If} $R1 == ""
+    WriteRegStr HKCU "Environment" "Path" "$INSTDIR\bin"
+    StrCpy $R4 "1"
+  ${Else}
+    ; Compare the PATH prefix with our entry to stay idempotent.
+    StrLen $R2 "$INSTDIR\bin;"
+    StrCpy $R3 $R1 $R2
+    ${If} $R3 != "$INSTDIR\bin;"
+      WriteRegStr HKCU "Environment" "Path" "$INSTDIR\bin;$R1"
+      StrCpy $R4 "1"
     ${EndIf}
+  ${EndIf}
+  ${If} $R4 == "1"
+    SendMessage ${HWND_BROADCAST} ${WM_SETTINGCHANGE} 0 "STR:Environment" /TIMEOUT=5000
   ${EndIf}
 
   WriteRegStr HKCU "Software\NPP" "InstallDir" "$INSTDIR"
@@ -57,11 +61,11 @@ Section "Install"
 
   CreateDirectory "$SMPROGRAMS\N++"
   CreateShortcut "$SMPROGRAMS\N++\N++ Compiler.lnk" "$INSTDIR\bin\npp.exe"
-  CreateShortcut "$SMPROGRAMS\N++\Uninstall.lnk" "$INSTDIR\uninstall.exe"
+  CreateShortcut "$SMPROGRAMS\N++\Uninstall.lnk" "$INSTDIR\Uninstall.exe"
 SectionEnd
 
 Section "Uninstall"
-  Delete "$INSTDIR\uninstall.exe"
+  Delete "$INSTDIR\Uninstall.exe"
   RMDir /r "$INSTDIR"
   Delete "$SMPROGRAMS\N++\N++ Compiler.lnk"
   Delete "$SMPROGRAMS\N++\Uninstall.lnk"
