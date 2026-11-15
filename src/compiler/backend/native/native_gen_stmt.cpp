@@ -1,5 +1,6 @@
 #include "native/native_generator.hpp"
 
+#include <cstring>
 #include <stdexcept>
 
 namespace npp::native {
@@ -12,12 +13,18 @@ namespace npp::native {
             }
             if (const auto* l = dynamic_cast<const LetStmt*>(s)) {
                 genExpr(l->init.get());
-                out_.movRbpFromRax(slotOff(slots_.at(l->name)));
+                if (exprKind(l->init.get()) == Kind::F64)
+                    out_.movsdXmm0ToRbp(slotOff(slots_.at(l->name)));
+                else
+                    out_.movRbpFromRax(slotOff(slots_.at(l->name)));
                 return;
             }
             if (const auto* a = dynamic_cast<const AssignStmt*>(s)) {
                 genExpr(a->value.get());
-                out_.movRbpFromRax(slotOff(slots_.at(a->name)));
+                if (exprKind(a->value.get()) == Kind::F64)
+                    out_.movsdXmm0ToRbp(slotOff(slots_.at(a->name)));
+                else
+                    out_.movRbpFromRax(slotOff(slots_.at(a->name)));
                 return;
             }
             if (const auto* e = dynamic_cast<const ExprStmt*>(s)) {
@@ -125,7 +132,18 @@ namespace npp::native {
                 out_.movRaxImm64(x->value ? 1 : 0);
                 return;
             }
+            if (const auto* x = dynamic_cast<const FloatExpr*>(e)) {
+                std::uint64_t bits = 0;
+                std::memcpy(&bits, &x->value, sizeof(bits));
+                out_.movRaxImm64(bits);
+                out_.movqXmm0Rax();
+                return;
+            }
             if (const auto* x = dynamic_cast<const VarExpr*>(e)) {
+                if (localKind(x->name) == Kind::F64) {
+                    out_.movsdXmm0FromRbp(slotOff(slots_.at(x->name)));
+                    return;
+                }
                 out_.movRaxFromRbp(slotOff(slots_.at(x->name)));
                 return;
             }
@@ -137,10 +155,19 @@ namespace npp::native {
             }
             if (const auto* u = dynamic_cast<const UnaryExpr*>(e)) {
                 genExpr(u->rhs.get());
-                if (u->op == TokenKind::Minus)
-                    out_.negRax();
-                else
+                if (u->op == TokenKind::Minus) {
+                    if (exprKind(u->rhs.get()) == Kind::F64) {
+                        // Flip the sign bit: xmm0 ^= 0x8000000000000000.
+                        out_.movqRaxXmm0();
+                        out_.movR11Imm64(0x8000000000000000ULL);
+                        out_.xorRaxR11();
+                        out_.movqXmm0Rax();
+                    } else {
+                        out_.negRax();
+                    }
+                } else {
                     out_.notBoolRax();
+                }
                 return;
             }
             if (const auto* b = dynamic_cast<const BinaryExpr*>(e)) {
@@ -176,6 +203,74 @@ namespace npp::native {
                     genExpr(b->rhs.get());
                     out_.def(end);
                     return;
+                }
+                // f64 arithmetic and comparisons run in xmm registers; the
+                // boolean result of a comparison still lands in rax.
+                if (exprKind(b->lhs.get()) == Kind::F64) {
+                    genExpr(b->lhs.get());
+                    out_.subRsp(16);
+                    out_.movsdXmm0ToRsp();
+                    genExpr(b->rhs.get());
+                    out_.movsdXmm1Xmm0();    // xmm1 = rhs
+                    out_.movsdXmm0FromRsp(); // xmm0 = lhs
+                    out_.addRsp(16);
+                    switch (b->op) {
+                    case TokenKind::Plus:
+                        out_.addsdXmm0Xmm1();
+                        return;
+                    case TokenKind::Minus:
+                        out_.subsdXmm0Xmm1();
+                        return;
+                    case TokenKind::Star:
+                        // mulsd xmm0, xmm1
+                        out_.sseArithXmm0Xmm1(0x59);
+                        return;
+                    case TokenKind::Slash:
+                        out_.sseArithXmm0Xmm1(0x5E);
+                        return;
+                    case TokenKind::EqualEqual:
+                    case TokenKind::BangEqual:
+                    case TokenKind::Less:
+                    case TokenKind::LessEqual:
+                    case TokenKind::Greater:
+                    case TokenKind::GreaterEqual: {
+                        // Ordered comparisons only: unordered (NaN) yields 0,
+                        // matching the LLVM backend's oeq/olt/… predicates.
+                        out_.ucomisdXmm0Xmm1();
+                        const std::string unordered = out_.label("fcmp.unordered");
+                        const std::string done = out_.label("fcmp.done");
+                        out_.jcc(J_PE, unordered);
+                        switch (b->op) {
+                        case TokenKind::EqualEqual:
+                            out_.setcc(CC_E);
+                            break;
+                        case TokenKind::BangEqual:
+                            out_.setcc(CC_NE);
+                            break;
+                        case TokenKind::Less:
+                            out_.setcc(CC_B);
+                            break;
+                        case TokenKind::LessEqual:
+                            out_.setcc(CC_BE);
+                            break;
+                        case TokenKind::Greater:
+                            out_.setcc(CC_A);
+                            break;
+                        default:
+                            out_.setcc(CC_AE);
+                            break;
+                        }
+                        out_.movzxEaxAl();
+                        out_.jmp(done);
+                        out_.def(unordered);
+                        out_.xorEax();
+                        out_.def(done);
+                        return;
+                    }
+                    default:
+                        throw std::runtime_error(
+                            "builtin native backend: unsupported f64 operator reached codegen");
+                    }
                 }
                 genExpr(b->lhs.get());
                 out_.pushRax();
@@ -352,8 +447,30 @@ namespace npp::native {
                     out_.call("__nx_file_exists");
                     return;
                 }
+                if (c->callee == "str_f64") {
+                    genExpr(c->args[0].get());
+                    out_.call("__nx_str_f64");
+                    return;
+                }
+                if (c->callee == "input_f64") {
+                    genExpr(c->args[0].get());
+                    out_.call("__nx_input_f64");
+                    return;
+                }
+                if (c->callee == "to_f64") {
+                    genExpr(c->args[0].get());
+                    out_.cvtsi2sdXmm0Rax();
+                    return;
+                }
+                if (c->callee == "to_i64") {
+                    genExpr(c->args[0].get());
+                    out_.cvttsd2siRaxXmm0();
+                    return;
+                }
                 for (const auto& a : c->args) {
                     genExpr(a.get());
+                    if (exprKind(a.get()) == Kind::F64)
+                        out_.movqRaxXmm0(); // pass the raw double bits on the stack
                     out_.pushRax();
                 }
                 out_.call(c->callee);
@@ -379,6 +496,8 @@ namespace npp::native {
                 out_.call("__nx_write_cstr");
             else if (exprIsBool(arg))
                 out_.call("__nx_print_bool");
+            else if (exprIsF64(arg))
+                out_.call("__nx_print_f64");
             else
                 out_.call("__nx_print_i64");
         }
@@ -396,7 +515,8 @@ namespace npp::native {
                 return b->op == TokenKind::Plus && exprIsString(b->lhs.get()) &&
                        exprIsString(b->rhs.get());
             if (const auto* c = dynamic_cast<const CallExpr*>(e)) {
-                if (c->callee == "input" || c->callee == "str_i64" || c->callee == "str_bool")
+                if (c->callee == "input" || c->callee == "str_i64" || c->callee == "str_bool" ||
+                    c->callee == "str_f64")
                     return true;
                 if (c->callee == "print")
                     return false;
@@ -406,18 +526,26 @@ namespace npp::native {
             return false;
         }
 
-        // Mirrors the checker's kind rules to select the right print helper.
-        bool Generator::exprIsBool(const Expr* e) {
-            if (dynamic_cast<const BoolExpr*>(e))
-                return true;
+        bool Generator::exprIsF64(const Expr* e) {
+            return exprKind(e) == Kind::F64;
+        }
+
+        Kind Generator::exprKind(const Expr* e) {
             if (dynamic_cast<const IntExpr*>(e))
-                return false;
+                return Kind::I64;
+            if (dynamic_cast<const FloatExpr*>(e))
+                return Kind::F64;
+            if (dynamic_cast<const BoolExpr*>(e))
+                return Kind::Bool;
             if (dynamic_cast<const StringExpr*>(e))
-                return false;
+                return Kind::Str;
             if (const auto* v = dynamic_cast<const VarExpr*>(e))
-                return localKind(v->name) == Kind::Bool;
-            if (const auto* u = dynamic_cast<const UnaryExpr*>(e))
-                return u->op == TokenKind::Bang;
+                return localKind(v->name);
+            if (const auto* u = dynamic_cast<const UnaryExpr*>(e)) {
+                if (u->op == TokenKind::Bang)
+                    return Kind::Bool;
+                return exprKind(u->rhs.get());
+            }
             if (const auto* b = dynamic_cast<const BinaryExpr*>(e)) {
                 switch (b->op) {
                 case TokenKind::EqualEqual:
@@ -428,20 +556,37 @@ namespace npp::native {
                 case TokenKind::GreaterEqual:
                 case TokenKind::AndAnd:
                 case TokenKind::OrOr:
-                    return true;
+                    return Kind::Bool;
+                case TokenKind::Plus:
+                    if (exprIsString(b->lhs.get()))
+                        return Kind::Str;
+                    return exprKind(b->lhs.get());
                 default:
-                    return false;
+                    return exprKind(b->lhs.get());
                 }
             }
             if (const auto* c = dynamic_cast<const CallExpr*>(e)) {
                 if (c->callee == "print")
-                    return false;
+                    return Kind::Void;
+                if (c->callee == "input" || c->callee == "str_i64" || c->callee == "str_bool" ||
+                    c->callee == "str_f64")
+                    return Kind::Str;
                 if (c->callee == "file_exists")
-                    return true;
+                    return Kind::Bool;
+                if (c->callee == "input_f64" || c->callee == "to_f64")
+                    return Kind::F64;
+                if (c->callee == "to_i64")
+                    return Kind::I64;
                 const auto it = sigs_.find(c->callee);
-                return it != sigs_.end() && it->second.ret == Kind::Bool;
+                if (it != sigs_.end())
+                    return it->second.ret;
             }
-            return false;
+            return Kind::I64;
+        }
+
+        // Mirrors the checker's kind rules to select the right print helper.
+        bool Generator::exprIsBool(const Expr* e) {
+            return exprKind(e) == Kind::Bool;
         }
 
         Kind Generator::localKind(const std::string& name) {
@@ -480,39 +625,7 @@ namespace npp::native {
         }
 
         Kind Generator::initKind(const Expr* e) {
-            if (dynamic_cast<const BoolExpr*>(e))
-                return Kind::Bool;
-            if (dynamic_cast<const StringExpr*>(e))
-                return Kind::Str;
-            if (const auto* u = dynamic_cast<const UnaryExpr*>(e))
-                return u->op == TokenKind::Bang ? Kind::Bool : Kind::I64;
-            if (const auto* b = dynamic_cast<const BinaryExpr*>(e)) {
-                switch (b->op) {
-                case TokenKind::EqualEqual:
-                case TokenKind::BangEqual:
-                case TokenKind::Less:
-                case TokenKind::LessEqual:
-                case TokenKind::Greater:
-                case TokenKind::GreaterEqual:
-                case TokenKind::AndAnd:
-                case TokenKind::OrOr:
-                    return Kind::Bool;
-                default:
-                    return Kind::I64;
-                }
-            }
-            if (const auto* c = dynamic_cast<const CallExpr*>(e)) {
-                if (c->callee == "input" || c->callee == "str_i64" || c->callee == "str_bool")
-                    return Kind::Str;
-                if (c->callee == "file_exists")
-                    return Kind::Bool;
-                const auto it = sigs_.find(c->callee);
-                if (it != sigs_.end())
-                    return it->second.ret;
-            }
-            if (const auto* v = dynamic_cast<const VarExpr*>(e))
-                return localKind(v->name);
-            return Kind::I64;
+            return exprKind(e);
         }
 
         // Call the shared write helper. r10/r11 do NOT survive OS calls

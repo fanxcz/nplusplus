@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [1.2.2] - Unreleased
 
+### Added
+
+- Native backend `f64` support: SSE2 scalar arithmetic, `f64`
+  parameters/returns, `print(f64)`/`str_f64` (shortest-round-trip decimal,
+  fixed notation for exponents in `[-4, 14]`, scientific otherwise),
+  `input_f64`/`str_to_f64` parsing, `to_f64`/`to_i64` conversions.
+- New native smoke fixtures: `f64.npp`, `input_f64.npp`.
+
 ### Fixed
 
 - `npp run` / direct `.npp` invocation now also pauses on interactive

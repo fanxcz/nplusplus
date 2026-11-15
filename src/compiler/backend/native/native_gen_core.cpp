@@ -13,6 +13,8 @@ namespace npp::native {
                 return Kind::Bool;
             if (t.kind == TypeKind::String)
                 return Kind::Str;
+            if (t.kind == TypeKind::F64)
+                return Kind::F64;
             if (t.kind == TypeKind::Void)
                 return Kind::Void;
             return Kind::I64;
@@ -45,6 +47,10 @@ namespace npp::native {
             genRngNext();
             genRandomI64();
             genFileExists();
+            genStrF64();
+            genPrintF64();
+            genStrToF64();
+            genInputF64();
             genOom();
             genDivZero();
             genDivOverflow();
@@ -87,8 +93,14 @@ namespace npp::native {
             const std::size_t nargs = f.params.size();
             for (std::size_t k = 0; k < nargs; ++k) {
                 const std::int64_t src = 16 + static_cast<std::int64_t>(8 * (nargs - 1 - k));
-                out_.movR11FromRbp(src);
-                out_.movRbpFromR11(slotOff(slots_[f.params[k].name]));
+                const std::int64_t dst = slotOff(slots_[f.params[k].name]);
+                if (typeKind(f.params[k].type) == Kind::F64) {
+                    out_.movsdXmm0FromRbp(src);
+                    out_.movsdXmm0ToRbp(dst);
+                } else {
+                    out_.movR11FromRbp(src);
+                    out_.movRbpFromR11(dst);
+                }
             }
             endLabel_ = out_.label(f.name + "$end");
             breakStack_.clear();

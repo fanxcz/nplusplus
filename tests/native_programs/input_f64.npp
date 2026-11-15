@@ -1,0 +1,7 @@
+fn main() {
+    let a = input_f64("first: ");
+    print(a);
+    print(a * 2.0);
+    let b = input_f64("second: ");
+    print(b);
+}

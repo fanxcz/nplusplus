@@ -1,5 +1,6 @@
 #include "native/native_generator.hpp"
 
+#include <cstring>
 #include <stdexcept>
 
 namespace npp::native {
@@ -956,6 +957,747 @@ namespace npp::native {
             }
             out_.def(noArena);
             out_.jmp("__nx_oom");
+        }
+
+        // IEEE-754 constants are interned as raw 8-byte strings; the image
+        // writer appends a NUL terminator that SSE memory operands never read.
+        // (The lambda lives inside each generator so it can call internString.)
+
+        // __nx_str_f64: xmm0 = value. Returns arena string in rax, length in rdx.
+        // Renders like printf %.15g: up to 15 significant digits, round-half-up,
+        // fixed notation for decimal exponents in [-4, 14], scientific otherwise.
+        void Generator::genStrF64() {
+            const auto f64c = [this](double v) {
+                std::string s(8, '\0');
+                std::memcpy(s.data(), &v, 8);
+                return "str" + std::to_string(internString(s));
+            };
+            const std::string ten = f64c(10.0);
+            const std::string one = f64c(1.0);
+
+            out_.def("__nx_str_f64");
+            out_.pushRbp();
+            out_.movRbpRsp();
+            out_.subRsp(320);
+            out_.andRspMinus16();
+
+            const std::string done = out_.label("f64.done");
+
+            // xmm0 = |v|; sign bit saved to [rbp-24].
+            out_.movqRaxXmm0();
+            out_.movRcxRax();
+            out_.shrRcxImm8(63);
+            out_.movRbpFromRcx(-24);
+            out_.movR11Imm64(0x7FFFFFFFFFFFFFFFULL);
+            out_.andRaxR11();
+            out_.movqXmm0Rax();
+
+            // Zero (the saved sign still produces "-0" for negative zero).
+            out_.xorpdXmm2Xmm2();
+            out_.ucomisdXmm0Xmm2();
+            const std::string zeroPath = out_.label("f64.zero");
+            out_.jcc(J_E, zeroPath);
+
+            // inf / nan: biased exponent field all ones.
+            out_.movqRaxXmm0();
+            out_.shrRaxImm8(52);
+            out_.andRaxImm32(0x7FF);
+            out_.cmpRaxImm32(0x7FF);
+            const std::string normalPath = out_.label("f64.normal");
+            out_.jcc(J_NE, normalPath);
+            out_.movqRaxXmm0();
+            out_.movR11Imm64(0x000FFFFFFFFFFFFFULL);
+            out_.andRaxR11();
+            out_.testRaxRax();
+            const std::string infPath = out_.label("f64.inf");
+            const std::string nanPath = out_.label("f64.nan");
+            out_.jcc(J_NE, nanPath);
+            out_.def(infPath);
+            {
+                const std::string l1 = out_.label("f64.s1");
+                out_.leaRdiFromRbp(-224);
+                out_.movRcxFromRbp(-24);
+                out_.testRcxRcx();
+                out_.jcc(J_E, l1);
+                out_.storeByteRdiImm8(0x2D); // '-'
+                out_.incRdi();
+                out_.def(l1);
+                out_.storeByteRdiImm8(0x69); // 'i'
+                out_.incRdi();
+                out_.storeByteRdiImm8(0x6E); // 'n'
+                out_.incRdi();
+                out_.storeByteRdiImm8(0x66); // 'f'
+                out_.incRdi();
+            }
+            out_.jmp(done);
+            out_.def(nanPath);
+            {
+                const std::string l1 = out_.label("f64.s1");
+                out_.leaRdiFromRbp(-224);
+                out_.movRcxFromRbp(-24);
+                out_.testRcxRcx();
+                out_.jcc(J_E, l1);
+                out_.storeByteRdiImm8(0x2D);
+                out_.incRdi();
+                out_.def(l1);
+                out_.storeByteRdiImm8(0x6E); // 'n'
+                out_.incRdi();
+                out_.storeByteRdiImm8(0x61); // 'a'
+                out_.incRdi();
+                out_.storeByteRdiImm8(0x6E); // 'n'
+                out_.incRdi();
+            }
+            out_.jmp(done);
+            out_.def(zeroPath);
+            {
+                const std::string l1 = out_.label("f64.s1");
+                out_.leaRdiFromRbp(-224);
+                out_.movRcxFromRbp(-24);
+                out_.testRcxRcx();
+                out_.jcc(J_E, l1);
+                out_.storeByteRdiImm8(0x2D);
+                out_.incRdi();
+                out_.def(l1);
+                out_.storeByteRdiImm8(0x30); // '0'
+                out_.incRdi();
+            }
+            out_.jmp(done);
+
+            out_.def(normalPath);
+            // xmm2 = t normalized to [1,10); r10 = decimal exponent e10.
+            out_.movsdXmm2Xmm0();
+            out_.xorR10d();
+            const std::string ge10 = out_.label("f64.ge10");
+            const std::string ge10done = out_.label("f64.ge10d");
+            out_.def(ge10);
+            out_.ucomisdXmm2Mem(ten);
+            out_.jcc(J_B, ge10done); // t < 10 -> done
+            out_.divsdXmm2Mem(ten);
+            out_.incR10();
+            out_.jmp(ge10);
+            out_.def(ge10done);
+            const std::string lt1 = out_.label("f64.lt1");
+            const std::string lt1done = out_.label("f64.lt1d");
+            out_.def(lt1);
+            out_.ucomisdXmm2Mem(one);
+            out_.jcc(J_AE, lt1done); // t >= 1 -> done
+            out_.mulsdXmm2Mem(ten);
+            out_.decR10();
+            out_.jmp(lt1);
+            out_.def(lt1done);
+
+            // Extract 16 digits (15 significant + 1 rounding digit) into
+            // [rbp-160 .. rbp-145].
+            out_.leaRsiFromRbp(-160);
+            out_.movR8Imm32(16);
+            const std::string digLoop = out_.label("f64.dig");
+            out_.def(digLoop);
+            out_.cvttsd2siRaxXmm2();
+            out_.movRbpFromRax(-8);
+            out_.cvtsi2sdXmm0FromRbp(-8);
+            out_.subsdXmm2Xmm0();
+            out_.mulsdXmm2Mem(ten);
+            out_.movDlFromRax();
+            out_.addDl48();
+            out_.storeDlRsi();
+            out_.incRsi();
+            out_.decR8();
+            out_.testR8R8();
+            out_.jcc(J_NE, digLoop);
+
+            // Round half-up on the 16th digit, with carry into sig digits.
+            const std::string trimStart = out_.label("f64.trim");
+            out_.leaRsiFromRbp(-145);
+            out_.movAlFromRsi();
+            out_.cmpAlImm8(0x35); // '5'
+            out_.jcc(J_B, trimStart);
+            out_.leaRsiFromRbp(-146); // last significant digit
+            out_.movR9Imm32(15);
+            const std::string carryLoop = out_.label("f64.carry");
+            const std::string carryInc = out_.label("f64.carryinc");
+            out_.def(carryLoop);
+            out_.movAlFromRsi();
+            out_.cmpAlImm8(0x39); // '9'
+            out_.jcc(J_NE, carryInc);
+            out_.storeByteRsiImm8(0x30);
+            out_.decRsi();
+            out_.decR9();
+            out_.cmpR9Imm8(0);
+            out_.jcc(J_NE, carryLoop);
+            // All nines carried out: digits become '1' + 14 zeros, e10 += 1.
+            out_.leaRsiFromRbp(-160);
+            out_.storeByteRsiImm8(0x31); // '1'
+            out_.leaRdiFromRbp(-159);
+            out_.movEaxImm32(0x30); // '0'
+            out_.movRcxImm32(14);
+            out_.repStosb();
+            out_.incR10();
+            out_.jmp(trimStart);
+            out_.def(carryInc);
+            out_.addAlImm8(1);
+            out_.storeAlRsi();
+            out_.def(trimStart);
+
+            // Trim trailing zero digits; r9 = significant digit count.
+            out_.movR9Imm32(15);
+            out_.leaRsiFromRbp(-146);
+            const std::string trimLoop = out_.label("f64.trimloop");
+            const std::string trimDone = out_.label("f64.trimdone");
+            out_.def(trimLoop);
+            out_.cmpR9Imm8(1);
+            out_.jcc(J_E, trimDone);
+            out_.cmpBytePtrRsi(0x30);
+            out_.jcc(J_NE, trimDone);
+            out_.decR9();
+            out_.decRsi();
+            out_.jmp(trimLoop);
+            out_.def(trimDone);
+
+            // Output buffer at [rbp-224]; rdi walks forward.
+            out_.leaRdiFromRbp(-224);
+            out_.movRcxFromRbp(-24);
+            out_.testRcxRcx();
+            const std::string noSignOut = out_.label("f64.nosignout");
+            out_.jcc(J_E, noSignOut);
+            out_.storeByteRdiImm8(0x2D);
+            out_.incRdi();
+            out_.def(noSignOut);
+
+            // %g rule: scientific when e10 < -4 or e10 >= 15.
+            const std::string sciPath = out_.label("f64.sci");
+            out_.cmpR10Imm8(0xFC); // -4
+            out_.jcc(J_L, sciPath);
+            out_.cmpR10Imm8(15);
+            out_.jcc(J_GE, sciPath);
+
+            // ---- fixed notation ----
+            const std::string fixedPos = out_.label("f64.fpos");
+            const std::string fixedNeg = out_.label("f64.fneg");
+            out_.testR10d();
+            out_.jcc(J_NS, fixedPos);
+            out_.def(fixedNeg);          // e10 in [-4, -1]: "0." + zeros + digits
+            out_.storeByteRdiImm8(0x30); // '0'
+            out_.incRdi();
+            out_.storeByteRdiImm8(0x2E); // '.'
+            out_.incRdi();
+            out_.movRaxR10();
+            out_.negRax();
+            out_.decRax(); // zeros = -e10 - 1
+            out_.movR8Rax();
+            const std::string zerosDone = out_.label("f64.zerosdone");
+            out_.testR8R8();
+            out_.jcc(J_E, zerosDone);
+            const std::string zeroLoop = out_.label("f64.zeros");
+            out_.def(zeroLoop);
+            out_.storeByteRdiImm8(0x30);
+            out_.incRdi();
+            out_.decR8();
+            out_.testR8R8();
+            out_.jcc(J_NE, zeroLoop);
+            out_.def(zerosDone);
+            out_.movR8R9();
+            out_.leaRsiFromRbp(-160);
+            {
+                const std::string cp = out_.label("f64.cpn");
+                out_.def(cp);
+                out_.movAlFromRsi();
+                out_.storeAlRdi();
+                out_.incRsi();
+                out_.incRdi();
+                out_.decR8();
+                out_.testR8R8();
+                out_.jcc(J_NE, cp);
+            }
+            out_.jmp(done);
+
+            out_.def(fixedPos); // e10 in [0, 14]
+            out_.incR10();      // intdigits = e10 + 1
+            const std::string padPath = out_.label("f64.pad");
+            out_.cmpR10R9(); // intdigits vs n
+            out_.jcc(J_G, padPath);
+            // intdigits <= n: int part, optional "." + fraction.
+            out_.movR8R10();
+            out_.leaRsiFromRbp(-160);
+            {
+                const std::string cp = out_.label("f64.cpi");
+                out_.def(cp);
+                out_.movAlFromRsi();
+                out_.storeAlRdi();
+                out_.incRsi();
+                out_.incRdi();
+                out_.decR8();
+                out_.testR8R8();
+                out_.jcc(J_NE, cp);
+            }
+            // frac digits = n - intdigits
+            out_.movRaxR9();
+            out_.subRaxR10();
+            out_.testRaxRax();
+            out_.jcc(J_E, done);
+            out_.storeByteRdiImm8(0x2E); // '.'
+            out_.incRdi();
+            out_.movR8Rax();
+            {
+                const std::string cp = out_.label("f64.cpf");
+                out_.def(cp);
+                out_.movAlFromRsi();
+                out_.storeAlRdi();
+                out_.incRsi();
+                out_.incRdi();
+                out_.decR8();
+                out_.testR8R8();
+                out_.jcc(J_NE, cp);
+            }
+            out_.jmp(done);
+
+            out_.def(padPath); // intdigits > n: digits then zero padding
+            out_.movR8R9();
+            out_.leaRsiFromRbp(-160);
+            {
+                const std::string cp = out_.label("f64.cpp");
+                out_.def(cp);
+                out_.movAlFromRsi();
+                out_.storeAlRdi();
+                out_.incRsi();
+                out_.incRdi();
+                out_.decR8();
+                out_.testR8R8();
+                out_.jcc(J_NE, cp);
+            }
+            out_.movRaxR10();
+            out_.subRaxR9(); // zeros = intdigits - n
+            out_.movR8Rax();
+            const std::string padZero = out_.label("f64.pz");
+            out_.def(padZero);
+            out_.storeByteRdiImm8(0x30);
+            out_.incRdi();
+            out_.decR8();
+            out_.testR8R8();
+            out_.jcc(J_NE, padZero);
+            out_.jmp(done);
+
+            // ---- scientific notation ----
+            out_.def(sciPath);
+            out_.leaRsiFromRbp(-160);
+            out_.movAlFromRsi();
+            out_.storeAlRdi();
+            out_.incRsi();
+            out_.incRdi();
+            // fraction digits = n - 1
+            out_.movRaxR9();
+            out_.decRax();
+            out_.testRaxRax();
+            const std::string sciNoFrac = out_.label("f64.scinofrac");
+            out_.jcc(J_E, sciNoFrac);
+            out_.storeByteRdiImm8(0x2E); // '.'
+            out_.incRdi();
+            out_.movR8Rax();
+            {
+                const std::string cp = out_.label("f64.scif");
+                out_.def(cp);
+                out_.movAlFromRsi();
+                out_.storeAlRdi();
+                out_.incRsi();
+                out_.incRdi();
+                out_.decR8();
+                out_.testR8R8();
+                out_.jcc(J_NE, cp);
+            }
+            out_.def(sciNoFrac);
+            out_.storeByteRdiImm8(0x65); // 'e'
+            out_.incRdi();
+            // exponent sign
+            out_.testR10d();
+            const std::string expPos = out_.label("f64.exppos");
+            out_.jcc(J_NS, expPos);
+            out_.storeByteRdiImm8(0x2D);
+            out_.incRdi();
+            out_.movRaxR10();
+            out_.negRax();
+            out_.movR10Rax();
+            out_.def(expPos);
+            // print r10 as decimal, at least two digits (%g style).
+            out_.cmpR10Imm8(100);
+            const std::string exp3 = out_.label("f64.exp3");
+            out_.jcc(J_AE, exp3);
+            out_.cmpR10Imm8(10);
+            const std::string exp2 = out_.label("f64.exp2");
+            out_.jcc(J_AE, exp2);
+            // single digit: pad with '0' first
+            out_.storeByteRdiImm8(0x30);
+            out_.incRdi();
+            out_.movRaxR10();
+            out_.movDlFromRax();
+            out_.addDl48();
+            out_.storeDlRdi();
+            out_.incRdi();
+            out_.jmp(done);
+            out_.def(exp2); // 10..99
+            out_.movRaxR10();
+            out_.movRcxImm32(10);
+            out_.xorEdx();
+            out_.divRcx();        // rax = tens, rdx = ones
+            out_.movRdxToRbp(-8); // save remainder: dl writes below clobber rdx
+            out_.movDlFromRax();
+            out_.addDl48();
+            out_.storeDlRdi();
+            out_.incRdi();
+            out_.movRaxFromRbp(-8);
+            out_.movDlFromRax();
+            out_.addDl48();
+            out_.storeDlRdi();
+            out_.incRdi();
+            out_.jmp(done);
+            out_.def(exp3); // >= 100
+            out_.movRaxR10();
+            out_.movRcxImm32(100);
+            out_.xorEdx();
+            out_.divRcx();        // rax = hundreds, rdx = rest
+            out_.movRdxToRbp(-8); // save rest before dl writes clobber rdx
+            out_.movDlFromRax();
+            out_.addDl48();
+            out_.storeDlRdi();
+            out_.incRdi();
+            out_.movRaxFromRbp(-8); // rax = rest
+            out_.movRcxImm32(10);
+            out_.xorEdx();
+            out_.divRcx();        // rax = tens, rdx = ones
+            out_.movRdxToRbp(-8); // save ones
+            out_.movDlFromRax();
+            out_.addDl48();
+            out_.storeDlRdi();
+            out_.incRdi();
+            out_.movRaxFromRbp(-8);
+            out_.movDlFromRax();
+            out_.addDl48();
+            out_.storeDlRdi();
+            out_.incRdi();
+            out_.jmp(done);
+
+            out_.def(done);
+            // Copy the NUL-terminated buffer [rbp-224 .. rdi) into the arena.
+            out_.storeByteRdiImm0();
+            // rax = rdi - (rbp - 224) = length
+            out_.movRaxRdi();
+            out_.movR11Rbp();
+            out_.subRaxR11();
+            out_.addRaxImm32(224);
+            out_.movRdxRax();
+            out_.leaR10Rip("__nx_arena");
+            out_.movRdiFromR10Disp8(8); // rdi = arena pos
+            out_.movRaxRdx();
+            out_.incRax();
+            out_.addRaxRdi();
+            out_.movR11FromR10();
+            out_.addR11Imm32(kArenaSize);
+            out_.cmpRaxR11();
+            const std::string f64oom = out_.label("f64.oom");
+            out_.jcc(J_A, f64oom);
+            out_.movR10Disp8FromRax(8); // arena pos += len + 1
+            out_.movRaxRdi();           // rax = old pos
+            out_.leaRsiFromRbp(-224);   // src
+            out_.movRcxRdx();           // rcx = len
+            out_.repMovsb();
+            out_.storeByteRdiImm0();
+            out_.movRspRbp();
+            out_.popRbp();
+            out_.ret();
+            out_.def(f64oom);
+            out_.jmp("__nx_oom");
+        }
+
+        // __nx_print_f64: xmm0 = value. Prints the %g-style rendering + '\n'.
+        void Generator::genPrintF64() {
+            const std::size_t nl = internString("\n");
+            out_.def("__nx_print_f64");
+            out_.pushRbp();
+            out_.movRbpRsp();
+            out_.subRsp(64);
+            out_.andRspMinus16();
+            stubCall("__nx_str_f64"); // xmm0 -> rax = ptr, rdx = len
+            out_.movRcxRax();
+            stubCall("__nx_write");
+            out_.leaRcxRip("str" + std::to_string(nl));
+            out_.movEdxImm32(1);
+            stubCall("__nx_write");
+            out_.movRspRbp();
+            out_.popRbp();
+            out_.ret();
+        }
+
+        // __nx_str_to_f64: rax = NUL-terminated string. Parses an optionally
+        // signed decimal float with optional fraction and exponent. Returns
+        // the value in xmm0 and a validity flag in edx (1 = valid).
+        void Generator::genStrToF64() {
+            const auto f64c = [this](double v) {
+                std::string s(8, '\0');
+                std::memcpy(s.data(), &v, 8);
+                return "str" + std::to_string(internString(s));
+            };
+            const std::string ten = f64c(10.0);
+            const std::string one = f64c(1.0);
+
+            out_.def("__nx_str_to_f64");
+            out_.pushRbp();
+            out_.movRbpRsp();
+            out_.subRsp(64);
+            out_.andRspMinus16();
+            out_.movRsiRax(); // cursor
+            out_.xorpdXmm0Xmm0();
+            out_.xorpdXmm1Xmm1();
+            out_.xorpdXmm2Xmm2();
+            // [rbp-16] = number sign, [rbp-32] = exponent marker seen,
+            // [rbp-28] = exponent digits seen.
+            out_.xorEax();
+            out_.movRbpFromRax(-16);
+            out_.movRbpFromRax(-32);
+            out_.movRbpFromRax(-28);
+            out_.xorR9d(); // frac digit count
+            out_.xorEax();
+            out_.movR11Rax(); // sawDigit = 0
+
+            const std::string lead = out_.label("f64p.lead");
+            const std::string advLead = out_.label("f64p.advlead");
+            const std::string signP = out_.label("f64p.sign");
+            const std::string plusP = out_.label("f64p.plus");
+            const std::string minusP = out_.label("f64p.minus");
+            const std::string intStart = out_.label("f64p.int");
+            const std::string intDig = out_.label("f64p.idig");
+            const std::string intDone = out_.label("f64p.idone");
+            const std::string fracDig = out_.label("f64p.fdig");
+            const std::string fracDone = out_.label("f64p.fdone");
+            const std::string expCheck = out_.label("f64p.expcheck");
+            const std::string expMark = out_.label("f64p.expmark");
+            const std::string expPlus = out_.label("f64p.expplus");
+            const std::string expMinus = out_.label("f64p.expminus");
+            const std::string expLoop = out_.label("f64p.exploop");
+            const std::string expDig = out_.label("f64p.expdig");
+            const std::string expDone = out_.label("f64p.expdone");
+            const std::string noClamp = out_.label("f64p.noclamp");
+            const std::string expPos = out_.label("f64p.exppos");
+            const std::string applyLoop = out_.label("f64p.apply");
+            const std::string applyPos = out_.label("f64p.applypos");
+            const std::string applyDone = out_.label("f64p.applydone");
+            const std::string trail = out_.label("f64p.trail");
+            const std::string advTrail = out_.label("f64p.advtrail");
+            const std::string tend = out_.label("f64p.tend");
+            const std::string invalid = out_.label("f64p.invalid");
+            const std::string applySign = out_.label("f64p.applysign");
+            const std::string posOut = out_.label("f64p.pos");
+            const std::string out = out_.label("f64p.out");
+
+            // Skip leading spaces/tabs.
+            out_.def(lead);
+            out_.cmpBytePtrRsi(0x20);
+            out_.jcc(J_E, advLead);
+            out_.cmpBytePtrRsi(0x09);
+            out_.jcc(J_NE, signP);
+            out_.def(advLead);
+            out_.incRsi();
+            out_.jmp(lead);
+            // Optional sign.
+            out_.def(signP);
+            out_.cmpBytePtrRsi(0x2B); // '+'
+            out_.jcc(J_E, plusP);
+            out_.cmpBytePtrRsi(0x2D); // '-'
+            out_.jcc(J_E, minusP);
+            out_.jmp(intStart);
+            out_.def(plusP);
+            out_.incRsi();
+            out_.jmp(intStart);
+            out_.def(minusP);
+            out_.incRsi();
+            out_.movRaxImm64(1);
+            out_.movRbpFromRax(-16);
+            out_.def(intStart);
+
+            // Integer digits: xmm0 = xmm0 * 10 + d.
+            const std::string intLoop = out_.label("f64p.il");
+            out_.def(intLoop);
+            out_.movAlFromRsi();
+            out_.subAlImm8(0x30);
+            out_.cmpAlImm8(9);
+            out_.jcc(J_BE, intDig);
+            out_.jmp(intDone);
+            out_.def(intDig);
+            out_.movzxEaxAl();
+            out_.mulsdXmm0Mem(ten);
+            out_.cvtsi2sdXmm1Rax();
+            out_.addsdXmm0Xmm1();
+            out_.incRsi();
+            out_.movR11Imm64(1); // sawDigit
+            out_.jmp(intLoop);
+            out_.def(intDone);
+
+            // Optional fraction: xmm1 = xmm1 * 10 + d, r9 counts digits.
+            out_.cmpBytePtrRsi(0x2E); // '.'
+            out_.jcc(J_NE, expCheck);
+            out_.incRsi();
+            out_.xorpdXmm1Xmm1(); // int loop leaves the last digit in xmm1
+            const std::string fracLoop = out_.label("f64p.fl");
+            out_.def(fracLoop);
+            out_.movAlFromRsi();
+            out_.subAlImm8(0x30);
+            out_.cmpAlImm8(9);
+            out_.jcc(J_BE, fracDig);
+            out_.jmp(fracDone);
+            out_.def(fracDig);
+            out_.movzxEaxAl();
+            out_.mulsdXmm1Mem(ten);
+            out_.movRbpFromRax(-8);
+            out_.cvtsi2sdXmm2FromRbp(-8);
+            out_.addsdXmm1Xmm2();
+            out_.incRsi();
+            out_.incR9();
+            out_.movR11Imm64(1);
+            out_.jmp(fracLoop);
+            out_.def(fracDone);
+            // xmm1 /= 10^fracCount; xmm0 += xmm1.
+            out_.movsdXmm2FromRip(one);
+            const std::string scaleLoop = out_.label("f64p.scale");
+            const std::string scaleDone = out_.label("f64p.scaledone");
+            out_.def(scaleLoop);
+            out_.cmpR9Imm8(0);
+            out_.jcc(J_E, scaleDone);
+            out_.mulsdXmm2Mem(ten);
+            out_.decR9();
+            out_.jmp(scaleLoop);
+            out_.def(scaleDone);
+            out_.divsdXmm1Xmm2();
+            out_.addsdXmm0Xmm1();
+
+            // Optional exponent: [eE][+-]?digits, magnitude clamped to 400.
+            out_.def(expCheck);
+            out_.cmpBytePtrRsi(0x65); // 'e'
+            out_.jcc(J_E, expMark);
+            out_.cmpBytePtrRsi(0x45); // 'E'
+            out_.jcc(J_NE, trail);
+            out_.def(expMark);
+            out_.incRsi();
+            out_.movRaxImm64(1);
+            out_.movRbpFromRax(-32); // expSeen
+            out_.xorEdx();           // expVal = 0
+            out_.xorR10d();          // r10d = exponent negative flag
+            out_.cmpBytePtrRsi(0x2B);
+            out_.jcc(J_E, expPlus);
+            out_.cmpBytePtrRsi(0x2D);
+            out_.jcc(J_E, expMinus);
+            out_.jmp(expLoop);
+            out_.def(expPlus);
+            out_.incRsi();
+            out_.jmp(expLoop);
+            out_.def(expMinus);
+            out_.incRsi();
+            out_.movR10Imm32(1);
+            out_.jmp(expLoop);
+            out_.def(expLoop);
+            out_.movAlFromRsi();
+            out_.subAlImm8(0x30);
+            out_.cmpAlImm8(9);
+            out_.jcc(J_BE, expDig);
+            out_.jmp(expDone);
+            out_.def(expDig);
+            out_.movzxEaxAl();
+            out_.movRcxImm32(10);
+            out_.imulRdxRcx();
+            out_.addRdxRax();
+            out_.incRsi();
+            out_.movRaxImm64(1);
+            out_.movRbpFromRax(-28); // expDigits seen
+            out_.jmp(expLoop);
+            out_.def(expDone);
+            out_.movRaxImm64(400);
+            out_.cmpRdxRax();
+            out_.jcc(J_LE, noClamp);
+            out_.movRdxRax();
+            out_.def(noClamp);
+            out_.testR10d();
+            out_.jcc(J_E, expPos);
+            out_.negRdx();
+            out_.def(expPos);
+            out_.movRaxRdx();
+            out_.movR10Rax(); // r10 = signed exponent
+            // Apply 10^exp by repeated mul/div (|exp| <= 400).
+            out_.def(applyLoop);
+            out_.testR10d();
+            out_.jcc(J_E, applyDone);
+            out_.jcc(J_NS, applyPos);
+            out_.divsdXmm0Mem(ten);
+            out_.incR10();
+            out_.jmp(applyLoop);
+            out_.def(applyPos);
+            out_.mulsdXmm0Mem(ten);
+            out_.decR10();
+            out_.jmp(applyLoop);
+            out_.def(applyDone);
+            out_.jmp(trail);
+
+            // Skip trailing spaces/tabs; next byte must be NUL.
+            out_.def(trail);
+            out_.cmpBytePtrRsi(0x20);
+            out_.jcc(J_E, advTrail);
+            out_.cmpBytePtrRsi(0x09);
+            out_.jcc(J_NE, tend);
+            out_.def(advTrail);
+            out_.incRsi();
+            out_.jmp(trail);
+            out_.def(tend);
+            out_.cmpBytePtrRsi(0);
+            out_.jcc(J_NE, invalid);
+            out_.testR11d();
+            out_.jcc(J_E, invalid);
+            // "1e" with no exponent digits is invalid.
+            out_.movRaxFromRbp(-32);
+            out_.testRaxRax();
+            out_.jcc(J_E, applySign);
+            out_.movRaxFromRbp(-28);
+            out_.testRaxRax();
+            out_.jcc(J_E, invalid);
+            out_.def(applySign);
+            out_.movRcxFromRbp(-16);
+            out_.testRcxRcx();
+            out_.jcc(J_E, posOut);
+            out_.xorpdXmm2Xmm2();
+            out_.subsdXmm2Xmm0(); // xmm2 = -xmm0
+            out_.movsdXmm0Xmm2();
+            out_.def(posOut);
+            out_.movEdxImm32(1);
+            out_.jmp(out);
+            out_.def(invalid);
+            out_.xorpdXmm0Xmm0();
+            out_.xorEdx();
+            out_.def(out);
+            out_.movRspRbp();
+            out_.popRbp();
+            out_.ret();
+        }
+
+        // __nx_input_f64: rax = prompt. Prints it, reads a line and parses it
+        // as f64, re-prompting on invalid input. Returns the value in xmm0.
+        void Generator::genInputF64() {
+            out_.def("__nx_input_f64");
+            out_.pushRbp();
+            out_.movRbpRsp();
+            out_.subRsp(64);
+            out_.andRspMinus16();
+            out_.movRbpFromRax(-8); // prompt
+            const std::string loop = out_.label("inf64.loop");
+            const std::string done = out_.label("inf64.done");
+            out_.def(loop);
+            out_.movRaxFromRbp(-8);
+            out_.call("__nx_input");
+            out_.call("__nx_str_to_f64");
+            out_.testRdxRdx();
+            out_.jcc(J_NE, done);
+            const std::size_t msg = internString("Invalid number. Try again.\n");
+            out_.leaRcxRip("str" + std::to_string(msg));
+            out_.movRdxImm32(static_cast<std::uint32_t>(image_.strings[msg].size()));
+            stubCall("__nx_write_err");
+            out_.jmp(loop);
+            out_.def(done);
+            out_.movRspRbp();
+            out_.popRbp();
+            out_.ret();
         }
 
     } // namespace detail

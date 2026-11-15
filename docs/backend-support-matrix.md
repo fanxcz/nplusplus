@@ -6,15 +6,15 @@ This matrix records evidence in the source tree at the current baseline. "Suppor
 
 | Feature | Builtin native | LLVM path | Evidence / notes |
 |---|---|---|---|
-| `i64`, `bool`, `string`, `void` | Supported | Supported | Native subset declaration and native regression fixtures |
+| `i64`, `bool`, `string`, `f64`, `void` | Supported | Supported | Native subset declaration and native regression fixtures |
 | Functions, recursion, locals, assignment | Supported in documented subset | Supported | Native subset and regression tests |
 | `if/else`, `while`, range `for`, `break`, `continue`, `return` | Supported in documented subset | Supported | Native fixtures and compiler regression suite |
 | Integer arithmetic, comparisons, boolean operators, calls, string concatenation/equality | Supported in documented subset | Supported | Native fixtures and parity test |
-| `print`, `input`, `input_i64`, `str_i64`, `str_bool` | Supported in documented signatures | Supported | Native emitter/runtime subset |
+| `print`, `input`, `input_i64`, `input_f64`, `str_i64`, `str_bool`, `str_f64`, `to_f64`, `to_i64` | Supported in documented signatures | Supported | Native emitter/runtime subset |
 | `exit`, `time_ms`, `sleep`, `random_i64`, `file_exists`, `os.args_*`, `string.len`, `string.byte_at` | Supported | Supported | Native fixtures (`sys_io.npp`, `input_i64.npp`, `exit_builtin.npp`) |
 | i64 bitwise and shift operators | Supported | Supported | Native and LLVM parity fixtures; 2.2.0 changelog |
 | Fixed-width integers (`i8/i16/i32`, `u8/u16/u32/u64`) and `f32` | Not supported | Supported for documented scalar lowering paths | 1.0.0 changelog; native subset excludes these types |
-| `f64` and floating-point expressions | Not supported | Supported for documented builtins/expressions | Native subset excludes floating point; LLVM math tests exist |
+| `f64` and floating-point expressions | Supported (SSE2 scalar ops, `f64` params/returns, formatting/parsing) | Supported for documented builtins/expressions | Native fixtures (`f64.npp`, `input_f64.npp`); LLVM math tests exist |
 | Fixed arrays | Not supported | Supported for tested declarations, indexing and aggregate paths | Native subset excludes arrays; regression tests exist |
 | Read-only slices `[]T` | Not supported | Supported for tested slice expressions, indexing, parameters and returns | Unreleased changelog and `tests/slice_llvm_smoke.cmake` |
 | Mutable slices `mut []T` | Not supported | Supported for documented lexical exclusive-borrow subset | Unreleased changelog and `tests/mutable_slice_smoke.cmake` |

@@ -1,0 +1,37 @@
+fn main() {
+    // Fixed notation
+    print(0.0);
+    print(1.5);
+    print(-2.75);
+    print(3.14159);
+    print(100.0);
+    print(999.99);
+    print(12345.678);
+    print(-0.001);
+    print(0.0001);
+    print(1e-4);
+    print(123456789.0);
+    // Scientific notation
+    print(1e15);
+    print(1e16);
+    print(2.5e10);
+    print(-1.5e20);
+    print(9.99e30);
+    print(1e18);
+    print(1e99);
+    print(1e100);
+    print(1e-5);
+    print(1e-12);
+    print(1e-15);
+    // Arithmetic and comparisons
+    print(1.5 + 2.25);
+    print(10.0 / 4.0);
+    print(3.0 * 3.0);
+    print(1.5 < 2.5);
+    print(2.0 == 2.0);
+    // Conversions and str_f64
+    print(to_i64(3.99));
+    print(to_f64(42));
+    print(to_f64(-7));
+    print(str_f64(2.5));
+}

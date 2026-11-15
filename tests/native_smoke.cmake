@@ -137,6 +137,8 @@ if(NOT got STREQUAL "before")
 endif()
 message(STATUS "  PASS exit_builtin.npp (exit 7)")
 
+check_native(f64 "0\n1.5\n-2.75\n3.14159\n100\n999.99\n12345.678\n-0.001\n0.0001\n0.0001\n123456789\n1e15\n1e16\n25000000000\n-1.5e20\n9.99e30\n1e18\n1e99\n1e100\n1e-05\n1e-12\n1e-15\n3.75\n2.5\n9\ntrue\ntrue\n3\n42\n-7\n2.5")
+
 # input_i64.npp prompts, skips invalid lines on stderr, parses "  -17 ".
 if(WIN32)
   set(IN64_EXE "${SCRATCH}/input_i64.exe")
@@ -170,6 +172,36 @@ if(NOT "${goterr}" MATCHES "Invalid integer")
   message(FATAL_ERROR "native input_i64 did not reject 'abc' on stderr: ${goterr}")
 endif()
 message(STATUS "  PASS input_i64.npp")
+
+# input_f64.npp prompts and parses decimal/scientific floats from stdin.
+if(WIN32)
+  set(INF64_EXE "${SCRATCH}/input_f64.exe")
+else()
+  set(INF64_EXE "${SCRATCH}/input_f64")
+endif()
+file(WRITE "${SCRATCH}/input_f64.txt" "3.25\n-1e3\n")
+execute_process(
+  COMMAND "${NPP_BIN}" build "${PROGRAM_DIR}/input_f64.npp" -o "${INF64_EXE}" --backend native
+  RESULT_VARIABLE rc
+)
+if(NOT rc EQUAL 0)
+  message(FATAL_ERROR "native build failed for input_f64")
+endif()
+execute_process(
+  COMMAND "${INF64_EXE}"
+  INPUT_FILE "${SCRATCH}/input_f64.txt"
+  RESULT_VARIABLE rc
+  OUTPUT_VARIABLE got
+)
+if(NOT rc EQUAL 0)
+  message(FATAL_ERROR "native input_f64 executable failed (exit ${rc})")
+endif()
+string(REGEX REPLACE "\r\n" "\n" got "${got}")
+string(REGEX REPLACE "\n+$" "" got "${got}")
+if(NOT got STREQUAL "first: 3.25\n6.5\nsecond: -1000")
+  message(FATAL_ERROR "native input_f64 output mismatch:\n--- got ---\n${got}")
+endif()
+message(STATUS "  PASS input_f64.npp")
 
 # Programs outside the subset must fail with an actionable error.
 execute_process(

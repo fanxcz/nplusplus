@@ -886,11 +886,17 @@ int main() {
                 return 10;
             if (reason.find("struct") == std::string::npos)
                 return 10;
+            // f64 literals are accepted by the native subset.
             auto q = parse("fn main(){ print(1.5) }");
             npp::SemanticAnalyzer().analyze(q);
-            if (npp::native::supports(q, reason))
+            if (!npp::native::supports(q, reason))
                 return 10;
-            // ...while strings are accepted.
+            // ...while constructs outside the subset are still rejected.
+            auto r = parse("fn main(){ let xs = [1, 2, 3]; print(xs[0]) }");
+            npp::SemanticAnalyzer().analyze(r);
+            if (npp::native::supports(r, reason))
+                return 10;
+            // ...and strings are accepted.
             auto s = parse("fn main(){ let name = \"N++\"; print(\"Hello, \" + name); print(name "
                            "== \"N++\") }");
             npp::SemanticAnalyzer().analyze(s);

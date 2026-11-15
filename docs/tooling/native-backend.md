@@ -30,17 +30,22 @@ bundled wrapper — see `npp doctor`).
 
 ## Supported subset (v0)
 
-- Types: `i64`, `bool`, `string`, `void`.
-- Functions with `i64`/`bool`/`string` parameters and results, including
-  recursion; `fn main()` (returning nothing or `i64` exit code) is required.
+- Types: `i64`, `bool`, `string`, `f64`, `void`.
+- Functions with `i64`/`bool`/`string`/`f64` parameters and results,
+  including recursion; `fn main()` (returning nothing or `i64` exit code)
+  is required.
 - Statements: `let`/`mut`, assignment (`=`, `+=`, …), `if`/`else`,
   `while`, desugared `for i in a..b`, `break`, `continue`, `return`.
-- Expressions: integer `+ - * / %`, comparisons, boolean `&& || !`,
-  unary minus, string concatenation (`+`), string `==`/`!=`, calls.
-- I/O: `print(i64 | bool | string)` (trailing newline, like the runtime),
-  `input(prompt)` and `input_i64(prompt)` (one stdin line, no trailing
-  newline; invalid integers re-prompt on stderr), `str_i64(i64)`,
-  `str_bool(bool)`.
+- Expressions: integer `+ - * / %`, floating-point `+ - * /` on `f64`,
+  unary minus, comparisons (integer and floating-point), boolean
+  `&& || !`, string concatenation (`+`), string `==`/`!=`, calls.
+- I/O: `print(i64 | bool | string | f64)` (trailing newline, like the
+  runtime; `f64` prints shortest-round-trip decimal, fixed notation for
+  decimal exponents in `[-4, 14]` and scientific notation otherwise),
+  `input(prompt)` and `input_i64(prompt)`/`input_f64(prompt)` (one stdin
+  line, no trailing newline; invalid input re-prompts on stderr),
+  `str_i64(i64)`, `str_bool(bool)`, `str_f64(f64)`, `to_f64(i64)`,
+  `to_i64(f64)`.
 - System: `exit(code)`, `time_ms()` (monotonic milliseconds),
   `sleep(ms)`, `random_i64(min, max)` (SplitMix64, unbiased over the full
   `i64` range, swapped bounds like the runtime), `file_exists(path)`,
@@ -50,7 +55,7 @@ bundled wrapper — see `npp doctor`).
   `out of string memory` error instead of corrupting memory. There is no
   per-allocation heap overhead and no leak across runs.
 
-Everything else (`f64`, arrays, structs, enums, `match`, pointers,
+Everything else (arrays, structs, enums, `match`, pointers,
 file/network/graphics/audio/UI/ECS builtins, `extern`) is rejected with a
 precise `outside the builtin native v0 subset` reason naming the construct
 and function. With `--backend auto` that reason appears only when the LLVM

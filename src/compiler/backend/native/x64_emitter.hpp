@@ -920,6 +920,458 @@ namespace npp::native {
                 leaFromRbp(0x7D, 0xBD, off);
             }
 
+            // ---- SSE2 / x87-free scalar double support ---------------------
+            // f64 values travel in xmm0 between expressions; memory operands
+            // use the same modrm layout as the integer rbp helpers.
+
+            void sseLoadXmm0(std::uint8_t op, std::int64_t off) {
+                b(0xF2);
+                b(0x0F);
+                b(op);
+                sseMemModrm(0x45, 0x85, off);
+            }
+            void sseStoreXmm0(std::uint8_t op, std::int64_t off) {
+                b(0xF2);
+                b(0x0F);
+                b(op);
+                sseMemModrm(0x45, 0x85, off);
+            }
+            void sseLoadXmm2(std::uint8_t op, std::int64_t off) {
+                b(0xF2);
+                b(0x0F);
+                b(op);
+                sseMemModrm(0x55, 0x95, off);
+            }
+            void movsdXmm0FromRbp(std::int64_t off) {
+                sseLoadXmm0(0x10, off);
+            }
+            void movsdXmm0ToRbp(std::int64_t off) {
+                sseStoreXmm0(0x11, off);
+            }
+            void movsdXmm2FromRbp(std::int64_t off) {
+                sseLoadXmm2(0x10, off);
+            }
+            void movsdXmm2ToRbp(std::int64_t off) {
+                b(0xF2);
+                b(0x0F);
+                b(0x11);
+                sseMemModrm(0x55, 0x95, off);
+            }
+            void movsdXmm0FromRsp() {
+                b(0xF2);
+                b(0x0F);
+                b(0x10);
+                b(0x04);
+                b(0x24);
+            }
+            void movsdXmm0ToRsp() {
+                b(0xF2);
+                b(0x0F);
+                b(0x11);
+                b(0x04);
+                b(0x24);
+            }
+            void movsdXmm0Xmm1() { // movsd xmm0, xmm1
+                b(0xF2);
+                b(0x0F);
+                b(0x10);
+                b(0xC1);
+            }
+            void movsdXmm1Xmm0() { // movsd xmm1, xmm0
+                b(0xF2);
+                b(0x0F);
+                b(0x10);
+                b(0xC8);
+            }
+            void movsdXmm2Xmm0() { // movsd xmm2, xmm0
+                b(0xF2);
+                b(0x0F);
+                b(0x10);
+                b(0xD0);
+            }
+            void movsdXmm0Xmm2() { // movsd xmm0, xmm2
+                b(0xF2);
+                b(0x0F);
+                b(0x10);
+                b(0xC2);
+            }
+            // SSE arithmetic with a RIP-relative 8-byte constant operand.
+            void sseArithMem(std::uint8_t op, std::uint8_t modrm, const std::string& sym) {
+                b(0xF2);
+                b(0x0F);
+                b(op);
+                b(modrm);
+                rel(sym);
+            }
+            void mulsdXmm0Mem(const std::string& sym) {
+                sseArithMem(0x59, 0x05, sym); // mulsd xmm0, [rip+sym]
+            }
+            void divsdXmm0Mem(const std::string& sym) {
+                sseArithMem(0x5E, 0x05, sym); // divsd xmm0, [rip+sym]
+            }
+            void mulsdXmm2Mem(const std::string& sym) {
+                sseArithMem(0x59, 0x15, sym); // mulsd xmm2, [rip+sym]
+            }
+            void divsdXmm2Mem(const std::string& sym) {
+                sseArithMem(0x5E, 0x15, sym); // divsd xmm2, [rip+sym]
+            }
+            void sseArithXmm0Xmm1(std::uint8_t op) { // F2 0F op /r, xmm0 op= xmm1
+                b(0xF2);
+                b(0x0F);
+                b(op);
+                b(0xC1);
+            }
+            void subsdXmm0Xmm1() { // subsd xmm0, xmm1
+                b(0xF2);
+                b(0x0F);
+                b(0x5C);
+                b(0xC1);
+            }
+            void subsdXmm2Xmm0() { // subsd xmm2, xmm0
+                b(0xF2);
+                b(0x0F);
+                b(0x5C);
+                b(0xD0);
+            }
+            void addsdXmm0Xmm1() { // addsd xmm0, xmm1
+                b(0xF2);
+                b(0x0F);
+                b(0x58);
+                b(0xC1);
+            }
+            void addsdXmm0Xmm2() { // addsd xmm0, xmm2
+                b(0xF2);
+                b(0x0F);
+                b(0x58);
+                b(0xC2);
+            }
+            void addsdXmm2Xmm0() { // addsd xmm2, xmm0
+                b(0xF2);
+                b(0x0F);
+                b(0x58);
+                b(0xD0);
+            }
+            void divsdXmm1Xmm2() { // divsd xmm1, xmm2
+                b(0xF2);
+                b(0x0F);
+                b(0x5E);
+                b(0xCA);
+            }
+            void ucomisdXmm0Xmm1() { // ucomisd xmm0, xmm1
+                b(0x66);
+                b(0x0F);
+                b(0x2E);
+                b(0xC1);
+            }
+            void ucomisdXmm0Xmm2() { // ucomisd xmm0, xmm2
+                b(0x66);
+                b(0x0F);
+                b(0x2E);
+                b(0xC2);
+            }
+            void ucomisdXmm2Mem(const std::string& sym) {
+                b(0x66);
+                b(0x0F);
+                b(0x2E);
+                b(0x15);
+                rel(sym);
+            }
+            void cvtsi2sdXmm0Rax() { // cvtsi2sd xmm0, rax
+                b(0xF2);
+                b(0x48);
+                b(0x0F);
+                b(0x2A);
+                b(0xC0);
+            }
+            void cvtsi2sdXmm1Rax() { // cvtsi2sd xmm1, rax
+                b(0xF2);
+                b(0x48);
+                b(0x0F);
+                b(0x2A);
+                b(0xC8);
+            }
+            void cvtsi2sdXmm0FromRbp(std::int64_t off) {
+                b(0xF2);
+                b(0x48);
+                b(0x0F);
+                b(0x2A);
+                sseMemModrm(0x45, 0x85, off);
+            }
+            void cvtsi2sdXmm2FromRbp(std::int64_t off) {
+                b(0xF2);
+                b(0x48);
+                b(0x0F);
+                b(0x2A);
+                sseMemModrm(0x55, 0x95, off);
+            }
+            void cvttsd2siRaxXmm0() { // cvttsd2si rax, xmm0
+                b(0xF2);
+                b(0x48);
+                b(0x0F);
+                b(0x2C);
+                b(0xC0);
+            }
+            void cvttsd2siRaxXmm2() { // cvttsd2si rax, xmm2
+                b(0xF2);
+                b(0x48);
+                b(0x0F);
+                b(0x2C);
+                b(0xC2);
+            }
+            void movqXmm0Rax() { // movq xmm0, rax
+                b(0x66);
+                b(0x48);
+                b(0x0F);
+                b(0x6E);
+                b(0xC0);
+            }
+            void movqRaxXmm0() { // movq rax, xmm0
+                b(0x66);
+                b(0x48);
+                b(0x0F);
+                b(0x7E);
+                b(0xC0);
+            }
+            void xorpdXmm0Xmm0() { // xorpd xmm0, xmm0 (zero)
+                b(0x66);
+                b(0x0F);
+                b(0x57);
+                b(0xC0);
+            }
+            void xorpdXmm2Xmm2() {
+                b(0x66);
+                b(0x0F);
+                b(0x57);
+                b(0xD2);
+            }
+            void movDlFromRax() { // mov dl, al
+                b(0x88);
+                b(0xC2);
+            }
+            void incR10() {
+                b(0x49);
+                b(0xFF);
+                b(0xC2);
+            }
+            void incRdi() {
+                b(0x48);
+                b(0xFF);
+                b(0xC7);
+            }
+            void decR10() {
+                b(0x49);
+                b(0xFF);
+                b(0xCA);
+            }
+            void decR9() {
+                b(0x49);
+                b(0xFF);
+                b(0xC9);
+            }
+            void cmpR10Imm8(std::uint8_t v) {
+                b(0x49);
+                b(0x83);
+                b(0xFA);
+                b(v);
+            }
+            void cmpR9Imm8(std::uint8_t v) {
+                b(0x49);
+                b(0x83);
+                b(0xF9);
+                b(v);
+            }
+            void shrRaxImm8(std::uint8_t v) {
+                b(0x48);
+                b(0xC1);
+                b(0xE8);
+                b(v);
+            }
+            void andRaxImm32(std::uint32_t v) {
+                b(0x48);
+                b(0x25);
+                i32(v);
+            }
+            void cmpRaxImm32(std::uint32_t v) {
+                b(0x48);
+                b(0x3D);
+                i32(v);
+            }
+            void cmpRsiR11() {
+                b(0x4C);
+                b(0x39);
+                b(0xDE);
+            }
+            void xorRaxR11() {
+                b(0x4C);
+                b(0x31);
+                b(0xD8);
+            }
+            void andRaxR11() {
+                b(0x4C);
+                b(0x21);
+                b(0xD8);
+            }
+            void testRaxR11() {
+                b(0x4C);
+                b(0x85);
+                b(0xD8);
+            }
+            void movR8Rcx() { // mov r8, rcx
+                b(0x49);
+                b(0x89);
+                b(0xC8);
+            }
+            void movR8R10() { // mov r8, r10
+                b(0x4D);
+                b(0x89);
+                b(0xD0);
+            }
+            void movR8R9() { // mov r8, r9
+                b(0x4D);
+                b(0x89);
+                b(0xC8);
+            }
+            void movR8Rax() { // mov r8, rax
+                b(0x49);
+                b(0x89);
+                b(0xC0);
+            }
+            void movRaxR9() { // mov rax, r9
+                b(0x4C);
+                b(0x89);
+                b(0xC8);
+            }
+            void movRaxR10() { // mov rax, r10
+                b(0x4C);
+                b(0x89);
+                b(0xD0);
+            }
+            void movR10Rax() { // mov r10, rax
+                b(0x49);
+                b(0x89);
+                b(0xC2);
+            }
+            void subRaxR10() { // sub rax, r10
+                b(0x4C);
+                b(0x29);
+                b(0xD0);
+            }
+            void subRaxR9() { // sub rax, r9
+                b(0x4C);
+                b(0x29);
+                b(0xC8);
+            }
+            void cmpR10R9() { // cmp r10, r9
+                b(0x4D);
+                b(0x39);
+                b(0xCA);
+            }
+            void decRax() {
+                b(0x48);
+                b(0xFF);
+                b(0xC8);
+            }
+            void addAlImm8(std::uint8_t v) {
+                b(0x04);
+                b(v);
+            }
+            void storeAlRsi() { // mov [rsi], al
+                b(0x88);
+                b(0x06);
+            }
+            void storeAlRdi() { // mov [rdi], al
+                b(0x88);
+                b(0x07);
+            }
+            void storeByteRdiImm8(std::uint8_t v) {
+                b(0xC6);
+                b(0x07);
+                b(v);
+            }
+            void repStosb() {
+                b(0xF3);
+                b(0xAA);
+            }
+            void leaR11FromRbp(std::int64_t off) {
+                b(0x4C);
+                b(0x8D);
+                if (off >= -128 && off < 0) {
+                    b(0x5D);
+                    b(static_cast<std::uint8_t>(256 + off));
+                } else {
+                    b(0x9D);
+                    i32(static_cast<std::uint32_t>(off));
+                }
+            }
+            void movR11Rbp() { // mov r11, rbp
+                b(0x49);
+                b(0x89);
+                b(0xEB);
+            }
+            void subRaxR11() { // sub rax, r11
+                b(0x4C);
+                b(0x29);
+                b(0xD8);
+            }
+            void storeDlRdi() { // mov [rdi], dl
+                b(0x88);
+                b(0x17);
+            }
+            void xorpdXmm1Xmm1() {
+                b(0x66);
+                b(0x0F);
+                b(0x57);
+                b(0xC9);
+            }
+            void addsdXmm0Xmm0() { // addsd xmm0, xmm0
+                b(0xF2);
+                b(0x0F);
+                b(0x58);
+                b(0xC0);
+            }
+            void addsdXmm1Xmm2() { // addsd xmm1, xmm2
+                b(0xF2);
+                b(0x0F);
+                b(0x58);
+                b(0xCA);
+            }
+            void mulsdXmm1Mem(const std::string& sym) { // mulsd xmm1, [rip+sym]
+                b(0xF2);
+                b(0x0F);
+                b(0x59);
+                b(0x0D);
+                rel(sym);
+            }
+            void movsdXmm2FromRip(const std::string& sym) { // movsd xmm2, [rip+sym]
+                b(0xF2);
+                b(0x0F);
+                b(0x10);
+                b(0x15);
+                rel(sym);
+            }
+            void testR11d() { // test r11d, r11d
+                b(0x45);
+                b(0x85);
+                b(0xDB);
+            }
+            void imulR10Rcx() { // imul r10, rcx
+                b(0x4C);
+                b(0x0F);
+                b(0xAF);
+                b(0xD1);
+            }
+            void addR10Rax() { // add r10, rax
+                b(0x49);
+                b(0x01);
+                b(0xC2);
+            }
+            void cmpR10Imm32(std::uint32_t v) {
+                b(0x49);
+                b(0x81);
+                b(0xFA);
+                i32(v);
+            }
+
         private:
             void memToReg(std::uint8_t rex,
                           std::uint8_t op,
@@ -947,6 +1399,17 @@ namespace npp::native {
                     i32(static_cast<std::uint32_t>(off));
                 }
             }
+            // modrm+disp for xmm ops: [rbp+off] with the register field already
+            // baked into modrm8/modrm32 (same scheme as memToReg).
+            void sseMemModrm(std::uint8_t modrm8, std::uint8_t modrm32, std::int64_t off) {
+                if (off >= -128 && off < 0) {
+                    b(modrm8);
+                    b(static_cast<std::uint8_t>(256 + off));
+                } else {
+                    b(modrm32);
+                    i32(static_cast<std::uint32_t>(off));
+                }
+            }
 
             CodeImage& image_;
             std::size_t nextLabel_ = 0;
@@ -955,9 +1418,11 @@ namespace npp::native {
         // Condition codes (0F-prefixed setcc/jcc second byte).
         constexpr std::uint8_t CC_E = 0x94, CC_NE = 0x95, CC_L = 0x9C, CC_LE = 0x9E;
         constexpr std::uint8_t CC_G = 0x9F, CC_GE = 0x9D;
+        constexpr std::uint8_t CC_B = 0x92, CC_BE = 0x96, CC_A = 0x97, CC_AE = 0x93;
         constexpr std::uint8_t J_E = 0x84, J_NE = 0x85, J_NS = 0x89;
         constexpr std::uint8_t J_L = 0x8C, J_AE = 0x83, J_B = 0x82, J_G = 0x8F;
-        constexpr std::uint8_t J_A = 0x87, J_LE = 0x8E;
+        constexpr std::uint8_t J_A = 0x87, J_LE = 0x8E, J_PE = 0x8A;
+        constexpr std::uint8_t J_BE = 0x86, J_GE = 0x8D;
         constexpr std::uint32_t kArenaSize = 0x1000000; // 16 MiB bump arena for strings
 
     } // namespace detail

@@ -30,16 +30,16 @@ namespace npp::native {
                 detail::Kind k = detail::Kind::Void;
                 if (!detail::kindOfType(p.type, k) || k == detail::Kind::Void) {
                     reason = "parameter '" + p.name + "' of '" + f.name +
-                             "' has a type outside the builtin native v0 subset (only i64 and bool "
-                             "are supported)";
+                             "' has a type outside the builtin native v0 subset (only i64, bool, "
+                             "string, and f64 are supported)";
                     return false;
                 }
                 sig.params.push_back(k);
             }
             if (!detail::kindOfType(f.ret, sig.ret)) {
                 reason = "result type of '" + f.name +
-                         "' is outside the builtin native v0 subset (only i64, bool, and void are "
-                         "supported)";
+                         "' is outside the builtin native v0 subset (only i64, bool, string, f64, "
+                         "and void are supported)";
                 return false;
             }
             if (f.external) {

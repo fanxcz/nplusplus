@@ -9,7 +9,7 @@
 namespace npp::native {
     namespace detail {
 
-        enum class Kind { I64, Bool, Void, Str };
+        enum class Kind { I64, Bool, Void, Str, F64 };
 
         struct FnSig {
             std::vector<Kind> params;

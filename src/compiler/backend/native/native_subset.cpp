@@ -25,9 +25,9 @@ namespace npp::native {
                 const Kind a = checkExpr(c->args[0].get(), env, fns, reason);
                 if (!reason.empty())
                     return Kind::Void;
-                if (a != Kind::I64 && a != Kind::Bool && a != Kind::Str) {
+                if (a != Kind::I64 && a != Kind::Bool && a != Kind::Str && a != Kind::F64) {
                     reason = "print() of this type is outside the builtin native v0 subset "
-                             "(only i64, bool, and string literals are supported)";
+                             "(only i64, bool, string, and f64 literals are supported)";
                     return Kind::Void;
                 }
                 return Kind::Void;
@@ -185,6 +185,62 @@ namespace npp::native {
                     }
                     return Kind::I64;
                 }
+                if (c->callee == "str_f64") {
+                    if (c->args.size() != 1) {
+                        reason = "str_f64() takes exactly 1 argument (f64)";
+                        return Kind::Void;
+                    }
+                    const Kind a = checkExpr(c->args[0].get(), env, fns, reason);
+                    if (!reason.empty())
+                        return Kind::Void;
+                    if (a != Kind::F64) {
+                        reason = "str_f64() takes an f64 argument";
+                        return Kind::Void;
+                    }
+                    return Kind::Str;
+                }
+                if (c->callee == "input_f64") {
+                    if (c->args.size() != 1) {
+                        reason = "input_f64() takes exactly 1 argument (the prompt)";
+                        return Kind::Void;
+                    }
+                    const Kind a = checkExpr(c->args[0].get(), env, fns, reason);
+                    if (!reason.empty())
+                        return Kind::Void;
+                    if (a != Kind::Str) {
+                        reason = "input_f64() takes a string prompt";
+                        return Kind::Void;
+                    }
+                    return Kind::F64;
+                }
+                if (c->callee == "to_f64") {
+                    if (c->args.size() != 1) {
+                        reason = "to_f64() takes exactly 1 argument (i64)";
+                        return Kind::Void;
+                    }
+                    const Kind a = checkExpr(c->args[0].get(), env, fns, reason);
+                    if (!reason.empty())
+                        return Kind::Void;
+                    if (a != Kind::I64) {
+                        reason = "to_f64() takes an i64 argument";
+                        return Kind::Void;
+                    }
+                    return Kind::F64;
+                }
+                if (c->callee == "to_i64") {
+                    if (c->args.size() != 1) {
+                        reason = "to_i64() takes exactly 1 argument (f64)";
+                        return Kind::Void;
+                    }
+                    const Kind a = checkExpr(c->args[0].get(), env, fns, reason);
+                    if (!reason.empty())
+                        return Kind::Void;
+                    if (a != Kind::F64) {
+                        reason = "to_i64() takes an f64 argument";
+                        return Kind::Void;
+                    }
+                    return Kind::I64;
+                }
                 if (c->callee == "file_exists") {
                     if (c->args.size() != 1) {
                         reason = "file_exists() takes exactly 1 argument (path)";
@@ -221,6 +277,8 @@ namespace npp::native {
                 return Kind::Bool;
             if (dynamic_cast<const StringExpr*>(e))
                 return Kind::Str;
+            if (dynamic_cast<const FloatExpr*>(e))
+                return Kind::F64;
             if (const auto* v = dynamic_cast<const VarExpr*>(e)) {
                 const auto it = env.find(v->name);
                 if (it == env.end()) {
@@ -233,8 +291,8 @@ namespace npp::native {
                 const Kind t = checkExpr(u->rhs.get(), env, fns, reason);
                 if (!reason.empty())
                     return Kind::I64;
-                if (u->op == TokenKind::Minus && t == Kind::I64)
-                    return Kind::I64;
+                if (u->op == TokenKind::Minus && (t == Kind::I64 || t == Kind::F64))
+                    return t;
                 if (u->op == TokenKind::Bang && t == Kind::Bool)
                     return Kind::Bool;
                 reason = "this unary operator is outside the builtin native v0 subset";
@@ -251,12 +309,19 @@ namespace npp::native {
                 case TokenKind::Plus:
                     if (l == Kind::I64 && r == Kind::I64)
                         return Kind::I64;
+                    if (l == Kind::F64 && r == Kind::F64)
+                        return Kind::F64;
                     if (l == Kind::Str && r == Kind::Str)
                         return Kind::Str;
                     break;
                 case TokenKind::Minus:
                 case TokenKind::Star:
                 case TokenKind::Slash:
+                    if (l == Kind::I64 && r == Kind::I64)
+                        return Kind::I64;
+                    if (l == Kind::F64 && r == Kind::F64)
+                        return Kind::F64;
+                    break;
                 case TokenKind::Percent:
                     if (l == Kind::I64 && r == Kind::I64)
                         return Kind::I64;
@@ -271,14 +336,15 @@ namespace npp::native {
                     break;
                 case TokenKind::EqualEqual:
                 case TokenKind::BangEqual:
-                    if (l == r && (l == Kind::I64 || l == Kind::Bool || l == Kind::Str))
+                    if (l == r &&
+                        (l == Kind::I64 || l == Kind::Bool || l == Kind::Str || l == Kind::F64))
                         return Kind::Bool;
                     break;
                 case TokenKind::Less:
                 case TokenKind::LessEqual:
                 case TokenKind::Greater:
                 case TokenKind::GreaterEqual:
-                    if (l == Kind::I64 && r == Kind::I64)
+                    if ((l == Kind::I64 || l == Kind::F64) && l == r)
                         return Kind::Bool;
                     break;
                 case TokenKind::AndAnd:
@@ -295,7 +361,7 @@ namespace npp::native {
             if (const auto* c = dynamic_cast<const CallExpr*>(e))
                 return checkCall(c, env, fns, reason);
             reason = "this expression is outside the builtin native v0 subset "
-                     "(f64, strings in variables, arrays, structs, pointers, and match values need "
+                     "(arrays, structs, pointers, enums, slices, and match values need "
                      "--backend llvm)";
             return Kind::I64;
         }
@@ -347,10 +413,10 @@ namespace npp::native {
             if (const auto* l = dynamic_cast<const LetStmt*>(s)) {
                 Kind declared = Kind::Void;
                 if (!kindOfType(l->type, declared) || declared == Kind::Void) {
-                    reason =
-                        "variable '" + l->name +
-                        "' has a declared type outside the builtin native v0 subset "
-                        "(only i64, bool, and string locals are supported; use --backend llvm)";
+                    reason = "variable '" + l->name +
+                             "' has a declared type outside the builtin native v0 subset "
+                             "(only i64, bool, string, and f64 locals are supported; use --backend "
+                             "llvm)";
                     return;
                 }
                 const Kind actual = checkExpr(l->init.get(), env, fns, reason);
@@ -494,6 +560,10 @@ namespace npp::native {
             }
             if (t.kind == TypeKind::String) {
                 out = Kind::Str;
+                return true;
+            }
+            if (t.kind == TypeKind::F64) {
+                out = Kind::F64;
                 return true;
             }
             return false;

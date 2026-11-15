@@ -63,6 +63,12 @@ namespace npp::native {
             // Mirrors the checker's kind rules to select the right print helper.
             bool exprIsBool(const Expr* e);
 
+            bool exprIsF64(const Expr* e);
+
+            // Best-effort result kind of an expression, mirroring the subset
+            // checker. Used to pick xmm0 (f64) vs rax (everything else).
+            Kind exprKind(const Expr* e);
+
             Kind localKind(const std::string& name);
 
             void findLet(const Block* b, const std::string& name, Kind& found, bool& ok);
@@ -140,6 +146,22 @@ namespace npp::native {
 
             // __nx_file_exists: rcx = NUL-terminated path. Returns 0/1 in rax.
             void genFileExists();
+
+            // __nx_str_f64: xmm0 = value. Returns a fresh arena string in rax
+            // and its length in rdx. Shortest-round-trip is approximated by up
+            // to 15 significant digits with round-half-up, %g-style notation.
+            void genStrF64();
+
+            // __nx_print_f64: xmm0 = value. Prints the %g-style rendering + '\n'.
+            void genPrintF64();
+
+            // __nx_str_to_f64: rax = NUL-terminated string. Parses a decimal
+            // float; returns the value in xmm0 and validity in edx.
+            void genStrToF64();
+
+            // __nx_input_f64: rax = prompt. Prints it, reads a line and parses
+            // it as f64, re-prompting on invalid input. Returns xmm0.
+            void genInputF64();
 
             // Clean runtime failures for allocation and integer division.
             void genOom();
