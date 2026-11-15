@@ -3,8 +3,7 @@
 namespace npp {
     namespace driver {
 
-
-        int commandFmt(const fs::path& file, bool checkOnly ) {
+        int commandFmt(const fs::path& file, bool checkOnly) {
             const std::string src = readFile(file);
             const std::string formatted = formatNppSource(src);
             const bool touched = formatted != src;
@@ -21,7 +20,6 @@ namespace npp {
                           << file << '\n';
             return 0;
         }
-
 
         int commandFmtAll(bool checkOnly) {
             const auto cfg = loadProject();

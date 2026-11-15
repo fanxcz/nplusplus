@@ -8,7 +8,6 @@
 namespace npp {
     namespace driver {
 
-
         int commandLsp() {
             using lsp::byteOffsetForUtf16;
             using lsp::collectDiagnostics;
@@ -228,16 +227,26 @@ namespace npp {
                     const auto describeIndexedType = [&](const auto& self,
                                                          const Type& type) -> std::string {
                         switch (type.kind) {
-                        case TypeKind::I8: return "i8";
-                        case TypeKind::I16: return "i16";
-                        case TypeKind::I32: return "i32";
-                        case TypeKind::I64: return "i64";
-                        case TypeKind::U8: return "u8";
-                        case TypeKind::U16: return "u16";
-                        case TypeKind::U32: return "u32";
-                        case TypeKind::U64: return "u64";
-                        case TypeKind::F32: return "f32";
-                        case TypeKind::F64: return "f64";
+                        case TypeKind::I8:
+                            return "i8";
+                        case TypeKind::I16:
+                            return "i16";
+                        case TypeKind::I32:
+                            return "i32";
+                        case TypeKind::I64:
+                            return "i64";
+                        case TypeKind::U8:
+                            return "u8";
+                        case TypeKind::U16:
+                            return "u16";
+                        case TypeKind::U32:
+                            return "u32";
+                        case TypeKind::U64:
+                            return "u64";
+                        case TypeKind::F32:
+                            return "f32";
+                        case TypeKind::F64:
+                            return "f64";
                         case TypeKind::Bool:
                             return "bool";
                         case TypeKind::String:
@@ -893,16 +902,26 @@ namespace npp {
 
                 const auto describeType = [&](const auto& self, const Type& type) -> std::string {
                     switch (type.kind) {
-                    case TypeKind::I8: return "i8";
-                    case TypeKind::I16: return "i16";
-                    case TypeKind::I32: return "i32";
-                    case TypeKind::I64: return "i64";
-                    case TypeKind::U8: return "u8";
-                    case TypeKind::U16: return "u16";
-                    case TypeKind::U32: return "u32";
-                    case TypeKind::U64: return "u64";
-                    case TypeKind::F32: return "f32";
-                    case TypeKind::F64: return "f64";
+                    case TypeKind::I8:
+                        return "i8";
+                    case TypeKind::I16:
+                        return "i16";
+                    case TypeKind::I32:
+                        return "i32";
+                    case TypeKind::I64:
+                        return "i64";
+                    case TypeKind::U8:
+                        return "u8";
+                    case TypeKind::U16:
+                        return "u16";
+                    case TypeKind::U32:
+                        return "u32";
+                    case TypeKind::U64:
+                        return "u64";
+                    case TypeKind::F32:
+                        return "f32";
+                    case TypeKind::F64:
+                        return "f64";
                     case TypeKind::Bool:
                         return "bool";
                     case TypeKind::String:
@@ -1308,16 +1327,26 @@ namespace npp {
                                 const auto describeType = [&](const auto& self,
                                                               const Type& type) -> std::string {
                                     switch (type.kind) {
-                                    case TypeKind::I8: return "i8";
-                                    case TypeKind::I16: return "i16";
-                                    case TypeKind::I32: return "i32";
-                                    case TypeKind::I64: return "i64";
-                                    case TypeKind::U8: return "u8";
-                                    case TypeKind::U16: return "u16";
-                                    case TypeKind::U32: return "u32";
-                                    case TypeKind::U64: return "u64";
-                                    case TypeKind::F32: return "f32";
-                                    case TypeKind::F64: return "f64";
+                                    case TypeKind::I8:
+                                        return "i8";
+                                    case TypeKind::I16:
+                                        return "i16";
+                                    case TypeKind::I32:
+                                        return "i32";
+                                    case TypeKind::I64:
+                                        return "i64";
+                                    case TypeKind::U8:
+                                        return "u8";
+                                    case TypeKind::U16:
+                                        return "u16";
+                                    case TypeKind::U32:
+                                        return "u32";
+                                    case TypeKind::U64:
+                                        return "u64";
+                                    case TypeKind::F32:
+                                        return "f32";
+                                    case TypeKind::F64:
+                                        return "f64";
                                     case TypeKind::Bool:
                                         return "bool";
                                     case TypeKind::String:
@@ -1432,16 +1461,26 @@ namespace npp {
                                 const auto describeWorkspaceHoverType =
                                     [&](const auto& self, const Type& type) -> std::string {
                                     switch (type.kind) {
-                                    case TypeKind::I8: return "i8";
-                                    case TypeKind::I16: return "i16";
-                                    case TypeKind::I32: return "i32";
-                                    case TypeKind::I64: return "i64";
-                                    case TypeKind::U8: return "u8";
-                                    case TypeKind::U16: return "u16";
-                                    case TypeKind::U32: return "u32";
-                                    case TypeKind::U64: return "u64";
-                                    case TypeKind::F32: return "f32";
-                                    case TypeKind::F64: return "f64";
+                                    case TypeKind::I8:
+                                        return "i8";
+                                    case TypeKind::I16:
+                                        return "i16";
+                                    case TypeKind::I32:
+                                        return "i32";
+                                    case TypeKind::I64:
+                                        return "i64";
+                                    case TypeKind::U8:
+                                        return "u8";
+                                    case TypeKind::U16:
+                                        return "u16";
+                                    case TypeKind::U32:
+                                        return "u32";
+                                    case TypeKind::U64:
+                                        return "u64";
+                                    case TypeKind::F32:
+                                        return "f32";
+                                    case TypeKind::F64:
+                                        return "f64";
                                     case TypeKind::Bool:
                                         return "bool";
                                     case TypeKind::String:
@@ -1525,7 +1564,8 @@ namespace npp {
                                                 description << "\n\nVariants:";
                                                 for (const auto& variant : declaration.variants)
                                                     description << "\n- " << static_cast<char>(96)
-                                                                << variant.name << static_cast<char>(96);
+                                                                << variant.name
+                                                                << static_cast<char>(96);
                                             }
                                             markdown = description.str();
                                             break;
@@ -1654,7 +1694,8 @@ namespace npp {
                                     if (declaration.name != enumName)
                                         continue;
                                     for (const auto& variant : declaration.variants) {
-                                        const std::string label = declaration.name + "::" + variant.name;
+                                        const std::string label =
+                                            declaration.name + "::" + variant.name;
                                         if (prefix.empty() ||
                                             label.rfind(enumName + "::" + prefix, 0) == 0)
                                             choices.emplace_back(label, "Variant of " + enumName);
@@ -1935,7 +1976,6 @@ namespace npp {
                             const std::size_t requestedEndCharacter =
                                 nestedNumber(endPos, "character");
 
-
                             const std::string& source = doc->second;
                             const std::string formatted = formatNppSource(source);
                             const auto sourceLines = splitLines(source);
@@ -1953,7 +1993,6 @@ namespace npp {
                                 std::size_t lastLine = requestedEndLine;
                                 if (lastLine > firstLine && requestedEndCharacter == 0)
                                     --lastLine;
-
 
                                 const std::string oldText =
                                     joinRange(sourceLines, firstLine, lastLine);

@@ -3,7 +3,6 @@
 namespace npp {
     namespace driver {
 
-
         fs::path runtimeSource() {
             if (const char* env = std::getenv("NPP_RUNTIME_DIR")) {
                 fs::path candidate = fs::path(env) / "runtime.cpp";
@@ -28,8 +27,7 @@ namespace npp {
             if (!gExecutable.empty()) {
                 const fs::path bin = fs::weakly_canonical(gExecutable).parent_path();
                 const std::vector<fs::path> candidates = {bin / "../runtime/runtime.cpp",
-                                                          bin /
-                                                              "../share/npp/runtime/runtime.cpp",
+                                                          bin / "../share/npp/runtime/runtime.cpp",
                                                           bin / "runtime/runtime.cpp",
                                                           bin / "../../runtime/runtime.cpp",
                                                           bin / "../runtime/runtime.c"};
@@ -46,7 +44,6 @@ namespace npp {
                 "N++ runtime not found; set NPP_RUNTIME_DIR or install the runtime files");
         }
 
-
         // Directory that holds the optional SDL runtime DLLs. Unlike runtime.cpp,
         // the DLLs are only present in packaged/installed layouts.
         fs::path runtimeLibraryDir() {
@@ -56,11 +53,9 @@ namespace npp {
 #ifdef NPP_INSTALL_RUNTIME_DIR
             // Installed layouts keep the SDL DLLs in <prefix>/runtime while the
             // compiler sources live in <prefix>/share/npp/runtime.
-            candidates.push_back(fs::path(NPP_INSTALL_RUNTIME_DIR)
-                                     .parent_path()
-                                     .parent_path()
-                                     .parent_path() /
-                                 "runtime");
+            candidates.push_back(
+                fs::path(NPP_INSTALL_RUNTIME_DIR).parent_path().parent_path().parent_path() /
+                "runtime");
 #endif
             if (!gExecutable.empty()) {
                 const fs::path bin = fs::weakly_canonical(gExecutable).parent_path();
@@ -80,15 +75,14 @@ namespace npp {
             return {};
         }
 
-
         // Copy the SDL DLLs next to a freshly built executable so double-clicking
         // it works without editing PATH. No-op when no SDL runtime is installed.
         void deployRuntimeLibraries(const fs::path& output) {
             const fs::path source = runtimeLibraryDir();
             if (source.empty())
                 return;
-            const fs::path destination = output.parent_path().empty() ? fs::path(".")
-                                                                      : output.parent_path();
+            const fs::path destination =
+                output.parent_path().empty() ? fs::path(".") : output.parent_path();
             for (const char* name :
                  {"SDL2.dll", "SDL2_image.dll", "SDL2_mixer.dll", "SDL2_ttf.dll"}) {
                 std::error_code ec;

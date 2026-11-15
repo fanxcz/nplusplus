@@ -30,8 +30,7 @@ namespace npp {
 
             const auto marker = raw.rfind(" at ");
             if (marker != std::string::npos) {
-                const std::string_view location(raw.data() + marker + 4,
-                                                raw.size() - marker - 4);
+                const std::string_view location(raw.data() + marker + 4, raw.size() - marker - 4);
                 const auto parseNumber = [](std::string_view value, std::size_t& result) {
                     if (value.empty())
                         return false;
@@ -62,21 +61,20 @@ namespace npp {
                 const auto columnText =
                     columnSeparator == std::string_view::npos
                         ? std::string_view{}
-                        : location.substr(columnSeparator + 1,
-                                          columnEnd - columnSeparator - 1);
+                        : location.substr(columnSeparator + 1, columnEnd - columnSeparator - 1);
                 bool parsed = false;
 
                 if (lineSeparator != std::string_view::npos &&
-                    parseNumber(location.substr(lineSeparator + 1,
-                                                columnSeparator - lineSeparator - 1), line) &&
+                    parseNumber(
+                        location.substr(lineSeparator + 1, columnSeparator - lineSeparator - 1),
+                        line) &&
                     parseNumber(columnText, column)) {
                     sourcePath.assign(location.substr(0, lineSeparator));
                     parsed = !sourcePath.empty();
                 } else if (columnSeparator != std::string_view::npos &&
                            location.find(':') == columnSeparator &&
                            parseNumber(location.substr(0, columnSeparator), line) &&
-                           parseNumber(columnText, column) &&
-                           !gDiagnosticSource.empty()) {
+                           parseNumber(columnText, column) && !gDiagnosticSource.empty()) {
                     sourcePath = gDiagnosticSource.generic_string();
                     parsed = true;
                 }

@@ -3,8 +3,6 @@
 namespace npp {
     namespace driver {
 
-
-
         int commandRepl() {
             std::cout << "N++ " << kVersion << " interactive shell\n"
                       << "Enter an expression to evaluate it. Use let x = 10 to keep a value.\n"
@@ -69,8 +67,8 @@ namespace npp {
                         result = std::numeric_limits<long long>::min();
                         return true;
                     }
-                    if (literal->value > static_cast<std::uint64_t>(
-                                             std::numeric_limits<long long>::max()))
+                    if (literal->value >
+                        static_cast<std::uint64_t>(std::numeric_limits<long long>::max()))
                         return false;
                     result = static_cast<long long>(literal->value);
                     return true;
@@ -452,16 +450,43 @@ namespace npp {
             std::string pending;
             std::string inputLine;
             const auto buildReplCompletionCandidates = [&]() {
-                std::vector<std::string> candidates = {
-                    "fn",          "let",        "const",       "mut",          "if",
-                    "else",        "while",       "for",         "match",        "return",
-                    "struct",      "enum",        "true",        "false",        "print",
-                    "input",       "input_i64",   "random_i64",  "str_i64",      "file_read",
-                    "file_write",  "json_valid",  "json_get",    "json_type",    "json_array_len",
-                    "json_array_get", "json_is_valid", "json_field", "json_value_type",
-                    "json_array_length", "json_array_item",
-                    "file_exists", "env",         "sleep",       "gfx_window",   "gfx_clear",
-                    "gfx_present"};
+                std::vector<std::string> candidates = {"fn",
+                                                       "let",
+                                                       "const",
+                                                       "mut",
+                                                       "if",
+                                                       "else",
+                                                       "while",
+                                                       "for",
+                                                       "match",
+                                                       "return",
+                                                       "struct",
+                                                       "enum",
+                                                       "true",
+                                                       "false",
+                                                       "print",
+                                                       "input",
+                                                       "input_i64",
+                                                       "random_i64",
+                                                       "str_i64",
+                                                       "file_read",
+                                                       "file_write",
+                                                       "json_valid",
+                                                       "json_get",
+                                                       "json_type",
+                                                       "json_array_len",
+                                                       "json_array_get",
+                                                       "json_is_valid",
+                                                       "json_field",
+                                                       "json_value_type",
+                                                       "json_array_length",
+                                                       "json_array_item",
+                                                       "file_exists",
+                                                       "env",
+                                                       "sleep",
+                                                       "gfx_window",
+                                                       "gfx_clear",
+                                                       "gfx_present"};
                 candidates.insert(candidates.end(), variableNames.begin(), variableNames.end());
                 for (const auto& declaration : declarations) {
                     try {
@@ -478,7 +503,8 @@ namespace npp {
                     }
                 }
                 std::sort(candidates.begin(), candidates.end());
-                candidates.erase(std::unique(candidates.begin(), candidates.end()), candidates.end());
+                candidates.erase(std::unique(candidates.begin(), candidates.end()),
+                                 candidates.end());
                 return candidates;
             };
             for (;;) {

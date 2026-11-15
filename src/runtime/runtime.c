@@ -61,7 +61,9 @@ void npp_slice_bounds_check(int64_t start, int64_t end, int64_t length) {
     if (start < 0 || end < start || end > length) {
         fprintf(stderr,
                 "N++ runtime error: invalid slice range [%lld..%lld] for length %lld\n",
-                (long long)start, (long long)end, (long long)length);
+                (long long)start,
+                (long long)end,
+                (long long)length);
         exit(1);
     }
 }
@@ -76,8 +78,7 @@ int64_t npp_division_check(int64_t dividend, int64_t divisor) {
     }
     return divisor;
 }
-int64_t npp_division_check_typed(
-    int64_t dividend, int64_t divisor, int64_t bits, bool is_signed) {
+int64_t npp_division_check_typed(int64_t dividend, int64_t divisor, int64_t bits, bool is_signed) {
     if (divisor == 0) {
         fprintf(stderr, "N++ runtime error: division by zero\n");
         exit(1);
@@ -226,8 +227,8 @@ static uint64_t nx_runtime_random_u64(void) {
     // SplitMix64, used only for non-security-sensitive random values.
     const uint64_t increment = UINT64_C(0x9E3779B97F4A7C15);
     if (!nx_random_seeded) {
-        nx_random_state = ((uint64_t)time(NULL) << 32) ^
-                          (uint64_t)(uintptr_t)&nx_random_state ^ increment;
+        nx_random_state =
+            ((uint64_t)time(NULL) << 32) ^ (uint64_t)(uintptr_t)&nx_random_state ^ increment;
         if (nx_random_state == 0)
             nx_random_state = increment;
         nx_random_seeded = 1;

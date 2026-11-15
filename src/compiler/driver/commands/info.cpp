@@ -3,7 +3,6 @@
 namespace npp {
     namespace driver {
 
-
         int commandInfo() {
 
             const auto cfg = loadProject();
@@ -20,7 +19,6 @@ namespace npp {
 
             return 0;
         }
-
 
         int commandAssets() {
 
@@ -57,7 +55,6 @@ namespace npp {
 
             return 0;
         }
-
 
         int commandClean() {
 

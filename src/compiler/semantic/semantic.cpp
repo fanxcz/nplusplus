@@ -111,7 +111,8 @@ namespace npp {
         if (type.kind == TypeKind::Pointer && type.pointee)
             normalize(*type.pointee);
         if ((type.kind == TypeKind::Array || type.kind == TypeKind::Slice ||
-             type.kind == TypeKind::MutableSlice) && type.element)
+             type.kind == TypeKind::MutableSlice) &&
+            type.element)
             normalize(*type.element);
     }
     void SemanticAnalyzer::analyze(Program& p) {
@@ -207,13 +208,13 @@ namespace npp {
                 validateType(*t.pointee, false);
             }
             if ((t.kind == TypeKind::Array || t.kind == TypeKind::Slice ||
-                 t.kind == TypeKind::MutableSlice) && t.element) {
+                 t.kind == TypeKind::MutableSlice) &&
+                t.element) {
                 validateType(*t.element, false);
             }
         };
 
-        const auto validateTypeAt = [&](const Type& type, const SourceSpan& span,
-                                        bool allowVoid) {
+        const auto validateTypeAt = [&](const Type& type, const SourceSpan& span, bool allowVoid) {
             try {
                 validateType(type, allowVoid);
             } catch (const std::exception& error) {
@@ -228,9 +229,10 @@ namespace npp {
                 normalize(*variant.payload);
                 validateTypeAt(*variant.payload, variant.span.valid ? variant.span : e.span, false);
                 const auto kind = variant.payload->kind;
-                if (!isNumericType(kind) && kind != TypeKind::Bool &&
-                    kind != TypeKind::String && kind != TypeKind::Pointer) {
-                    report("enum payloads currently support numeric, bool, string, or pointer types; got '" +
+                if (!isNumericType(kind) && kind != TypeKind::Bool && kind != TypeKind::String &&
+                    kind != TypeKind::Pointer) {
+                    report("enum payloads currently support numeric, bool, string, or pointer "
+                           "types; got '" +
                                describeType(*variant.payload) + "'",
                            variant.span.valid ? variant.span : e.span);
                 }
@@ -271,12 +273,12 @@ namespace npp {
                 for (std::size_t index = 0; index < f.params.size(); ++index) {
                     const auto& parameter = f.params[index];
                     currentFunctionParameterIndices_[parameter.name] = index;
-                    const auto origin = typeMayContainPointer(parameter.type)
-                                            ? std::optional<BorrowOrigin>(
-                                                  BorrowOrigin{0, parameter.name})
-                                            : std::nullopt;
-                    env[parameter.name] = {parameter.type, true, 1, origin, nullptr,
-                                           std::nullopt, false};
+                    const auto origin =
+                        typeMayContainPointer(parameter.type)
+                            ? std::optional<BorrowOrigin>(BorrowOrigin{0, parameter.name})
+                            : std::nullopt;
+                    env[parameter.name] = {
+                        parameter.type, true, 1, origin, nullptr, std::nullopt, false};
                 }
 
                 auto savedDiagnostics = std::move(diagnostics_);
@@ -326,12 +328,11 @@ namespace npp {
                 for (std::size_t index = 0; index < f.params.size(); ++index) {
                     const auto& parameter = f.params[index];
                     currentFunctionParameterIndices_[parameter.name] = index;
-                    const auto managedParameter =
-                        parameter.type.kind == TypeKind::I64
-                            ? std::optional<std::size_t>(index)
-                            : std::nullopt;
-                    env[parameter.name] = {parameter.type, true, 1, std::nullopt, nullptr,
-                                           managedParameter, false};
+                    const auto managedParameter = parameter.type.kind == TypeKind::I64
+                                                      ? std::optional<std::size_t>(index)
+                                                      : std::nullopt;
+                    env[parameter.name] = {
+                        parameter.type, true, 1, std::nullopt, nullptr, managedParameter, false};
                 }
 
                 auto savedDiagnostics = std::move(diagnostics_);
@@ -351,8 +352,7 @@ namespace npp {
                         }
                     }
                 };
-                appendUnique(returnedManagedParams_[f.name],
-                             currentFunctionReturnManagedParams_);
+                appendUnique(returnedManagedParams_[f.name], currentFunctionReturnManagedParams_);
                 appendUnique(freedManagedParams_[f.name], currentFunctionFreedManagedParams_);
                 appendUnique(usedManagedParams_[f.name], currentFunctionUsedManagedParams_);
                 if (currentFunctionReturnManagedFresh_ && !returnedManagedFresh_[f.name]) {
@@ -390,12 +390,11 @@ namespace npp {
                 for (std::size_t index = 0; index < f.params.size(); ++index) {
                     const auto& parameter = f.params[index];
                     currentFunctionParameterIndices_[parameter.name] = index;
-                    const auto managedParameter =
-                        parameter.type.kind == TypeKind::I64
-                            ? std::optional<std::size_t>(index)
-                            : std::nullopt;
-                    env[parameter.name] = {parameter.type, true, 1, std::nullopt, nullptr,
-                                           managedParameter, false};
+                    const auto managedParameter = parameter.type.kind == TypeKind::I64
+                                                      ? std::optional<std::size_t>(index)
+                                                      : std::nullopt;
+                    env[parameter.name] = {
+                        parameter.type, true, 1, std::nullopt, nullptr, managedParameter, false};
                 }
 
                 auto savedDiagnostics = std::move(diagnostics_);
@@ -438,13 +437,15 @@ namespace npp {
                 }
                 currentFunctionParameterIndices_[a.name] = index;
                 const auto origin = typeMayContainPointer(a.type)
-                                        ? std::optional<BorrowOrigin>(
-                                              BorrowOrigin{0, a.name})
+                                        ? std::optional<BorrowOrigin>(BorrowOrigin{0, a.name})
                                         : std::nullopt;
-                env[a.name] = {a.type, true, 1, origin, nullptr,
-                               a.type.kind == TypeKind::I64
-                                   ? std::optional<std::size_t>(index)
-                                   : std::nullopt,
+                env[a.name] = {a.type,
+                               true,
+                               1,
+                               origin,
+                               nullptr,
+                               a.type.kind == TypeKind::I64 ? std::optional<std::size_t>(index)
+                                                            : std::nullopt,
                                false};
             }
             if (f.body) {
@@ -461,13 +462,11 @@ namespace npp {
             }
             if (typeContainsSlice(f.ret) && f.ret.kind != TypeKind::Slice &&
                 f.ret.kind != TypeKind::MutableSlice) {
-                diagnostics_.push_back(
-                    "nested slice return types are not yet supported: " + f.name +
-                    sourceLocation(f.span));
+                diagnostics_.push_back("nested slice return types are not yet supported: " +
+                                       f.name + sourceLocation(f.span));
             }
             for (const auto& parameter : f.params) {
-                if (typeContainsSlice(parameter.type) &&
-                    parameter.type.kind != TypeKind::Slice &&
+                if (typeContainsSlice(parameter.type) && parameter.type.kind != TypeKind::Slice &&
                     parameter.type.kind != TypeKind::MutableSlice) {
                     diagnostics_.push_back(
                         "nested slice parameter types are not yet supported: " + f.name +

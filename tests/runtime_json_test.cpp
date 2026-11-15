@@ -39,7 +39,7 @@ namespace {
                      expected);
         ++failures;
     }
-}
+} // namespace
 
 int main() {
     const char* json = R"json({
@@ -87,12 +87,10 @@ int main() {
                  "42");
     expectString("string escapes are decoded", npp_json_get(json, "quoted"), "a \"key\": b");
     expectString("newline escape is decoded", npp_json_get(json, "escaped"), "line\nnext");
-    expectString("UTF-16 surrogate pair becomes UTF-8",
-                 npp_json_get(json, "unicode"),
-                 "\xF0\x9F\x99\x82");
-    expectString("escaped object key is decoded",
-                 npp_json_get(R"json({"a\"b":7})json", "a\"b"),
-                 "7");
+    expectString(
+        "UTF-16 surrogate pair becomes UTF-8", npp_json_get(json, "unicode"), "\xF0\x9F\x99\x82");
+    expectString(
+        "escaped object key is decoded", npp_json_get(R"json({"a\"b":7})json", "a\"b"), "7");
     expectString("booleans retain JSON text", npp_json_get(json, "active"), "true");
     expectString("null retains JSON text", npp_json_get(json, "nothing"), "null");
     expectString("compound value returns its JSON source",

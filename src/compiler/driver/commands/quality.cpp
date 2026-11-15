@@ -3,7 +3,6 @@
 namespace npp {
     namespace driver {
 
-
         int commandSelfTest() {
             const auto stamp = std::chrono::steady_clock::now().time_since_epoch().count();
             const fs::path scratch =
@@ -44,7 +43,6 @@ namespace npp {
                 throw;
             }
         }
-
 
         int commandLint(const fs::path& file) {
 
@@ -90,7 +88,6 @@ namespace npp {
 
             return 0;
         }
-
 
         int commandDoc() {
 
@@ -138,7 +135,6 @@ namespace npp {
             return 0;
         }
 
-
         int commandBench(const fs::path& file, int runs) {
 
             const auto out = fs::temp_directory_path() / (file.stem().string() + ".npp-bench");
@@ -176,7 +172,6 @@ namespace npp {
 
             return 0;
         }
-
 
         int commandTest() {
 

@@ -363,9 +363,9 @@ namespace npp {
                     // An explicit source file runs from the directory the command
                     // was invoked in; `npp run` without a file runs from the
                     // project root so relative assets keep resolving there.
-                    const fs::path root =
-                        input.empty() ? (hasProject ? cfg.root : fs::current_path())
-                                      : fs::current_path();
+                    const fs::path root = input.empty()
+                                              ? (hasProject ? cfg.root : fs::current_path())
+                                              : fs::current_path();
                     return launchExecutable(out, root);
                 }
                 std::cout << "build: OK -> " << out << "\n";

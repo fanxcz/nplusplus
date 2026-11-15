@@ -66,8 +66,7 @@ int main() {
                 !p.functions[0].params[0].type.element ||
                 p.functions[0].params[0].type.element->kind != npp::TypeKind::I32 ||
                 p.functions[0].ret.kind != npp::TypeKind::Slice ||
-                !npp::sameType(p.functions[0].params[0].type,
-                                 npp::Type::slice(npp::Type::i32()))) {
+                !npp::sameType(p.functions[0].params[0].type, npp::Type::slice(npp::Type::i32()))) {
                 std::cerr << "slice type parsing or equality failed\n";
                 return 74;
             }
@@ -857,8 +856,7 @@ int main() {
                 npp::native::buildExecutable(p, npp::native::NativeTarget::WindowsX64);
             if (image.size() < 64 || image[0] != 'M' || image[1] != 'Z')
                 return 9;
-            const auto elf =
-                npp::native::buildExecutable(p, npp::native::NativeTarget::LinuxX64);
+            const auto elf = npp::native::buildExecutable(p, npp::native::NativeTarget::LinuxX64);
             if (elf.size() < 64 || elf[0] != 0x7F || elf[1] != 'E' || elf[2] != 'L' ||
                 elf[3] != 'F')
                 return 9;
@@ -1009,9 +1007,8 @@ int main() {
                 (void)invalid;
             } catch (const std::exception& error) {
                 const std::string message = error.what();
-                reportedMultiple =
-                    message.find("N++ found 2 syntax errors") != std::string::npos &&
-                    message.find("expected identifier") != std::string::npos;
+                reportedMultiple = message.find("N++ found 2 syntax errors") != std::string::npos &&
+                                   message.find("expected identifier") != std::string::npos;
             }
             if (!reportedMultiple) {
                 std::cerr << "parser multi-error recovery regression\n";

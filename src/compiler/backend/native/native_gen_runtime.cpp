@@ -5,8 +5,7 @@
 namespace npp::native {
     namespace detail {
 
-
-            // __nx_write: rcx = pointer, rdx = length. Writes to stdout.
+        // __nx_write: rcx = pointer, rdx = length. Writes to stdout.
         void Generator::genWrite() {
             out_.def("__nx_write");
             if (target_ == NativeTarget::WindowsX64) {
@@ -47,7 +46,7 @@ namespace npp::native {
             }
         }
 
-            // __nx_print_i64: rax = value. Prints decimal + newline.
+        // __nx_print_i64: rax = value. Prints decimal + newline.
         void Generator::genPrintI64() {
             out_.def("__nx_print_i64");
             out_.pushRbp();
@@ -89,7 +88,7 @@ namespace npp::native {
             out_.ret();
         }
 
-            // __nx_print_bool: rax = 0/1. Prints "true"/"false" + newline.
+        // __nx_print_bool: rax = 0/1. Prints "true"/"false" + newline.
         void Generator::genPrintBool() {
             const std::size_t t = internString("true\n");
             const std::size_t f = internString("false\n");
@@ -113,7 +112,7 @@ namespace npp::native {
             out_.ret();
         }
 
-            // __nx_write_cstr: rax = NUL-terminated string. Writes it + newline.
+        // __nx_write_cstr: rax = NUL-terminated string. Writes it + newline.
         void Generator::genWriteCstr() {
             const std::size_t nl = internString("\n");
             out_.def("__nx_write_cstr");
@@ -141,9 +140,9 @@ namespace npp::native {
             out_.ret();
         }
 
-            // __nx_str_eq: rcx = a, rdx = b (NUL-terminated). Returns 0/1 in rax.
-            // Implemented with repne/repe string instructions over strlen(a)+1 bytes
-            // (the trailing NUL decides prefix cases correctly).
+        // __nx_str_eq: rcx = a, rdx = b (NUL-terminated). Returns 0/1 in rax.
+        // Implemented with repne/repe string instructions over strlen(a)+1 bytes
+        // (the trailing NUL decides prefix cases correctly).
         void Generator::genStrEq() {
             out_.def("__nx_str_eq");
             out_.pushRbp();
@@ -169,7 +168,7 @@ namespace npp::native {
             out_.ret();
         }
 
-            // __nx_string_len: rax = NUL-terminated string. Returns byte length in rax.
+        // __nx_string_len: rax = NUL-terminated string. Returns byte length in rax.
         void Generator::genStringLen() {
             out_.def("__nx_string_len");
             out_.pushRbp();
@@ -190,8 +189,8 @@ namespace npp::native {
             out_.ret();
         }
 
-            // __nx_string_byte_at: rax = string, rcx = index. Returns byte (0-255) in rax, or -1 if
-            // out of bounds.
+        // __nx_string_byte_at: rax = string, rcx = index. Returns byte (0-255) in rax, or -1 if
+        // out of bounds.
         void Generator::genStringByteAt() {
             out_.def("__nx_string_byte_at");
             out_.pushRbp();
@@ -233,7 +232,7 @@ namespace npp::native {
             out_.ret();
         }
 
-            // __nx_str_cat: rcx = a, rdx = b. Returns a fresh arena string in rax.
+        // __nx_str_cat: rcx = a, rdx = b. Returns a fresh arena string in rax.
         void Generator::genStrCat() {
             out_.def("__nx_str_cat");
             out_.pushRbp();
@@ -294,7 +293,7 @@ namespace npp::native {
             out_.jmp("__nx_oom");
         }
 
-            // __nx_str_i64: rax = value. Returns a fresh arena string in rax.
+        // __nx_str_i64: rax = value. Returns a fresh arena string in rax.
         void Generator::genStrI64() {
             out_.def("__nx_str_i64");
             out_.pushRbp();
@@ -349,8 +348,8 @@ namespace npp::native {
             out_.jmp("__nx_oom");
         }
 
-            // __nx_input: rax = prompt (NUL-terminated). Prints it, reads one line
-            // from stdin, and returns a fresh arena string without the newline.
+        // __nx_input: rax = prompt (NUL-terminated). Prints it, reads one line
+        // from stdin, and returns a fresh arena string without the newline.
         void Generator::genInput() {
             out_.def("__nx_input");
             out_.pushRbp();
@@ -455,7 +454,7 @@ namespace npp::native {
             out_.jmp("__nx_oom");
         }
 
-            // __nx_oom: clean out-of-string-memory failure (stderr + exit 1).
+        // __nx_oom: clean out-of-string-memory failure (stderr + exit 1).
         void Generator::genOom() {
             const std::size_t m = internString("N++ runtime error: out of string memory\n");
             out_.def("__nx_oom");

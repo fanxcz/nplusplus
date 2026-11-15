@@ -26,7 +26,6 @@ namespace npp {
             return {};
         }
 
-
         std::string encodeReplHistoryEntry(const std::string& entry) {
             std::string out;
             for (char ch : entry) {
@@ -47,7 +46,6 @@ namespace npp {
             }
             return out;
         }
-
 
         std::string decodeReplHistoryEntry(const std::string& encoded) {
             std::string out;
@@ -71,7 +69,6 @@ namespace npp {
             return out;
         }
 
-
         std::vector<std::string> loadReplHistory(const fs::path& path) {
             std::vector<std::string> entries;
             if (path.empty())
@@ -86,7 +83,6 @@ namespace npp {
             }
             return entries;
         }
-
 
         bool saveReplHistory(const fs::path& path, const std::vector<std::string>& entries) {
             if (path.empty())

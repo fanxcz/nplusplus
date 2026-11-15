@@ -179,9 +179,8 @@ namespace npp {
         emitModule(
             "declare void @npp_gfx_circle(double,double,double,double,double,double,double)");
 
-        emitModule(
-            "declare void "
-            "@npp_gfx_line(double,double,double,double,double,double,double,double,double)");
+        emitModule("declare void "
+                   "@npp_gfx_line(double,double,double,double,double,double,double,double,double)");
 
         emitModule("declare void "
                    "@npp_gfx_text(double,double,double,ptr,double,double,double,double)");
@@ -256,9 +255,8 @@ namespace npp {
 
         emitModule("declare void @npp_gfx_canvas_clear(i64,double,double,double,double)");
 
-        emitModule(
-            "declare void "
-            "@npp_gfx_canvas_brush(i64,double,double,double,double,double,double,double)");
+        emitModule("declare void "
+                   "@npp_gfx_canvas_brush(i64,double,double,double,double,double,double,double)");
 
         emitModule("declare void "
                    "@npp_gfx_canvas_line(i64,double,double,double,double,double,double,"
@@ -268,11 +266,9 @@ namespace npp {
                    "@npp_gfx_canvas_rect(i64,double,double,double,double,double,double,"
                    "double,double,double,i1)");
 
-        emitModule(
-            "declare void @npp_gfx_canvas_fill(i64,i64,i64,double,double,double,double)");
+        emitModule("declare void @npp_gfx_canvas_fill(i64,i64,i64,double,double,double,double)");
 
-        emitModule(
-            "declare void @npp_gfx_canvas_draw(i64,double,double,double,double,double)");
+        emitModule("declare void @npp_gfx_canvas_draw(i64,double,double,double,double,double)");
 
         emitModule("declare i1 @npp_gfx_canvas_save_bmp(i64,ptr)");
 
@@ -349,9 +345,8 @@ namespace npp {
 
         emitModule("declare void @npp_ui_label(double,double,ptr,double)");
 
-        emitModule(
-            "declare void "
-            "@npp_ui_progress(double,double,double,double,double,double,double,double)");
+        emitModule("declare void "
+                   "@npp_ui_progress(double,double,double,double,double,double,double,double)");
 
         emitModule("declare i64 @npp_ecs_create()");
 
@@ -395,12 +390,10 @@ namespace npp {
 
         emitModule("declare void @npp_gfx_anim_destroy(i64)");
 
-        emitModule(
-            "declare i1 "
-            "@npp_physics_aabb(double,double,double,double,double,double,double,double)");
+        emitModule("declare i1 "
+                   "@npp_physics_aabb(double,double,double,double,double,double,double,double)");
 
-        emitModule(
-            "declare i1 @npp_physics_circle(double,double,double,double,double,double)");
+        emitModule("declare i1 @npp_physics_circle(double,double,double,double,double,double)");
 
         emitModule("declare i64 @npp_scene_create()");
 
@@ -471,8 +464,7 @@ namespace npp {
                 else if (f.name == "main")
                     emit("ret " + llvmType(codegenRet) + " 0");
                 else
-                    throw std::runtime_error("function may fall through without return: " +
-                                             f.name);
+                    throw std::runtime_error("function may fall through without return: " + f.name);
             }
             emit("}");
             functionsIR << body.str();

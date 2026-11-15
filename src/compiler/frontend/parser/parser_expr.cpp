@@ -66,7 +66,8 @@ namespace npp {
         if (cur().kind == TokenKind::Float) {
             const Token literal = expect(TokenKind::Float);
             try {
-                return std::make_unique<FloatExpr>(std::stod(removeNumericSeparators(literal.text)));
+                return std::make_unique<FloatExpr>(
+                    std::stod(removeNumericSeparators(literal.text)));
             } catch (const std::exception&) {
                 throw std::runtime_error("floating-point literal out of range at " +
                                          std::to_string(literal.pos.line) + ":" +
@@ -213,8 +214,8 @@ namespace npp {
                     // open-ended forms will be considered with slice semantics.
                     auto last = parseExpr();
                     expect(TokenKind::RBracket);
-                    e = std::make_unique<SliceExpr>(std::move(e), std::move(first),
-                                                    std::move(last));
+                    e = std::make_unique<SliceExpr>(
+                        std::move(e), std::move(first), std::move(last));
                 } else {
                     expect(TokenKind::RBracket);
                     e = std::make_unique<IndexExpr>(std::move(e), std::move(first));

@@ -3,7 +3,6 @@
 namespace npp {
     namespace driver {
 
-
         void writeProjectManifest(const fs::path& dir,
                                   const std::string& name,
                                   const std::string& templ) {
@@ -23,7 +22,6 @@ namespace npp {
                    "\"assets/models\"\nfonts = \"assets/fonts\"\nscenes = \"scenes\"\n\n"
                 << "[project]\ntemplate = \"" << templ << "\"\n";
         }
-
 
         fs::path sourceDataRoot() {
 
@@ -52,7 +50,6 @@ namespace npp {
             return fs::current_path();
         }
 
-
         void seedAssets(const fs::path& dir) {
 
             const fs::path sourceRoot = sourceDataRoot();
@@ -77,7 +74,6 @@ namespace npp {
                 }
             }
         }
-
 
         int initProject(const fs::path& dir,
                         const std::string& name,

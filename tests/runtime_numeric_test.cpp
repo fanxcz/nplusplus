@@ -10,13 +10,13 @@ extern "C" int64_t npp_random_i64(int64_t minimum, int64_t maximum);
 extern "C" int64_t npp_time_ms();
 
 namespace {
-bool expect(bool condition, const char* label) {
-    if (condition)
-        return true;
-    std::fprintf(stderr, "runtime numeric check failed: %s\n", label);
-    return false;
-}
-}
+    bool expect(bool condition, const char* label) {
+        if (condition)
+            return true;
+        std::fprintf(stderr, "runtime numeric check failed: %s\n", label);
+        return false;
+    }
+} // namespace
 
 int main() {
     bool ok = true;
@@ -27,8 +27,7 @@ int main() {
     ok &= expect(npp_to_i64(0.5) == 1, "positive halfway rounds away from zero");
     ok &= expect(npp_to_i64(-0.5) == -1, "negative halfway rounds away from zero");
     ok &= expect(npp_to_i64(-1.6) == -2, "negative rounding");
-    ok &= expect(npp_to_i64(std::numeric_limits<double>::quiet_NaN()) == 0,
-                 "NaN converts to zero");
+    ok &= expect(npp_to_i64(std::numeric_limits<double>::quiet_NaN()) == 0, "NaN converts to zero");
     ok &= expect(npp_to_i64(std::numeric_limits<double>::infinity()) == max,
                  "positive infinity saturates");
     ok &= expect(npp_to_i64(-std::numeric_limits<double>::infinity()) == min,

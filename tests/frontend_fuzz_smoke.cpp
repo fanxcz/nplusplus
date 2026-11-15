@@ -65,8 +65,8 @@ int main() {
                 return 10;
             }
         } catch (const std::exception& error) {
-            std::cerr << "valid scientific-notation literal rejected: " << literal
-                      << ": " << error.what() << "\n";
+            std::cerr << "valid scientific-notation literal rejected: " << literal << ": "
+                      << error.what() << "\n";
             return 11;
         }
     }
@@ -102,8 +102,8 @@ int main() {
                 return 15;
             }
         } catch (const std::exception& error) {
-            std::cerr << "valid numeric literal rejected: " << literal << ": "
-                      << error.what() << "\n";
+            std::cerr << "valid numeric literal rejected: " << literal << ": " << error.what()
+                      << "\n";
             return 16;
         }
     }
@@ -118,11 +118,9 @@ int main() {
     }
     // Numeric separators must also normalize in parser-only contexts such as
     // fixed-array lengths, not just expression literals.
-    const std::vector<std::string> validNumericPrograms = {
-        "fn main(){ print(1_000_000) }",
-        "fn main(){ let ratio: f64 = 1.25e-3 }",
-        "fn main(value: [i64;1_0]) {}"
-    };
+    const std::vector<std::string> validNumericPrograms = {"fn main(){ print(1_000_000) }",
+                                                           "fn main(){ let ratio: f64 = 1.25e-3 }",
+                                                           "fn main(value: [i64;1_0]) {}"};
     for (const auto& source : validNumericPrograms) {
         try {
             (void)npp::Parser(npp::Lexer(source).tokenize()).parseProgram();
@@ -132,9 +130,8 @@ int main() {
         }
     }
 
-    for (const std::string source : {
-             "fn main(){ let value = -9223372036854775808 }",
-             "fn main(){ let value = -9_223_372_036_854_775_808 }"}) {
+    for (const std::string source : {"fn main(){ let value = -9223372036854775808 }",
+                                     "fn main(){ let value = -9_223_372_036_854_775_808 }"}) {
         try {
             (void)npp::Parser(npp::Lexer(source).tokenize()).parseProgram();
         } catch (const std::exception& error) {
@@ -146,12 +143,11 @@ int main() {
     // may contextualize it later. The semantic phase rejects it when left at
     // its default i64 type; that negative case is covered by the compiler smoke test.
     try {
-        (void)npp::Parser(
-            npp::Lexer("fn main(){ print(9223372036854775808) }").tokenize())
+        (void)npp::Parser(npp::Lexer("fn main(){ print(9223372036854775808) }").tokenize())
             .parseProgram();
     } catch (const std::exception& error) {
-        std::cerr << "u64-capable integer literal was rejected by the parser: "
-                  << error.what() << "\n";
+        std::cerr << "u64-capable integer literal was rejected by the parser: " << error.what()
+                  << "\n";
         return 20;
     }
     if (!rejects("fn main(value: [i64;999999999999999999999999999999999]) {}")) {
@@ -160,9 +156,7 @@ int main() {
     }
     // Integer literals support explicit hexadecimal, binary, and octal bases.
     const std::vector<std::string> validRadixLiterals = {
-        "0x2A", "0X2a", "0b101010", "0B10_1010", "0o52", "0O5_2",
-        "0xFFFF_FFFF_FFFF_FFFF"
-    };
+        "0x2A", "0X2a", "0b101010", "0B10_1010", "0o52", "0O5_2", "0xFFFF_FFFF_FFFF_FFFF"};
     for (const auto& literal : validRadixLiterals) {
         try {
             const auto tokens = npp::Lexer(literal).tokenize();
@@ -172,14 +166,13 @@ int main() {
                 return 21;
             }
         } catch (const std::exception& error) {
-            std::cerr << "valid radix integer rejected: " << literal << ": "
-                      << error.what() << "\n";
+            std::cerr << "valid radix integer rejected: " << literal << ": " << error.what()
+                      << "\n";
             return 22;
         }
     }
     const std::vector<std::string> invalidRadixLiterals = {
-        "0x", "0b", "0o", "0b102", "0o89", "0x_FF", "0xFF_", "0x1__F"
-    };
+        "0x", "0b", "0o", "0b102", "0o89", "0x_FF", "0xFF_", "0x1__F"};
     for (const auto& literal : invalidRadixLiterals) {
         try {
             (void)npp::Lexer(literal).tokenize();
@@ -194,8 +187,7 @@ int main() {
         "fn main(){ let value: u32 = 0b1111_0000 }",
         "fn main(){ let value: u16 = 0o17 }",
         "fn main(value: [u8; 0x10]) {}",
-        "fn main(){ let value = -0x8000_0000_0000_0000 }"
-    };
+        "fn main(){ let value = -0x8000_0000_0000_0000 }"};
     for (const auto& source : validRadixPrograms) {
         try {
             (void)npp::Parser(npp::Lexer(source).tokenize()).parseProgram();
@@ -209,7 +201,6 @@ int main() {
         std::cerr << "out-of-range radix integer or array length was accepted\n";
         return 25;
     }
-
 
     // Block comments nest, so an inner closing delimiter must not end the outer comment.
     try {

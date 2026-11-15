@@ -3,8 +3,7 @@
 namespace npp {
     namespace driver {
 
-
-        int commandDoctor(bool json ) {
+        int commandDoctor(bool json) {
             // Mirror compileFile's compiler discovery order so portable builds
             // with a bundled wrapper are not reported as broken.
             std::vector<fs::path> compilerCandidates;
@@ -126,7 +125,6 @@ namespace npp {
             // LLVM is optional for programs supported by the built-in backend.
             return 0;
         }
-
 
         int commandExplainBackend(const fs::path& file, const std::string& target) {
             ModuleLoadContext loadContext;

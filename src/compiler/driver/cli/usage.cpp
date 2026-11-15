@@ -3,7 +3,6 @@
 namespace npp {
     namespace driver {
 
-
         void usage() {
 
             std::cout

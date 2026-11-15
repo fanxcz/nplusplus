@@ -16,8 +16,7 @@ AllowShortLoopsOnASingleLine: false
 AllowShortCaseLabelsOnASingleLine: false
 BinPackArguments: false
 BinPackParameters: false
-SortIncludes: CaseSensitive
-IncludeBlocks: Regroup
+SortIncludes: false
 PointerAlignment: Left
 ReferenceAlignment: Left
 SpaceAfterCStyleCast: false

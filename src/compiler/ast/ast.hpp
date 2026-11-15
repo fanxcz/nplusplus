@@ -10,16 +10,38 @@
 namespace npp {
 
     enum class TypeKind {
-        I8, I16, I32, I64,
-        U8, U16, U32, U64,
-        F32, F64,
-        Bool, String, Void, Pointer, Struct, Enum, Array, Slice, MutableSlice, Unknown
+        I8,
+        I16,
+        I32,
+        I64,
+        U8,
+        U16,
+        U32,
+        U64,
+        F32,
+        F64,
+        Bool,
+        String,
+        Void,
+        Pointer,
+        Struct,
+        Enum,
+        Array,
+        Slice,
+        MutableSlice,
+        Unknown
     };
 
     inline bool isIntegerType(TypeKind kind) {
         switch (kind) {
-        case TypeKind::I8: case TypeKind::I16: case TypeKind::I32: case TypeKind::I64:
-        case TypeKind::U8: case TypeKind::U16: case TypeKind::U32: case TypeKind::U64:
+        case TypeKind::I8:
+        case TypeKind::I16:
+        case TypeKind::I32:
+        case TypeKind::I64:
+        case TypeKind::U8:
+        case TypeKind::U16:
+        case TypeKind::U32:
+        case TypeKind::U64:
             return true;
         default:
             return false;
@@ -27,13 +49,13 @@ namespace npp {
     }
 
     inline bool isSignedIntegerType(TypeKind kind) {
-        return kind == TypeKind::I8 || kind == TypeKind::I16 ||
-               kind == TypeKind::I32 || kind == TypeKind::I64;
+        return kind == TypeKind::I8 || kind == TypeKind::I16 || kind == TypeKind::I32 ||
+               kind == TypeKind::I64;
     }
 
     inline bool isUnsignedIntegerType(TypeKind kind) {
-        return kind == TypeKind::U8 || kind == TypeKind::U16 ||
-               kind == TypeKind::U32 || kind == TypeKind::U64;
+        return kind == TypeKind::U8 || kind == TypeKind::U16 || kind == TypeKind::U32 ||
+               kind == TypeKind::U64;
     }
 
     inline bool isFloatType(TypeKind kind) {
@@ -46,11 +68,20 @@ namespace npp {
 
     inline unsigned integerBitWidth(TypeKind kind) {
         switch (kind) {
-        case TypeKind::I8: case TypeKind::U8: return 8;
-        case TypeKind::I16: case TypeKind::U16: return 16;
-        case TypeKind::I32: case TypeKind::U32: return 32;
-        case TypeKind::I64: case TypeKind::U64: return 64;
-        default: return 0;
+        case TypeKind::I8:
+        case TypeKind::U8:
+            return 8;
+        case TypeKind::I16:
+        case TypeKind::U16:
+            return 16;
+        case TypeKind::I32:
+        case TypeKind::U32:
+            return 32;
+        case TypeKind::I64:
+        case TypeKind::U64:
+            return 64;
+        default:
+            return 0;
         }
     }
 
@@ -66,16 +97,36 @@ namespace npp {
 
         std::size_t arraySize = 0;
 
-        static Type i8() { return {TypeKind::I8, {}, {}, {}, 0}; }
-        static Type i16() { return {TypeKind::I16, {}, {}, {}, 0}; }
-        static Type i32() { return {TypeKind::I32, {}, {}, {}, 0}; }
-        static Type i64() { return {TypeKind::I64, {}, {}, {}, 0}; }
-        static Type u8() { return {TypeKind::U8, {}, {}, {}, 0}; }
-        static Type u16() { return {TypeKind::U16, {}, {}, {}, 0}; }
-        static Type u32() { return {TypeKind::U32, {}, {}, {}, 0}; }
-        static Type u64() { return {TypeKind::U64, {}, {}, {}, 0}; }
-        static Type f32() { return {TypeKind::F32, {}, {}, {}, 0}; }
-        static Type f64() { return {TypeKind::F64, {}, {}, {}, 0}; }
+        static Type i8() {
+            return {TypeKind::I8, {}, {}, {}, 0};
+        }
+        static Type i16() {
+            return {TypeKind::I16, {}, {}, {}, 0};
+        }
+        static Type i32() {
+            return {TypeKind::I32, {}, {}, {}, 0};
+        }
+        static Type i64() {
+            return {TypeKind::I64, {}, {}, {}, 0};
+        }
+        static Type u8() {
+            return {TypeKind::U8, {}, {}, {}, 0};
+        }
+        static Type u16() {
+            return {TypeKind::U16, {}, {}, {}, 0};
+        }
+        static Type u32() {
+            return {TypeKind::U32, {}, {}, {}, 0};
+        }
+        static Type u64() {
+            return {TypeKind::U64, {}, {}, {}, 0};
+        }
+        static Type f32() {
+            return {TypeKind::F32, {}, {}, {}, 0};
+        }
+        static Type f64() {
+            return {TypeKind::F64, {}, {}, {}, 0};
+        }
         static Type boolean() {
             return {TypeKind::Bool, {}, {}, {}, 0};
         }

@@ -3,7 +3,6 @@
 namespace npp {
     namespace driver {
 
-
         ParsedPackageLockfile parsePackageLockfile(const std::string& data) {
             constexpr const char* header = "# N++ lockfile v2 (SHA-256 content integrity)";
             ParsedPackageLockfile result;
@@ -78,7 +77,6 @@ namespace npp {
                     "pkg verify: invalid lockfile: package and version metadata are required");
             return result;
         }
-
 
         void refreshLockfile(const ProjectConfig& cfg) {
             struct Dependency {

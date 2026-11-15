@@ -3,7 +3,6 @@
 namespace npp {
     namespace driver {
 
-
         int commandExport(const std::vector<std::string>& args) {
             const auto cfg = loadProject();
             std::string target = cfg.target;
@@ -98,7 +97,6 @@ namespace npp {
                       << "export: archive -> " << archive << "\n";
             return 0;
         }
-
 
         int commandEditor() {
 
