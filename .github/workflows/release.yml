@@ -99,6 +99,8 @@ jobs:
           $dist = Join-Path (Get-Location).Path 'dist'
           & $makensis "/DNPP_VERSION=$version" "/DDIST_DIR=$dist" scripts/npp-setup.nsi
           if ($LASTEXITCODE -ne 0) { throw 'makensis failed' }
+          # makensis writes OutFile relative to scripts/; move artifacts up.
+          Get-ChildItem scripts -Filter "npp-setup-*-windows-x86_64.exe*" | Move-Item -Destination .
           $installer = Get-Item "npp-setup-$version-windows-x86_64.exe"
           $hash = (Get-FileHash -Algorithm SHA256 -Path $installer.FullName).Hash.ToLowerInvariant()
           "$hash  $($installer.Name)" | Set-Content -Path "$($installer.Name).sha256" -Encoding ASCII

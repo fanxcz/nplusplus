@@ -17,9 +17,9 @@
 !endif
 
 Name "N++ ${NPP_VERSION}"
-; NSIS resolves a relative OutFile against the script directory; anchor to
-; the repository root so CI finds the installer next to the workspace.
-OutFile "${__FILEDIR__}\..\npp-setup-${NPP_VERSION}-windows-x86_64.exe"
+; NSIS resolves OutFile relative to this script's directory (scripts/).
+; The CI step moves the produced installer to the workspace root.
+OutFile "npp-setup-${NPP_VERSION}-windows-x86_64.exe"
 InstallDir "$LOCALAPPDATA\Programs\N++"
 InstallDirRegKey HKCU "Software\NPP" "InstallDir"
 RequestExecutionLevel user
