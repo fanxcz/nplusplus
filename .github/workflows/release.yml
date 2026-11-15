@@ -88,9 +88,10 @@ jobs:
           $env:Path = [System.Environment]::GetEnvironmentVariable('Path', 'Machine') + ';' +
                        [System.Environment]::GetEnvironmentVariable('Path', 'User')
           $version = (Select-String -Path 'CMakeLists.txt' -Pattern 'VERSION ([0-9]+[.][0-9]+[.][0-9]+)').Matches[0].Groups[1].Value
+          # Chocolatey installs makensis.exe under NSIS\Bin.
           $makensis = (Get-Command makensis.exe -ErrorAction SilentlyContinue).Source
-          if (-not $makensis) { $makensis = "$env:ProgramFiles(x86)\NSIS\makensis.exe" }
-          if (-not (Test-Path $makensis)) { $makensis = "$env:ProgramFiles\NSIS\makensis.exe" }
+          if (-not $makensis) { $makensis = "$env:ProgramFiles(x86)\NSIS\Bin\makensis.exe" }
+          if (-not (Test-Path $makensis)) { $makensis = "$env:ProgramFiles\NSIS\Bin\makensis.exe" }
           if (-not (Test-Path $makensis)) { throw 'makensis.exe not found after choco install nsis' }
           & $makensis "/DNPP_VERSION=$version" scripts/npp-setup.nsi
           if ($LASTEXITCODE -ne 0) { throw 'makensis failed' }
