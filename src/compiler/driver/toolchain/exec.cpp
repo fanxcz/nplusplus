@@ -3,7 +3,6 @@
 namespace npp {
     namespace driver {
 
-
         // Keep the console window open after the program exits when stdin is
         // an interactive terminal (e.g. double-clicking a .npp file). Piped
         // or redirected input skips the pause so scripts and tests are not
@@ -23,7 +22,6 @@ namespace npp {
             while (ch != '\n' && ch != '\r' && ch != EOF)
                 ch = std::cin.get();
         }
-
 
         int launchExecutable(const fs::path& executable, const fs::path& workingDirectory) {
 #ifdef _WIN32
@@ -69,7 +67,6 @@ namespace npp {
             return rc;
 #endif
         }
-
 
         // Freshly built executables are briefly locked by on-access antivirus
         // scanners on Windows; retry the write for a bounded time instead of
