@@ -4,6 +4,27 @@ namespace npp {
     namespace driver {
 
 
+        // Keep the console window open after the program exits when stdin is
+        // an interactive terminal (e.g. double-clicking a .npp file). Piped
+        // or redirected input skips the pause so scripts and tests are not
+        // blocked.
+        void pauseIfInteractive() {
+            bool interactive = false;
+#ifdef _WIN32
+            DWORD mode = 0;
+            interactive = GetConsoleMode(GetStdHandle(STD_INPUT_HANDLE), &mode) != FALSE;
+#else
+            interactive = isatty(STDIN_FILENO) != 0;
+#endif
+            if (!interactive)
+                return;
+            std::cout << "\nPress Enter to exit..." << std::flush;
+            int ch = 0;
+            while (ch != '\n' && ch != '\r' && ch != EOF)
+                ch = std::cin.get();
+        }
+
+
         int launchExecutable(const fs::path& executable, const fs::path& workingDirectory) {
 #ifdef _WIN32
             const fs::path absoluteExecutable = fs::absolute(executable);
@@ -40,9 +61,12 @@ namespace npp {
             if (waitResult != WAIT_OBJECT_0 || !gotExitCode) {
                 throw std::runtime_error("failed while waiting for the native program to exit");
             }
+            pauseIfInteractive();
             return static_cast<int>(exitCode);
 #else
-            return runCommand({fs::absolute(executable).string()}, workingDirectory);
+            const int rc = runCommand({fs::absolute(executable).string()}, workingDirectory);
+            pauseIfInteractive();
+            return rc;
 #endif
         }
 

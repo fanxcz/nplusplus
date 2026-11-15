@@ -75,6 +75,10 @@ namespace npp {
         emitModule("declare void @npp_mem_copy(i64,i64,i64)");
         emitModule("declare ptr @npp_http_get(ptr)");
         emitModule("declare ptr @npp_json_get(ptr, ptr)");
+        emitModule("declare i1 @npp_json_valid(ptr)");
+        emitModule("declare ptr @npp_json_type(ptr, ptr)");
+        emitModule("declare i64 @npp_json_array_len(ptr, ptr)");
+        emitModule("declare ptr @npp_json_array_get(ptr, ptr, i64)");
         emitModule("declare i64 @npp_sqlite_open(ptr)");
         emitModule("declare i64 @npp_sqlite_exec(i64, ptr)");
         emitModule("declare void @npp_sqlite_close(i64)");
