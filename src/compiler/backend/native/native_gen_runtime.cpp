@@ -457,7 +457,7 @@ namespace npp::native {
 
             // __nx_oom: clean out-of-string-memory failure (stderr + exit 1).
         void Generator::genOom() {
-            const std::size_t m = internString("NPP runtime error: out of string memory\n");
+            const std::size_t m = internString("N++ runtime error: out of string memory\n");
             out_.def("__nx_oom");
             out_.leaRcxRip("str" + std::to_string(m));
             out_.movRdxImm32(static_cast<std::uint32_t>(image_.strings[m].size()));
@@ -481,7 +481,7 @@ namespace npp::native {
         }
 
         void Generator::genDivZero() {
-            const std::size_t m = internString("NPP runtime error: division by zero\n");
+            const std::size_t m = internString("N++ runtime error: division by zero\n");
             out_.def("__nx_divzero");
             out_.leaRcxRip("str" + std::to_string(m));
             out_.movRdxImm32(static_cast<std::uint32_t>(image_.strings[m].size()));
@@ -506,7 +506,7 @@ namespace npp::native {
 
         void Generator::genDivOverflow() {
             const std::size_t m =
-                internString("NPP runtime error: signed integer division overflow\n");
+                internString("N++ runtime error: signed integer division overflow\n");
             out_.def("__nx_divoverflow");
             out_.leaRcxRip("str" + std::to_string(m));
             out_.movRdxImm32(static_cast<std::uint32_t>(image_.strings[m].size()));

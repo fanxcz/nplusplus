@@ -35,7 +35,7 @@ int main() {
     if (empty)
         npp_free(empty);
 
-    const char* expected = "NPP file API: round trip";
+    const char* expected = "N++ file API: round trip";
     if (result == 0 && npp_file_write(path.string().c_str(), expected) != 0)
         result = 5;
     char* checked = nullptr;
@@ -71,9 +71,9 @@ int main() {
     if (result == 0 && ec)
         result = 15;
     if (result != 0) {
-        std::fprintf(stderr, "NPP runtime file test failed at check %d\n", result);
+        std::fprintf(stderr, "N++ runtime file test failed at check %d\n", result);
         return result;
     }
-    std::puts("NPP runtime file API: PASS");
+    std::puts("N++ runtime file API: PASS");
     return 0;
 }

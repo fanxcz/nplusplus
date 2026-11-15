@@ -1,4 +1,4 @@
-// Self-hosting step 1: the NPP lexer, written in NPP.
+// Self-hosting step 1: the N++ lexer, written in N++.
 // Mirrors src/compiler/frontend/lexer/lexer.cpp: keywords, identifiers,
 // i64/f64 literals, common and Unicode scalar string escapes, operators,
 // punctuation, and comments.

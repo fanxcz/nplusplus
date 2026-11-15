@@ -43,7 +43,7 @@ namespace {
 
 int main() {
     const char* json = R"json({
-        "name": "NPP",
+        "name": "N++",
         "version": -1.25e+3,
         "active": true,
         "nothing": null,
@@ -129,6 +129,6 @@ int main() {
         std::fprintf(stderr, "%d JSON runtime test(s) failed\n", failures);
         return 1;
     }
-    std::puts("NPP JSON runtime tests: PASS");
+    std::puts("N++ JSON runtime tests: PASS");
     return 0;
 }

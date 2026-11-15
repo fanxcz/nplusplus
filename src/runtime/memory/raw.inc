@@ -1,6 +1,6 @@
 static void npp_mem_range_error(const char* operation, int64_t address, int64_t bytes) {
     std::fprintf(stderr,
-                 "Npp runtime error: %s range is outside a live mem_alloc block "
+                 "N++ runtime error: %s range is outside a live mem_alloc block "
                  "(address=%lld, bytes=%lld)\n",
                  operation,
                  static_cast<long long>(address),

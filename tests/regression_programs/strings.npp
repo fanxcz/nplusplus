@@ -1,7 +1,7 @@
 fn main() {
-    let name = "Npp"
+    let name = "N++"
     print("Hello, " + name)
-    print(name == "Npp")
+    print(name == "N++")
     print(name != "Other")
     print(str_i64(42))
 }

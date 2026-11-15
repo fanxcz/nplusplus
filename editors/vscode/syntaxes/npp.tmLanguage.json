@@ -1,6 +1,6 @@
 {
   "scopeName": "source.npp",
-  "name": "NPP",
+  "name": "N++",
   "patterns": [
     {
       "name": "comment.line.double-slash.npp",

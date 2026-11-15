@@ -3,7 +3,7 @@ import std.ui
 import std.math
 
 fn main() {
-    let ok = engine2d_init(1040, 720, "NPP UI Playground")
+    let ok = engine2d_init(1040, 720, "N++ UI Playground")
     if ! ok {
         print("Graphics backend unavailable: " + gfx_error())
         return
@@ -22,7 +22,7 @@ fn main() {
         engine2d_begin_frame(0.025, 0.035, 0.065, 1.0)
         ui2d_panel(panel, 0.055, 0.075, 0.13, 1.0)
         ui2d_outline(panel, 1.0, 0.18, 0.28, 0.42, 1.0)
-        ui2d_label(content.x, content.y, "NPP UI", 2.6)
+        ui2d_label(content.x, content.y, "N++ UI", 2.6)
         ui2d_label(content.x, content.y + 42.0, "Immediate-mode widgets + layout helpers", 1.25)
         ui2d_separator(content.x, content.y + 76.0, content.x + content.width,
         content.y + 76.0, 1.0, 0.16, 0.22, 0.32, 1.0)
@@ -51,7 +51,7 @@ fn main() {
             sound_enabled = true
             volume = 0.65
         }
-        if ui2d_button(about_button, "ABOUT NPP UI") {
+        if ui2d_button(about_button, "ABOUT N++ UI") {
             about_open = !about_open
         }
 

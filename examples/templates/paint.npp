@@ -1,4 +1,4 @@
-// Npp Paint - responsive raster editor example.
+// N++ Paint - responsive raster editor example.
 //
 // Design goals:
 //   * One virtual 1600x900 coordinate space.
@@ -71,7 +71,7 @@ fn main() {
     const CANVAS_WIDTH: f64 = 1024.0
     const CANVAS_HEIGHT: f64 = 720.0
 
-    let ok = gfx_init(1400, 900, "Npp Paint")
+    let ok = gfx_init(1400, 900, "N++ Paint")
     if ! ok {
         print("Graphics backend unavailable: " + gfx_error())
         return
@@ -299,7 +299,7 @@ fn main() {
         ui_label(700.0, 69.0, status, 0.85)
 
         let info_x = panel_x + 24.0
-        ui_label(info_x, canvas_y + 30.0, "NPP PAINT", 1.55)
+        ui_label(info_x, canvas_y + 30.0, "N++ PAINT", 1.55)
         ui_label(info_x, canvas_y + 68.0, "RESPONSIVE RASTER EDITOR", 0.88)
         ui_label(info_x, canvas_y + 126.0, "TOOLS", 1.15)
         ui_label(info_x, canvas_y + 156.0, "PENCIL / ERASER", 0.86)

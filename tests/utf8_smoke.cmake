@@ -37,4 +37,4 @@ if(NOT run_out STREQUAL expected)
   message(FATAL_ERROR "Unexpected UTF-8 output:\n--- actual ---\n${run_out}\n--- expected ---\n${expected}")
 endif()
 
-message(STATUS "NPP UTF-8 string smoke test: PASS")
+message(STATUS "N++ UTF-8 string smoke test: PASS")

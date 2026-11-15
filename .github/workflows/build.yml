@@ -115,7 +115,7 @@ jobs:
             if ($LASTEXITCODE -ne 0 -or (($output -join "`n") -notmatch 'literal line')) {
               throw "toolchain-free native run failed: $($output -join "`n")"
             }
-            Write-Host 'NPP compiled and ran a native program with no compiler on PATH and NPP_CXX unset.'
+            Write-Host 'N++ compiled and ran a native program with no compiler on PATH and NPP_CXX unset.'
           } finally {
             $env:PATH = $oldPath
             $env:NPP_CXX = $oldCxx
@@ -171,7 +171,7 @@ jobs:
           Set-Content -LiteralPath $source -Value 'fn main() { print("NPP_SELF_CONTAINED_BACKEND_OK") }' -Encoding utf8
           $oldPath = $env:PATH
           try {
-            # Deliberately exclude $toolDir from PATH. NPP must find clang++.cmd
+            # Deliberately exclude $toolDir from PATH. N++ must find clang++.cmd
             # beside its own executable instead of relying on a globally installed compiler.
             $env:PATH = (@(
               $env:SystemRoot,
@@ -182,7 +182,7 @@ jobs:
             if ($LASTEXITCODE -ne 0 -or (($output -join "`n") -notmatch 'NPP_SELF_CONTAINED_BACKEND_OK')) {
               throw "Bundled Zig backend failed without system LLVM/MSVC in PATH: $($output -join "`n")"
             }
-            Write-Host 'NPP compiled and launched a native .exe with external developer tools removed from PATH.'
+            Write-Host 'N++ compiled and launched a native .exe with external developer tools removed from PATH.'
           } finally {
             $env:PATH = $oldPath
           }

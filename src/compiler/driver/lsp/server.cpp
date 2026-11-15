@@ -28,7 +28,7 @@ namespace npp {
 #ifdef _WIN32
             // LSP framing uses explicit CRLF bytes; disable Windows text-mode newline translation.
             if (_setmode(_fileno(stdout), _O_BINARY) == -1) {
-                std::cerr << "NPP LSP: could not switch stdout to binary mode\\n";
+                std::cerr << "N++ LSP: could not switch stdout to binary mode\\n";
                 return 2;
             }
 #endif
@@ -1176,13 +1176,13 @@ namespace npp {
                 if (!sawHeader)
                     break;
                 if (contentLength > 16 * 1024 * 1024) {
-                    std::cerr << "NPP LSP: message exceeds 16 MiB limit\n";
+                    std::cerr << "N++ LSP: message exceeds 16 MiB limit\n";
                     return 2;
                 }
                 std::string body(contentLength, '\0');
                 std::cin.read(body.data(), static_cast<std::streamsize>(contentLength));
                 if (static_cast<std::size_t>(std::cin.gcount()) != contentLength) {
-                    std::cerr << "NPP LSP: incomplete JSON-RPC message\n";
+                    std::cerr << "N++ LSP: incomplete JSON-RPC message\n";
                     return 2;
                 }
 
@@ -2183,7 +2183,7 @@ namespace npp {
                     if (!isValidIdentifier(newName)) {
                         send("{\"jsonrpc\":\"2.0\",\"id\":" + id +
                              ",\"error\":{\"code\":-32602,\"message\":\"newName must be a valid "
-                             "NPP identifier\"}}");
+                             "N++ identifier\"}}");
                     } else {
                         std::vector<LspIdentifierOccurrence> occurrences;
                         if (document != openDocuments.end()) {

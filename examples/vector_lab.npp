@@ -1,4 +1,4 @@
-// NPP Vector Lab: a tiny playable sample for vector, collision and animation APIs.
+// N++ Vector Lab: a tiny playable sample for vector, collision and animation APIs.
 // Move with WASD or arrows. Avoid the amber blocks and collect the cyan beacon.
 import std.engine2d
 import std.math
@@ -14,7 +14,7 @@ fn blocked(x: f64, y: f64) -> bool {
 }
 
 fn main() {
-    if ! engine2d_init(960, 640, "NPP Vector Lab") {
+    if ! engine2d_init(960, 640, "N++ Vector Lab") {
         print("Graphics initialization failed: " + gfx_error())
         return
     }
@@ -84,7 +84,7 @@ fn main() {
 
         engine2d_draw_rect(0.0, 0.0, 960.0, 72.0, 0.035, 0.049, 0.073, 1.0)
         engine2d_draw_rect(0.0, 70.0, 960.0, 2.0, 0.20, 0.78, 0.92, 0.8)
-        engine2d_draw_text(24.0, 18.0, 2.0, "NPP VECTOR LAB",
+        engine2d_draw_text(24.0, 18.0, 2.0, "N++ VECTOR LAB",
         0.86, 0.94, 1.0, 1.0)
         engine2d_draw_text(26.0, 48.0, 1.0, "MOVE: WASD / ARROWS    AVOID AMBER BLOCKS    COLLECT BEACONS",
         0.57, 0.68, 0.78, 1.0)

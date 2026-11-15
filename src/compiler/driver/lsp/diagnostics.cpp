@@ -109,7 +109,7 @@ std::vector<LspDiagnostic> collectDiagnostics(const std::string& source) {
                 program = Parser(std::move(tokens)).parseProgram();
             } catch (const std::exception& error) {
                 const std::string message = error.what();
-                if (message.rfind("NPP found ", 0) == 0 &&
+                if (message.rfind("N++ found ", 0) == 0 &&
                     message.find(" syntax error") != std::string::npos) {
                     std::istringstream errors(message);
                     std::string line;
@@ -132,7 +132,7 @@ std::vector<LspDiagnostic> collectDiagnostics(const std::string& source) {
                 SemanticAnalyzer().analyze(program);
             } catch (const std::exception& error) {
                 const std::string message = error.what();
-                if (message.rfind("NPP found ", 0) == 0 &&
+                if (message.rfind("N++ found ", 0) == 0 &&
                     message.find(" semantic error") != std::string::npos) {
                     std::istringstream errors(message);
                     std::string line;

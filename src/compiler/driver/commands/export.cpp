@@ -118,7 +118,7 @@ namespace npp {
             writeText(vscode / "tasks.json", R"JSON({
   "version": "2.0.0",
   "tasks": [{
-    "label": "NPP Build",
+    "label": "N++ Build",
     "type": "shell",
     "command": "npp build --release",
     "group": "build"

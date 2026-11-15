@@ -21,7 +21,7 @@ fn main() {
         return
     }
 
-    if fs_write("payload.txt", "NPP") != 0 {
+    if fs_write("payload.txt", "N++") != 0 {
         print("write-payload: FAIL")
         return
     }
@@ -29,10 +29,10 @@ fn main() {
         print("read-payload: FAIL")
         return
     }
-    if content != "NPP" {
+    if content != "N++" {
         print("payload-content: FAIL")
         return
     }
 
-    print("NPP checked file read: PASS")
+    print("N++ checked file read: PASS")
 }

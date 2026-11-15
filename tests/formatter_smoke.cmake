@@ -90,7 +90,7 @@ if(NOT syntax_idempotency_result EQUAL 0)
 endif()
 
 
-# Adjacent unary operators are lexically significant in NPP. The formatter
+# Adjacent unary operators are lexically significant in N++. The formatter
 # must preserve the original token stream, not merely make the output parse.
 set(UNARY_SOURCE "${TEST_DIR}/unary-operators.npp")
 file(WRITE "${UNARY_SOURCE}" [=[fn main(){

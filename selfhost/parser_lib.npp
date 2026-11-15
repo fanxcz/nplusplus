@@ -1,5 +1,5 @@
 // Self-hosting step 2: recursive-descent expression and statement parser
-// for a NPP subset, written in NPP on top of lexer_lib's token stream.
+// for a N++ subset, written in N++ on top of lexer_lib's token stream.
 // parse(src) -> string emits an S-expression tree, one node per line, or
 // "error MESSAGE" when the input is not in the subset.
 //

@@ -37,4 +37,4 @@ if(NOT run_out STREQUAL expected)
   message(FATAL_ERROR "Unexpected for loop output:\n--- actual ---\n${run_out}\n--- expected ---\n${expected}")
 endif()
 
-message(STATUS "NPP for loop smoke test: PASS")
+message(STATUS "N++ for loop smoke test: PASS")

@@ -1,4 +1,4 @@
-// NPP runtime: one translation unit assembled from topic files.
+// N++ runtime: one translation unit assembled from topic files.
 //
 // The runtime keeps a large amount of shared static state (SDL entry
 // points, window/renderer handles, texture and canvas registries), so it

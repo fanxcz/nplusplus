@@ -32,4 +32,4 @@ if(NOT "${run_err}" MATCHES "mem_read range is outside a live mem_alloc block")
   message(FATAL_ERROR "Deferred release did not produce the expected checked-memory error:\n${run_err}")
 endif()
 
-message(STATUS "NPP defer + mem_free smoke test: PASS")
+message(STATUS "N++ defer + mem_free smoke test: PASS")

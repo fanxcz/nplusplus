@@ -40,4 +40,4 @@ if(NOT run_out STREQUAL expected)
     "Unexpected compound assignment output:\n--- actual ---\n${run_out}\n--- expected ---\n${expected}")
 endif()
 
-message(STATUS "NPP compound assignment smoke test: PASS")
+message(STATUS "N++ compound assignment smoke test: PASS")

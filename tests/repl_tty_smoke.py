@@ -70,7 +70,7 @@ def main():
                 proc.kill()
                 proc.wait(timeout=5)
             os.close(master)
-    print("NPP REPL TTY editing smoke test: PASS")
+    print("N++ REPL TTY editing smoke test: PASS")
 
 if __name__ == "__main__":
     main()

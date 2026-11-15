@@ -1,0 +1,23 @@
+// Environment and shell helpers: std.env + std.shell.
+// Note: shell_output/capture_output requires the LLVM backend.
+import std.env
+import std.shell
+
+fn main() {
+    let home = env_get("HOME")
+    if string.len(home) == 0 {
+        // Windows uses USERPROFILE instead of HOME.
+        print("HOME not set; USERPROFILE=" + env_get("USERPROFILE"))
+    } else {
+        print("HOME=" + home)
+    }
+
+    let path_len = string.len(env_get("PATH"))
+    print("PATH length: " + str_i64(path_len))
+
+    if shell_ok("cd .") {
+        print("shell probe: ok")
+    } else {
+        print("shell probe: failed")
+    }
+}

@@ -124,7 +124,7 @@
 #endif
     static void nx_managed_free(void* pointer) {
         if (!nx_managed_try_free(pointer)) {
-            std::fputs("Npp runtime error: invalid or already freed allocation\n", stderr);
+            std::fputs("N++ runtime error: invalid or already freed allocation\n", stderr);
             std::exit(1);
         }
     }

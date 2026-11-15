@@ -1,4 +1,4 @@
-# End-to-end smoke test for the NPP UI helper module.
+# End-to-end smoke test for the N++ UI helper module.
 if(NOT DEFINED NPP_BIN OR NOT DEFINED NPP_SOURCE_DIR)
   message(FATAL_ERROR "NPP_BIN and NPP_SOURCE_DIR are required")
 endif()
@@ -32,8 +32,8 @@ endif()
 
 string(REPLACE "\r\n" "\n" run_out "${run_out}")
 string(REGEX REPLACE "\n+$" "" run_out "${run_out}")
-if(NOT run_out STREQUAL "NPP UI library: PASS")
+if(NOT run_out STREQUAL "N++ UI library: PASS")
   message(FATAL_ERROR "Unexpected UI library output: [${run_out}]\n${run_err}")
 endif()
 
-message(STATUS "NPP UI library smoke test: PASS")
+message(STATUS "N++ UI library smoke test: PASS")

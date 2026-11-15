@@ -170,4 +170,4 @@ expect_rejected(u64_overflow "fn main() { let value: u64 = 18446744073709551616 
 expect_rejected(radix_u8_overflow "fn main() { let value: u8 = 0x100 }" "cannot initialize 'value'")
 expect_rejected(radix_u64_overflow "fn main() { let value: u64 = 0x1_0000_0000_0000_0000 }" "integer literal out of range")
 
-message(STATUS "NPP fixed-width numeric types smoke test: PASS")
+message(STATUS "N++ fixed-width numeric types smoke test: PASS")

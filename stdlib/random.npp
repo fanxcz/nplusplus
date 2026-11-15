@@ -1,0 +1,14 @@
+// Random number helpers on top of the runtime random_i64 builtin.
+// rand_range is inclusive on both ends; rand_f64 returns [0.0, 1.0).
+
+fn rand_range(min: i64, max: i64) -> i64 { return random_i64(min, max) }
+
+fn rand_int(max: i64) -> i64 { return random_i64(0, max) }
+
+fn rand_f64() -> f64 {
+    return to_f64(random_i64(0, 1000000)) / 1000000.0
+}
+
+fn rand_bool() -> bool { return random_i64(0, 1) == 1 }
+
+fn rand_chance(percent: i64) -> bool { return random_i64(1, 100) <= percent }

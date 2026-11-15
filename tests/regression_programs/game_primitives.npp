@@ -96,5 +96,5 @@ fn main() {
         return
     }
 
-    print("NPP game primitives: PASS")
+    print("N++ game primitives: PASS")
 }

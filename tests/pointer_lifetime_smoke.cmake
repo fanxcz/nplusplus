@@ -264,4 +264,4 @@ if(NOT safe_call_rc EQUAL 0)
 endif()
 
 file(REMOVE_RECURSE "${TEST_DIR}")
-message(STATUS "NPP pointer lifetime checks: PASS")
+message(STATUS "N++ pointer lifetime checks: PASS")

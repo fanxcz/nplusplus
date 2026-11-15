@@ -1,4 +1,4 @@
-# Self-hosting step 1: run the NPP-written lexer's own test suite and the
+# Self-hosting step 1: run the N++-written lexer's own test suite and the
 # self-lexing smoke through the LLVM backend. Requires a clang-compatible
 # NPP_CXX (the .ll path cannot be linked by plain g++).
 if(NOT DEFINED NPP_BIN)

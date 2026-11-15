@@ -207,7 +207,7 @@ A local variable can state its type explicitly:
 
 ```npp
 let count: i64 = 10
-let name: string = "Npp"
+let name: string = "N++"
 ```
 
 ### 6.2 Struct types

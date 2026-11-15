@@ -179,4 +179,4 @@ if(NOT rc EQUAL 0)
 endif()
 
 file(REMOVE_RECURSE "${SMOKE_DIR}")
-message(STATUS "NPP manifest syntax smoke test: PASS")
+message(STATUS "N++ manifest syntax smoke test: PASS")

@@ -6,16 +6,16 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="color-scheme" content="dark">
   <meta name="theme-color" content="#111411">
-  <title>NPP Studio</title>
+  <title>N++ Studio</title>
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
   <header class="topbar">
-    <a class="brand" href="#" aria-label="NPP Studio workspace">
+    <a class="brand" href="#" aria-label="N++ Studio workspace">
       <span class="brand-mark" aria-hidden="true">
         <svg viewBox="0 0 32 32" role="presentation"><path d="M7 25V7h4l10 12V7h4v18h-4L11 13v12z" fill="currentColor"/></svg>
       </span>
-      <span class="brand-copy"><strong>NPP</strong><small>STUDIO 1.0.0</small></span>
+      <span class="brand-copy"><strong>N++</strong><small>STUDIO 1.0.0</small></span>
       <span class="brand-divider"></span>
       <span class="workspace-label" id="projectName">No folder opened</span>
     </a>
@@ -36,7 +36,7 @@
         <span class="command-trigger-icon" aria-hidden="true">⌘</span><span>Search commands</span><kbd>Ctrl ⇧ P</kbd>
       </button>
       <div class="toolbar-group toolbar-build-group">
-        <button id="selectCompiler" class="toolbar-button compiler-button" title="Select the installed NPP compiler">
+        <button id="selectCompiler" class="toolbar-button compiler-button" title="Select the installed N++ compiler">
           <span class="button-glyph" aria-hidden="true">⌘</span><span>Compiler</span>
         </button>
         <button id="buildFile" class="toolbar-button build-button" title="Compile the current .npp file (F7)">
@@ -80,7 +80,7 @@
           <div id="saveStatus" class="save-status"><span class="save-status-dot"></span> Ready</div>
         </div>
         <div class="editor-toolbar">
-          <span class="breadcrumb-root" id="breadcrumbRoot">NPP</span>
+          <span class="breadcrumb-root" id="breadcrumbRoot">N++</span>
           <span class="breadcrumb-separator">/</span>
           <span class="breadcrumb-current" id="breadcrumbCurrent">Welcome</span>
           <span class="editor-toolbar-spacer"></span>
@@ -94,19 +94,19 @@
           <div class="welcome-copy">
             <div class="welcome-kicker"><span class="kicker-line"></span> YOUR DEVELOPMENT WORKSPACE</div>
             <h1>Make it<br><em>work.</em></h1>
-            <p class="welcome-intro">A focused place to explore, write and run NPP programs. Open a project and keep the whole loop close at hand.</p>
+            <p class="welcome-intro">A focused place to explore, write and run N++ programs. Open a project and keep the whole loop close at hand.</p>
             <div class="welcome-actions">
               <button id="welcomeOpen" class="welcome-primary"><span>Open project folder</span><span aria-hidden="true">↗</span></button>
               <button id="welcomeNew" class="welcome-secondary">Create a source file</button>
             </div>
-            <div class="welcome-footnote"><span class="footnote-dot"></span> The NPP compiler is detected automatically where possible.</div>
+            <div class="welcome-footnote"><span class="footnote-dot"></span> The N++ compiler is detected automatically where possible.</div>
           </div>
           <div class="welcome-side">
             <div class="starter-card">
               <div class="starter-card-head"><span>START WITH A SMALL PROGRAM</span><span>01 / 01</span></div>
-              <div class="starter-file"><span class="starter-file-icon">◇</span><span>hello.npp</span><span class="starter-file-type">NPP</span></div>
+              <div class="starter-file"><span class="starter-file-icon">◇</span><span>hello.npp</span><span class="starter-file-type">N++</span></div>
               <pre><code><span class="code-keyword">fn</span> main() {
-    <span class="code-keyword">let</span> message = <span class="code-string">"Hello from NPP"</span>
+    <span class="code-keyword">let</span> message = <span class="code-string">"Hello from N++"</span>
     print(message)
 }</code></pre>
               <div class="starter-card-foot">
@@ -128,7 +128,7 @@
 
       <section id="problemsPanel" class="problems-panel hidden" aria-label="Compiler problems">
         <div class="problems-head"><div><strong>PROBLEMS</strong><span id="problemCount">0</span></div><button id="closeProblems" type="button" title="Hide Problems panel">×</button></div>
-        <div id="problemList" class="problem-list"><div class="problems-empty">No problems detected. Build a NPP file to see diagnostics here.</div></div>
+        <div id="problemList" class="problem-list"><div class="problems-empty">No problems detected. Build a N++ file to see diagnostics here.</div></div>
       </section>
       <section class="terminal-panel">
         <div class="terminal-head">
@@ -158,11 +158,11 @@
     <div class="statusbar-left">
       <span class="status-indicator"></span>
       <span id="statusProject">No project open</span>
-      <span class="status-branch">NPP</span>
+      <span class="status-branch">N++</span>
     </div>
     <div class="statusbar-right">
       <span id="compilerStatus" class="compiler-missing">Compiler not selected</span>
-      <span id="statusLang">NPP</span>
+      <span id="statusLang">N++</span>
       <span>UTF-8</span>
       <span id="cursorPosition">Ln 1, Col 1</span>
       <span id="statusPlatform">Desktop</span>

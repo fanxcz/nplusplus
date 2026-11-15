@@ -1,0 +1,20 @@
+// FPS-style frame timer built on std.time.
+import std.time
+
+fn main() {
+    let mut frames: i64 = 0
+    let start = time_now_ms()
+
+    while time_elapsed_ms(start) < 1000 {
+        // Simulated frame work goes here; sleep keeps the demo responsive.
+        time_sleep_ms(16)
+        frames = frames + 1
+    }
+
+    let elapsed = time_elapsed_ms(start)
+    print("frames: " + str_i64(frames))
+    print("elapsed ms: " + str_i64(elapsed))
+    if frames > 0 {
+        print("fps: " + str_f64(to_f64(frames) * 1000.0 / to_f64(elapsed)))
+    }
+}

@@ -1,11 +1,11 @@
-// NPP Task Manager — интерактивный консольный диспетчер задач
+// N++ Task Manager — интерактивный консольный диспетчер задач
 // Запуск: npp run examples/task_manager.npp --backend llvm
 
-// system(command) -> i64 — встроенная функция NPP (выполняет команду ОС)
+// system(command) -> i64 — встроенная функция N++ (выполняет команду ОС)
 
 fn show_header() {
     print("==============================================")
-    print("        NPP TASK MANAGER  v1.0")
+    print("        N++ TASK MANAGER  v1.0")
     print("==============================================")
 }
 
@@ -208,7 +208,7 @@ fn system_info() {
 
 fn main() {
     system("chcp 65001 >nul")
-    system("title NPP Task Manager")
+    system("title N++ Task Manager")
     system("color 0B")
     show_header()
     let mut running = true

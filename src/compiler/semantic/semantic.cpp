@@ -478,7 +478,7 @@ namespace npp {
 
         if (!diagnostics_.empty()) {
             std::ostringstream summary;
-            summary << "NPP found " << diagnostics_.size() << " semantic error"
+            summary << "N++ found " << diagnostics_.size() << " semantic error"
                     << (diagnostics_.size() == 1 ? "" : "s") << ":\n";
             for (const auto& diagnostic : diagnostics_)
                 summary << "  - " << diagnostic << "\n";

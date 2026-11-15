@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Repository-wide integrity audit for tracked NPP files.
+"""Repository-wide integrity audit for tracked N++ files.
 
 This is a fast preflight, not a substitute for the compiler tests, sanitizer jobs,
 documentation build, or platform-specific packaging checks.

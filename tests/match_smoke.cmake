@@ -52,4 +52,4 @@ if(guarded_rc EQUAL 0 OR NOT guarded_diagnostics MATCHES "match on bool is not e
   message(FATAL_ERROR "A guarded boolean arm was incorrectly counted as exhaustive:\n${guarded_diagnostics}")
 endif()
 
-message(STATUS "NPP match range/binding/guard smoke test: PASS")
+message(STATUS "N++ match range/binding/guard smoke test: PASS")

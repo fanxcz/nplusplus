@@ -33,4 +33,4 @@ file(REMOVE "${MISSING_SOURCE}")
 expect_failure("missing source file" "${MISSING_SOURCE}" "cannot open")
 
 expect_failure("directory passed as source" "${TEST_SOURCE_DIR}" "is a directory")
-message(STATUS "NPP negative tests: PASS")
+message(STATUS "N++ negative tests: PASS")

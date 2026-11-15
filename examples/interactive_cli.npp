@@ -1,6 +1,6 @@
 fn main() {
     clear()
-    print("NPP INTERACTIVE CLI")
+    print("N++ INTERACTIVE CLI")
     let name = input("Your name: ")
     let age = input_i64("Your age: ")
     print("Hello, " + name)

@@ -1,5 +1,5 @@
 fn main() {
-    print("NPP application")
+    print("N++ application")
     let name = input("Your name: ")
     print("Hello, " + name)
 }

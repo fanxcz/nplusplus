@@ -6,7 +6,7 @@ let outputChannel;
 
 function activate(context) {
     const serverPath = vscode.workspace.getConfiguration('npp').get('serverPath', 'npp');
-    outputChannel = vscode.window.createOutputChannel('NPP Language Server');
+    outputChannel = vscode.window.createOutputChannel('N++ Language Server');
 
     const serverOptions = {
         command: serverPath,
@@ -29,7 +29,7 @@ function activate(context) {
 
     client = new LanguageClient(
         'nppLanguageServer',
-        'NPP Language Server',
+        'N++ Language Server',
         serverOptions,
         clientOptions
     );

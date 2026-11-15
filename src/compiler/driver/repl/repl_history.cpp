@@ -11,7 +11,7 @@ namespace npp {
 #ifdef _WIN32
             if (const char* appData = std::getenv("APPDATA")) {
                 if (*appData != '\0')
-                    return fs::path(appData) / "NPP" / "repl_history.txt";
+                    return fs::path(appData) / "N++" / "repl_history.txt";
             }
             if (const char* home = std::getenv("USERPROFILE")) {
                 if (*home != '\0')

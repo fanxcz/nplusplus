@@ -13,7 +13,7 @@ namespace npp {
         for (auto& f : const_cast<Program&>(p).functions)
             functions[f.name] = &f;
 
-        emitModule("; Npp LLVM IR v1.0.0");
+        emitModule("; N++ LLVM IR v1.0.0");
         if (!options.targetTriple.empty())
             emitModule("target triple = \"" + options.targetTriple + "\"");
 

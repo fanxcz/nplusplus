@@ -1,5 +1,5 @@
 fn main() {
-    let ok = gfx_init(960, 540, "NPP Game")
+    let ok = gfx_init(960, 540, "N++ Game")
     if ! ok {
         print("Graphics backend unavailable: " + gfx_error())
         return
@@ -34,7 +34,7 @@ fn main() {
         gfx_begin()
         gfx_clear(0.03, 0.04, 0.08, 1.0)
         gfx_rect(0.0, 0.0, 960.0, 64.0, 0.06, 0.08, 0.15, 1.0)
-        gfx_text(24.0, 20.0, 2.0, "NPP GAME", 0.5, 0.85, 1.0, 1.0)
+        gfx_text(24.0, 20.0, 2.0, "N++ GAME", 0.5, 0.85, 1.0, 1.0)
         gfx_text(240.0, 22.0, 1.5, "WASD MOVE   LEFT MOUSE TELEPORT ENEMY   ESC QUIT", 0.85, 0.85, 0.9, 1.0)
 
         gfx_circle(playerX, playerY, 24.0, 0.2, 0.8, 1.0, 1.0)
@@ -43,7 +43,7 @@ fn main() {
 
         gfx_text(24.0, 500.0, 1.5, "SCORE", 0.6, 0.7, 0.9, 1.0)
         gfx_text(95.0, 500.0, 1.5, str_i64(score), 1.0, 1.0, 1.0, 1.0)
-        gfx_text(720.0, 500.0, 1.2, "NPP 0.5 GRAPHICS", 0.5, 0.6, 0.8, 1.0)
+        gfx_text(720.0, 500.0, 1.2, "N++ 0.5 GRAPHICS", 0.5, 0.6, 0.8, 1.0)
         gfx_end()
     }
 

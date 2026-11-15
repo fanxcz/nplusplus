@@ -1,0 +1,15 @@
+// Time and scheduling helpers backed by the runtime monotonic clock.
+// All timestamps are milliseconds since an unspecified epoch; only
+// differences between values produced by this module are meaningful.
+
+fn time_now_ms() -> i64 { return time_ms() }
+
+fn time_sleep_ms(ms: i64) { sleep(ms) }
+
+fn time_elapsed_ms(start_ms: i64) -> i64 { return time_ms() - start_ms }
+
+fn time_seconds() -> f64 { return to_f64(time_ms()) / 1000.0 }
+
+fn time_seconds_elapsed(start_ms: i64) -> f64 {
+    return to_f64(time_elapsed_ms(start_ms)) / 1000.0
+}

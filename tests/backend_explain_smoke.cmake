@@ -34,4 +34,4 @@ if(NOT out MATCHES "reason:")
   message(FATAL_ERROR "LLVM fallback report omitted the reason:\n${out}")
 endif()
 
-message(STATUS "NPP backend explanation smoke test: PASS")
+message(STATUS "N++ backend explanation smoke test: PASS")

@@ -1,10 +1,10 @@
 fn main() {
-    let ok = gfx_init(1100, 700, "NPP 0.8 Game Framework")
+    let ok = gfx_init(1100, 700, "N++ 0.8 Game Framework")
     if ! ok {
         print("Graphics error: " + gfx_error())
         return
     }
-    gfx_set_title("NPP 0.8 - ECS / Animation / Scene / UI")
+    gfx_set_title("N++ 0.8 - ECS / Animation / Scene / UI")
     gfx_vsync(true)
 
     let sprite = gfx_texture_load("examples/assets/sprite_sheet.bmp")
@@ -58,7 +58,7 @@ fn main() {
         gfx_begin()
         gfx_clear(0.025, 0.03, 0.06, 1.0)
         gfx_rect(0.0, 0.0, 1100.0, 84.0, 0.06, 0.09, 0.17, 1.0)
-        gfx_text(28.0, 24.0, 2.2, "NPP 0.8 GAME FRAMEWORK", 0.55, 0.88, 1.0, 1.0)
+        gfx_text(28.0, 24.0, 2.2, "N++ 0.8 GAME FRAMEWORK", 0.55, 0.88, 1.0, 1.0)
         gfx_text(28.0, 58.0, 1.2, "ECS + SPRITE ANIMATION + PHYSICS + SCENE + GUI", 0.72, 0.78, 0.9, 1.0)
 
         gfx_text(70.0, 120.0, 1.5, "PLAYER", 0.5, 0.8, 1.0, 1.0)

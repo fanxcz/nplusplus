@@ -1,5 +1,5 @@
 fn main() {
-    let ok = gfx_init(960, 540, "NPP Particles")
+    let ok = gfx_init(960, 540, "N++ Particles")
     if ! ok { print(gfx_error()); return }
 
     let mut burst = 0
@@ -14,7 +14,7 @@ fn main() {
         gfx_begin()
         gfx_clear(0.02, 0.03, 0.06, 1.0)
         gfx_particles_draw()
-        gfx_text(24.0, 24.0, 2.0, "NPP PARTICLES", 0.7, 0.85, 1.0, 1.0)
+        gfx_text(24.0, 24.0, 2.0, "N++ PARTICLES", 0.7, 0.85, 1.0, 1.0)
         gfx_end()
     }
     gfx_particles_clear()

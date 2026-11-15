@@ -15,7 +15,7 @@ fn main() {
     let map_width: i64 = 30
     let map_height: i64 = 16
 
-    let ok = engine2d_init(960, 540, "NPP 2D Starter")
+    let ok = engine2d_init(960, 540, "N++ 2D Starter")
     if ! ok {
         print("Graphics backend unavailable: " + gfx_error())
         return

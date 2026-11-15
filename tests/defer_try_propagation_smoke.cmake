@@ -43,4 +43,4 @@ if(NOT run_out STREQUAL expected)
   message(FATAL_ERROR "Unexpected defer/? output:\n--- actual ---\n${run_out}\n--- expected ---\n${expected}\n${run_err}")
 endif()
 
-message(STATUS "NPP defer + ? propagation smoke test: PASS")
+message(STATUS "N++ defer + ? propagation smoke test: PASS")

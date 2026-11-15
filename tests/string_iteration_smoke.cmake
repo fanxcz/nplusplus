@@ -32,8 +32,8 @@ endif()
 
 string(REPLACE "\r\n" "\n" run_out "${run_out}")
 string(REGEX REPLACE "\n+$" "" run_out "${run_out}")
-if(NOT run_out STREQUAL "NPP string iteration: PASS")
+if(NOT run_out STREQUAL "N++ string iteration: PASS")
   message(FATAL_ERROR "Unexpected string iteration output: [${run_out}]\n${run_err}")
 endif()
 
-message(STATUS "NPP Unicode string iteration smoke test: PASS")
+message(STATUS "N++ Unicode string iteration smoke test: PASS")

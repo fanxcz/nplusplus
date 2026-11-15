@@ -30,4 +30,4 @@ foreach(key IN ITEMS native_backend llvm_backend compiler_found runtime stdlib t
   endif()
 endforeach()
 
-message(STATUS "NPP doctor JSON smoke test: PASS")
+message(STATUS "N++ doctor JSON smoke test: PASS")

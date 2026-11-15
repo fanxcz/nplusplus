@@ -1,0 +1,23 @@
+// String composition helpers from std.text.
+import std.collections
+import std.text
+
+fn main() {
+    let name = "npp"
+    print("shout: " + text_upper(name))
+    print("whisper: " + text_lower(name))
+    print("padded: [" + text_pad_left("42", 5, "0") + "]")
+    print("dashed: " + text_repeat("-", 10))
+
+    if text_ends_with("main.npp", ".npp") {
+        print("looks like an N++ source file")
+    }
+    print("find '.npp': " + str_i64(text_find("src/main.npp", ".npp")))
+
+    let words = string_list_new()
+    defer string_list_dispose(words)
+    string_list_push(words, "compiler")
+    string_list_push(words, "runtime")
+    string_list_push(words, "stdlib")
+    print("joined: " + text_join(words, " | "))
+}

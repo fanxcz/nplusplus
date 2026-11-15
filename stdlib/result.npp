@@ -1,5 +1,5 @@
 // Concrete Result helper built on payload enums.
-// NPP does not yet have generics, so this operates on i64 values and string errors.
+// N++ does not yet have generics, so this operates on i64 values and string errors.
 
 enum Result { Ok(i64), Err(string) }
 

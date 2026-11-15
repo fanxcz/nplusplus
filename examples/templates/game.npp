@@ -58,7 +58,7 @@ fn main() {
     let mut e3hp: i64 = 2
     let mut e4hp: i64 = 2
 
-    let ok = gfx_init(1280, 720, "NPP - NEON SURVIVOR")
+    let ok = gfx_init(1280, 720, "N++ - NEON SURVIVOR")
     if ! ok {
         print("Graphics error: " + gfx_error())
         return
@@ -80,7 +80,7 @@ fn main() {
         if ! started {
             gfx_begin()
             gfx_clear(0.015, 0.02, 0.04, 1.0)
-            gfx_text(centerX - 250.0, 170.0, 4.0, "NPP NEON SURVIVOR", 0.15, 0.9, 1.0, 1.0)
+            gfx_text(centerX - 250.0, 170.0, 4.0, "N++ NEON SURVIVOR", 0.15, 0.9, 1.0, 1.0)
             gfx_text(centerX - 180.0, 270.0, 1.9, "W A S D  MOVE", 0.75, 0.85, 1.0, 1.0)
             gfx_text(centerX - 180.0, 305.0, 1.9, "MOUSE  AIM + LEFT CLICK FIRE", 0.75, 0.85, 1.0, 1.0)
             gfx_text(centerX - 180.0, 340.0, 1.9, "P  PAUSE   ESC  QUIT", 0.75, 0.85, 1.0, 1.0)

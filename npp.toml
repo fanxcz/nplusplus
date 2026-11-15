@@ -5,7 +5,7 @@
 [package]
 name = "npp-repository"
 version = "0.0.0"
-description = "Source tree of the NPP programming language"
+description = "Source tree of the N++ programming language"
 
 [build]
 entry = "examples/hello.npp"

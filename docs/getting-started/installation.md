@@ -1,12 +1,36 @@
 # Installation
 
-N++ is built from source with CMake. Pre-built packages are published on the
-[GitHub Releases](https://github.com/fanxcz/nplusplus/releases) page when a
-version tag is built; if no release is listed yet, build from source as
-described below.
+## Install from a release
 
-## Building from Source
-The compiler's `CMakeLists.txt` minimum is 3.20, but the checked-in `CMakePresets.json` uses schema version 6, which requires CMake 3.25+. If you have CMake 3.20–3.24, use explicit configure/build commands (`cmake -S . -B build -G Ninja -DNPP_BUILD_TESTS=ON` and `cmake --build build`) instead of `--preset` commands.
+Pre-built archives for Windows, Linux and macOS are attached to
+[GitHub Releases](https://github.com/fanxcz/nplusplus/releases). Each archive
+contains the `npp` compiler plus the runtime, standard library and project
+templates, with a `.sha256` checksum sidecar.
+
+One-line installers download the latest release, verify the checksum and
+place the tools on disk:
+
+```bash
+# Linux / macOS
+curl -fsSL https://raw.githubusercontent.com/fanxcz/nplusplus/main/scripts/install.sh | bash
+```
+
+```powershell
+# Windows (PowerShell)
+irm https://raw.githubusercontent.com/fanxcz/nplusplus/main/scripts/install.ps1 | iex
+```
+
+Set `NPP_VERSION` to pin a specific tag and `NPP_PREFIX` to choose the install
+root (default `~/.local/npp` on Unix, `%LOCALAPPDATA%\NPP` on Windows). The
+scripts print the `PATH` update to apply afterwards.
+
+To install manually, download the archive for your platform, verify the
+`.sha256` sidecar, and extract it so that `bin/npp` and `share/npp/` sit side
+by side; then add `bin/` to your `PATH`.
+
+## Building from source
+
+N++ can also be built from source with CMake. The compiler's `CMakeLists.txt` minimum is 3.20, but the checked-in `CMakePresets.json` uses schema version 6, which requires CMake 3.25+. If you have CMake 3.20–3.24, use explicit configure/build commands (`cmake -S . -B build -G Ninja -DNPP_BUILD_TESTS=ON` and `cmake --build build`) instead of `--preset` commands.
 
 
 ### Prerequisites

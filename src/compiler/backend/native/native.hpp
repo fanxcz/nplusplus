@@ -9,7 +9,7 @@ namespace npp::native {
 
     // Builtin direct machine-code backend (v0).
     //
-    // Translates the supported NPP subset straight into an executable image.
+    // Translates the supported N++ subset straight into an executable image.
     // No LLVM, Clang, assembler, or linker is involved at any point, so programs
     // inside the subset compile on a bare machine with only the `npp` binary,
     // its standard library sources, and an OS that can run the output.

@@ -31,8 +31,8 @@ endif()
 
 string(REPLACE "\r\n" "\n" run_out "${run_out}")
 string(REGEX REPLACE "\n+$" "" run_out "${run_out}")
-if(NOT run_out STREQUAL "NPP stdlib error helpers: PASS")
+if(NOT run_out STREQUAL "N++ stdlib error helpers: PASS")
   message(FATAL_ERROR "Unexpected stdlib error helper output: [${run_out}]\n${run_err}")
 endif()
 
-message(STATUS "NPP stdlib error helper smoke test: PASS")
+message(STATUS "N++ stdlib error helper smoke test: PASS")

@@ -8,7 +8,7 @@ namespace npp {
 
             const auto cfg = loadProject();
 
-            std::cout << "NPP project\n"
+            std::cout << "N++ project\n"
                       << "  name:    " << cfg.name << "\n"
                       << "  version: " << cfg.version << "\n"
                       << "  root:    " << cfg.root << "\n"

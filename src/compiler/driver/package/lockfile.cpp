@@ -5,7 +5,7 @@ namespace npp {
 
 
         ParsedPackageLockfile parsePackageLockfile(const std::string& data) {
-            constexpr const char* header = "# NPP lockfile v2 (SHA-256 content integrity)";
+            constexpr const char* header = "# N++ lockfile v2 (SHA-256 content integrity)";
             ParsedPackageLockfile result;
             std::set<std::string> seenSections;
             std::istringstream input(data);
@@ -23,7 +23,7 @@ namespace npp {
                     checkedHeader = true;
                     if (raw != header)
                         throw std::runtime_error(
-                            "pkg verify: invalid lockfile: missing NPP lockfile v2 header");
+                            "pkg verify: invalid lockfile: missing N++ lockfile v2 header");
                     continue;
                 }
 
@@ -133,7 +133,7 @@ namespace npp {
             }
 
             std::ostringstream lock;
-            lock << "# NPP lockfile v2 (SHA-256 content integrity)\npackage = \"" << cfg.name
+            lock << "# N++ lockfile v2 (SHA-256 content integrity)\npackage = \"" << cfg.name
                  << "\"\nversion = \"" << cfg.version << "\"\n";
             if (!dependencies.empty()) {
                 lock << "\n[dependencies]\n";

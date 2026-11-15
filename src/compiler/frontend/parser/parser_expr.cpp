@@ -279,7 +279,7 @@ namespace npp {
             int p = precedence(cur().kind);
             if (p < minPrec)
                 break;
-            // NPP allows optional semicolons, so a binary operator that
+            // N++ allows optional semicolons, so a binary operator that
             // starts a new line must terminate the expression when the
             // previous line can already stand on its own. Without this rule
             // `a = b` followed by `-1` silently parses as `a = b - 1`, and

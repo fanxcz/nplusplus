@@ -11,15 +11,15 @@ fn main() {
     }
 
     if rebuilt != text {
-        print("NPP string iteration: FAIL UTF-8 round trip")
+        print("N++ string iteration: FAIL UTF-8 round trip")
         return
     }
     if count != 3 || string.chars(text) != 3 {
-        print("NPP string iteration: FAIL code-point count")
+        print("N++ string iteration: FAIL code-point count")
         return
     }
     if codepoint_sum != 128876 {
-        print("NPP string iteration: FAIL code-point values")
+        print("N++ string iteration: FAIL code-point values")
         return
     }
 
@@ -29,9 +29,9 @@ fn main() {
         empty_count = empty_count + codepoint
     }
     if empty_count != 0 {
-        print("NPP string iteration: FAIL empty string")
+        print("N++ string iteration: FAIL empty string")
         return
     }
 
-    print("NPP string iteration: PASS")
+    print("N++ string iteration: PASS")
 }

@@ -22,7 +22,7 @@
         }
         gWidth = std::max(w, 320);
         gHeight = std::max(h, 240);
-        gWindow = SDL_CreateWindow(title ? title : "NPP",
+        gWindow = SDL_CreateWindow(title ? title : "N++",
                                    SDL_WINDOWPOS_CENTERED,
                                    SDL_WINDOWPOS_CENTERED,
                                    gWidth,
@@ -78,7 +78,7 @@
         SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 2);
         SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 1);
         SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
-        gWindow = SDL_CreateWindow("NPP",
+        gWindow = SDL_CreateWindow("N++",
                                    SDL_WINDOWPOS_CENTERED,
                                    SDL_WINDOWPOS_CENTERED,
                                    std::max(w, 320),

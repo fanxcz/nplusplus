@@ -64,6 +64,8 @@ See [Repository architecture](docs/architecture/repository-layout.md) for detail
 
 ## Documentation
 
+Start at the [documentation index](docs/README.md).
+
 - [Language reference](docs/language-spec.md) and [manual](docs/manual.md)
 - [Language guide](docs/language/) — syntax, types, functions, control flow, modules, error handling, FFI
 - [Standard library](docs/std/) — per-module reference

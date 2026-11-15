@@ -36,4 +36,4 @@ if(NOT run_out STREQUAL EXPECTED)
   message(FATAL_ERROR "Unexpected enum payload output:\n[${run_out}]\nExpected:\n[${EXPECTED}]\n${run_err}")
 endif()
 
-message(STATUS "NPP enum payload smoke test: PASS")
+message(STATUS "N++ enum payload smoke test: PASS")

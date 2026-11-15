@@ -408,8 +408,8 @@ int main() {
         }
         {
 
-            auto p = parse("fn main(){ let name = \"Npp\"; print(\"Hello, \" + name); print(name "
-                           "== \"Npp\"); print(name != \"Other\") }");
+            auto p = parse("fn main(){ let name = \"N++\"; print(\"Hello, \" + name); print(name "
+                           "== \"N++\"); print(name != \"Other\") }");
 
             npp::SemanticAnalyzer().analyze(p);
         }
@@ -893,8 +893,8 @@ int main() {
             if (npp::native::supports(q, reason))
                 return 10;
             // ...while strings are accepted.
-            auto s = parse("fn main(){ let name = \"Npp\"; print(\"Hello, \" + name); print(name "
-                           "== \"Npp\") }");
+            auto s = parse("fn main(){ let name = \"N++\"; print(\"Hello, \" + name); print(name "
+                           "== \"N++\") }");
             npp::SemanticAnalyzer().analyze(s);
             if (!npp::native::supports(s, reason))
                 return 10;
@@ -1010,7 +1010,7 @@ int main() {
             } catch (const std::exception& error) {
                 const std::string message = error.what();
                 reportedMultiple =
-                    message.find("NPP found 2 syntax errors") != std::string::npos &&
+                    message.find("N++ found 2 syntax errors") != std::string::npos &&
                     message.find("expected identifier") != std::string::npos;
             }
             if (!reportedMultiple) {
@@ -1113,7 +1113,7 @@ int main() {
                 }
             }
         }
-        std::cout << "Npp tests: PASS\n";
+        std::cout << "N++ tests: PASS\n";
 
         return 0;
 

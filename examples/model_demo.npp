@@ -4,7 +4,7 @@ fn main() {
         print("MODEL ERROR: " + gfx_error())
         return
     }
-    let ok = gfx_init(960, 540, "NPP OBJ")
+    let ok = gfx_init(960, 540, "N++ OBJ")
     if ! ok { print(gfx_error()); return }
     while ! gfx_should_close() {
         gfx_poll()

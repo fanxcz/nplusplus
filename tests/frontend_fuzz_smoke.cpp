@@ -261,7 +261,7 @@ int main() {
         return 5;
     }
 
-    std::cout << "NPP frontend fuzz smoke: PASS (" << iterations
+    std::cout << "N++ frontend fuzz smoke: PASS (" << iterations
               << " deterministic inputs plus parser depth/range regressions, seed " << seed
               << ")\n";
     return 0;

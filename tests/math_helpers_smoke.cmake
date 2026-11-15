@@ -32,8 +32,8 @@ endif()
 
 string(REPLACE "\r\n" "\n" run_out "${run_out}")
 string(REGEX REPLACE "\n+$" "" run_out "${run_out}")
-if(NOT run_out STREQUAL "NPP math helpers: PASS")
+if(NOT run_out STREQUAL "N++ math helpers: PASS")
   message(FATAL_ERROR "Unexpected math helper output: [${run_out}]")
 endif()
 
-message(STATUS "NPP math helper smoke test: PASS")
+message(STATUS "N++ math helper smoke test: PASS")

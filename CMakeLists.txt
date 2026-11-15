@@ -73,7 +73,7 @@ if (CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU")
   endif()
 endif()
 
-option(NPP_BUILD_TESTS "Build Npp tests" ON)
+option(NPP_BUILD_TESTS "Build N++ tests" ON)
 option(NPP_BUILD_LIBFUZZER "Build opt-in Clang/libFuzzer frontend targets" OFF)
 
 # ============================================================================
@@ -413,7 +413,7 @@ if (NPP_BUILD_TESTS)
 
   add_test(NAME npp_tests COMMAND npp_tests)
   add_test(NAME npp_version_smoke COMMAND $<TARGET_FILE:npp> --version)
-  set_tests_properties(npp_version_smoke PROPERTIES PASS_REGULAR_EXPRESSION "Npp ${PROJECT_VERSION}")
+  set_tests_properties(npp_version_smoke PROPERTIES PASS_REGULAR_EXPRESSION "N\\+\\+ ${PROJECT_VERSION}")
   add_test(NAME npp_repl_smoke
       COMMAND ${CMAKE_COMMAND}
           -DNPP_BIN=$<TARGET_FILE:npp>
@@ -521,6 +521,10 @@ if (NPP_BUILD_TESTS)
             --npp $<TARGET_FILE:npp>
             --root ${CMAKE_SOURCE_DIR})
     set_tests_properties(npp_repository_sources PROPERTIES TIMEOUT 300)
+    add_test(NAME npp_check_versions
+        COMMAND ${Python3_EXECUTABLE}
+            ${CMAKE_SOURCE_DIR}/scripts/check_versions.py
+            --root ${CMAKE_SOURCE_DIR})
     if(UNIX)
       add_test(NAME npp_repl_tty_smoke
           COMMAND ${Python3_EXECUTABLE}
@@ -556,7 +560,7 @@ if (NPP_BUILD_TESTS)
             -P ${CMAKE_SOURCE_DIR}/tests/native_smoke.cmake)
   endif()
 
-  # Self-hosting: the NPP-written lexer's test suite and self-lexing smoke.
+  # Self-hosting: the N++-written lexer's test suite and self-lexing smoke.
   # The .ll pipeline needs a clang-compatible driver, so plain g++ is skipped.
   find_program(NPP_SELFHOST_CXX NAMES clang++ clang++-18 clang++-17)
   if (NPP_SELFHOST_CXX)
@@ -829,7 +833,7 @@ endif()
 # Summary
 # ============================================================================
 message(STATUS "==========================================")
-message(STATUS "NPP ${PROJECT_VERSION} Configuration Summary")
+message(STATUS "N++ ${PROJECT_VERSION} Configuration Summary")
 message(STATUS "==========================================")
 message(STATUS "C Compiler:   ${CMAKE_C_COMPILER}")
 message(STATUS "C++ Compiler: ${CMAKE_CXX_COMPILER}")

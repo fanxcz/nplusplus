@@ -1,5 +1,5 @@
 fn main() {
-    print("NPP AUDIO ENGINE")
+    print("N++ AUDIO ENGINE")
     print("Audio runtime available: " + str_i64(gfx_audio_available()))
 
     let sound = gfx_sound_load("examples/assets/beep.wav")

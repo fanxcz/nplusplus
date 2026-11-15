@@ -160,4 +160,4 @@ if(rc EQUAL 0 OR NOT enum_match_combined MATCHES "match on enum 'Color' is not e
 endif()
 
 file(REMOVE_RECURSE "${DIAGNOSTIC_DIR}")
-message(STATUS "NPP diagnostics smoke test: PASS")
+message(STATUS "N++ diagnostics smoke test: PASS")

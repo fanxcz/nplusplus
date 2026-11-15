@@ -44,7 +44,7 @@ namespace npp {
                  it != end;
                  it.increment(ec)) {
                 if (ec)
-                    throw std::runtime_error("cannot discover NPP source files: " + ec.message());
+                    throw std::runtime_error("cannot discover N++ source files: " + ec.message());
 
                 const auto status = it->symlink_status(ec);
                 if (ec)

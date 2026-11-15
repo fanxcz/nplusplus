@@ -1,0 +1,8 @@
+// Process execution helpers. Commands run through the platform shell,
+// so quote arguments that contain spaces or shell metacharacters.
+
+fn shell_run(command: string) -> i64 { return system(command) }
+
+fn shell_output(command: string) -> string { return capture_output(command) }
+
+fn shell_ok(command: string) -> bool { return system(command) == 0 }

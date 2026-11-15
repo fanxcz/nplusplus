@@ -467,7 +467,7 @@ kbd {
 }
 
 
-/* NPP Studio 1.0.0 — IDE panels and editor tabs */
+/* N++ Studio 1.0.0 — IDE panels and editor tabs */
 :root { --accent:#78afe3; --accent-bright:#a5d0f3; --red:#e58b8b; --background:#101722; --panel:#151f2b; --line:#2b3949; --line-soft:#243140; --muted:#8d9bad; }
 body { background:#0f1620; }
 .topbar { background:#151f2b; border-bottom-color:#283b50; }

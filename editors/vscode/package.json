@@ -1,7 +1,7 @@
 {
   "name": "npp-language",
-  "displayName": "NPP Language Support",
-  "description": "NPP syntax highlighting, snippets, diagnostics, completion, signature help, hover, navigation, formatting and quick fixes.",
+  "displayName": "N++ Language Support",
+  "description": "N++ syntax highlighting, snippets, diagnostics, completion, signature help, hover, navigation, formatting and quick fixes.",
   "version": "1.0.0",
   "publisher": "fanxcz",
   "license": "MIT",
@@ -26,7 +26,7 @@
       {
         "id": "npp",
         "aliases": [
-          "NPP",
+          "N++",
           "npp"
         ],
         "extensions": [
@@ -49,19 +49,19 @@
       }
     ],
     "configuration": {
-      "title": "NPP",
+      "title": "N++",
       "properties": {
         "npp.serverPath": {
           "type": "string",
           "default": "npp",
-          "description": "Path to the NPP executable or launcher. The extension starts it with the lsp argument."
+          "description": "Path to the N++ executable or launcher. The extension starts it with the lsp argument."
         }
       }
     },
     "commands": [
       {
         "command": "npp.showServerOutput",
-        "title": "NPP: Show Language Server Output"
+        "title": "N++: Show Language Server Output"
       }
     ]
   },
@@ -69,5 +69,9 @@
     "type": "git",
     "url": "https://github.com/fanxcz/nplusplus.git",
     "directory": "editors/vscode"
-  }
+  },
+  "bugs": {
+    "url": "https://github.com/fanxcz/nplusplus/issues"
+  },
+  "homepage": "https://github.com/fanxcz/nplusplus"
 }

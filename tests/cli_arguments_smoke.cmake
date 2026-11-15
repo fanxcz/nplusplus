@@ -47,4 +47,4 @@ expect_cli_failure("multiple lint inputs" "lint accepts only one source file"
 expect_cli_failure("doc unexpected input" "doc does not accept arguments"
   doc stray)
 
-message(STATUS "NPP CLI argument validation: PASS")
+message(STATUS "N++ CLI argument validation: PASS")

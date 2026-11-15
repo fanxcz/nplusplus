@@ -1,4 +1,4 @@
-// End-to-end test: NPP-written compiler compiles and runs a NPP program.
+// End-to-end test: N++-written compiler compiles and runs a N++ program.
 // Pipeline: lexer -> parser -> codegen (.ll) -> clang++ -> execute -> compare.
 // Requires NPP_CXX (clang-compatible) in the environment.
 import "codegen_lib.npp"

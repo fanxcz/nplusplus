@@ -51,7 +51,7 @@ void npp_free(void* p) {
 void npp_bounds_check(int64_t index, int64_t size) {
     if (index < 0 || index >= size) {
         fprintf(stderr,
-                "Npp runtime error: array index %lld out of bounds for size %lld\n",
+                "N++ runtime error: array index %lld out of bounds for size %lld\n",
                 (long long)index,
                 (long long)size);
         exit(1);
@@ -60,18 +60,18 @@ void npp_bounds_check(int64_t index, int64_t size) {
 void npp_slice_bounds_check(int64_t start, int64_t end, int64_t length) {
     if (start < 0 || end < start || end > length) {
         fprintf(stderr,
-                "Npp runtime error: invalid slice range [%lld..%lld] for length %lld\n",
+                "N++ runtime error: invalid slice range [%lld..%lld] for length %lld\n",
                 (long long)start, (long long)end, (long long)length);
         exit(1);
     }
 }
 int64_t npp_division_check(int64_t dividend, int64_t divisor) {
     if (divisor == 0) {
-        fprintf(stderr, "NPP runtime error: division by zero\n");
+        fprintf(stderr, "N++ runtime error: division by zero\n");
         exit(1);
     }
     if (dividend == INT64_MIN && divisor == -1) {
-        fprintf(stderr, "NPP runtime error: signed integer division overflow\n");
+        fprintf(stderr, "N++ runtime error: signed integer division overflow\n");
         exit(1);
     }
     return divisor;
@@ -79,13 +79,13 @@ int64_t npp_division_check(int64_t dividend, int64_t divisor) {
 int64_t npp_division_check_typed(
     int64_t dividend, int64_t divisor, int64_t bits, bool is_signed) {
     if (divisor == 0) {
-        fprintf(stderr, "NPP runtime error: division by zero\n");
+        fprintf(stderr, "N++ runtime error: division by zero\n");
         exit(1);
     }
     if (is_signed && bits >= 2 && bits <= 64) {
         const int64_t minimum = bits == 64 ? INT64_MIN : -(INT64_C(1) << (bits - 1));
         if (dividend == minimum && divisor == -1) {
-            fprintf(stderr, "NPP runtime error: signed integer division overflow\n");
+            fprintf(stderr, "N++ runtime error: signed integer division overflow\n");
             exit(1);
         }
     }

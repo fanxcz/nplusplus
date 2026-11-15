@@ -47,7 +47,7 @@ namespace npp {
 
                 recoveredErrors_.emplace_back(error.what());
 
-                // NPP permits omitted semicolons, so recover at explicit statement
+                // N++ permits omitted semicolons, so recover at explicit statement
                 // terminators or at an unmistakable statement keyword. Do not retry
                 // the token that caused this error.
                 while (cur().kind != TokenKind::End && cur().kind != TokenKind::RBrace &&

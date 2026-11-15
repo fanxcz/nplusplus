@@ -1,4 +1,4 @@
-// NPP Memory Scanner — a small Cheat Engine style tool, written in NPP.
+// N++ Memory Scanner — a small Cheat Engine style tool, written in N++.
 // Scan another process for an integer value and overwrite it.
 //
 // Requires the LLVM backend: npp run examples/cheat_engine.npp --backend llvm
@@ -97,7 +97,7 @@ fn scan(proc: i64, value: i64) -> i64 {
 }
 
 fn main() {
-    print("=== NPP Memory Scanner 2.0 ===")
+    print("=== N++ Memory Scanner 2.0 ===")
     let pid = find_pid()
     let proc = OpenProcess(ACCESS_ALL(), 0, pid)
     if proc == 0 {

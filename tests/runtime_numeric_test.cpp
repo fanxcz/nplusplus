@@ -61,6 +61,6 @@ int main() {
 
     if (!ok)
         return 1;
-    std::puts("NPP runtime numeric: PASS");
+    std::puts("N++ runtime numeric: PASS");
     return 0;
 }

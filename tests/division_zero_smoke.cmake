@@ -46,7 +46,7 @@ foreach(operation IN ITEMS divide remainder)
       OUTPUT_VARIABLE run_out
       ERROR_VARIABLE run_err)
     set(combined "${run_out}\n${run_err}")
-    if(run_rc EQUAL 0 OR NOT combined MATCHES "NPP runtime error: division by zero")
+    if(run_rc EQUAL 0 OR NOT combined MATCHES "N\\+\\+ runtime error: division by zero")
       message(FATAL_ERROR
         "Expected a clean division-by-zero diagnostic using ${backend} for ${operation}; exit=${run_rc}\n${combined}")
     endif()
@@ -87,7 +87,7 @@ foreach(operation IN ITEMS divide remainder)
       OUTPUT_VARIABLE run_out
       ERROR_VARIABLE run_err)
     set(combined "${run_out}\n${run_err}")
-    if(run_rc EQUAL 0 OR NOT combined MATCHES "NPP runtime error: signed integer division overflow")
+    if(run_rc EQUAL 0 OR NOT combined MATCHES "N\\+\\+ runtime error: signed integer division overflow")
       message(FATAL_ERROR
         "Expected a clean signed integer overflow diagnostic using ${backend} for ${operation}; exit=${run_rc}\n${combined}")
     endif()
@@ -95,4 +95,4 @@ foreach(operation IN ITEMS divide remainder)
 endforeach()
 
 file(REMOVE_RECURSE "${TEST_DIR}")
-message(STATUS "NPP dynamic division checks: PASS")
+message(STATUS "N++ dynamic division checks: PASS")

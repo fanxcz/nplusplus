@@ -1,0 +1,122 @@
+name: Release N++
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag to publish (e.g. v1.0.0)'
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            asset: npp-linux-x86_64.tar.gz
+          - os: windows-latest
+            asset: npp-windows-x86_64.zip
+          - os: macos-latest
+            asset: npp-macos-arm64.tar.gz
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Linux toolchain
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y cmake ninja-build clang lld
+
+      - name: Install Windows toolchain
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: choco install ninja llvm -y --no-progress
+
+      - name: Install macOS toolchain
+        if: runner.os == 'macOS'
+        run: brew install ninja llvm
+
+      - name: Configure
+        run: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DNPP_BUILD_TESTS=OFF
+
+      - name: Build compiler
+        run: cmake --build build --target npp
+
+      - name: Verify version
+        shell: pwsh
+        run: |
+          $exe = if ($IsWindows) { './build/npp.exe' } else { './build/npp' }
+          & $exe --version
+          if ($LASTEXITCODE -ne 0) { throw 'npp --version failed' }
+
+      - name: Install into staging prefix
+        run: cmake --install build --prefix dist
+
+      - name: Smoke test staged binary
+        shell: pwsh
+        run: |
+          $exe = if ($IsWindows) { './dist/bin/npp.exe' } else { './dist/bin/npp' }
+          & $exe self-test
+          if ($LASTEXITCODE -ne 0) { throw 'staged npp self-test failed' }
+
+      - name: Package archive
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $asset = '${{ matrix.asset }}'
+          if ($asset.EndsWith('.zip')) {
+            Compress-Archive -Path 'dist/*' -DestinationPath $asset
+          } else {
+            tar -czf $asset -C dist .
+          }
+          $hash = (Get-FileHash -Algorithm SHA256 -Path $asset).Hash.ToLowerInvariant()
+          "$hash  $asset" | Set-Content -Path "$asset.sha256" -Encoding ASCII
+          Get-Item $asset, "$asset.sha256" | Format-Table Name, Length
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.asset }}
+          path: |
+            ${{ matrix.asset }}
+            ${{ matrix.asset }}.sha256
+          if-no-files-found: error
+          retention-days: 30
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - name: Resolve tag
+        id: tag
+        shell: bash
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "tag=${{ inputs.tag }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "tag=${GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Publish GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          tag="${{ steps.tag.outputs.tag }}"
+          gh release view "$tag" >/dev/null 2>&1 && exists=1 || exists=0
+          notes="Automated build of N++ ${tag}. Archives contain the \`npp\` compiler plus the runtime, standard library and project templates under \`share/npp/\`. Verify \`.sha256\` sidecars after download; \`scripts/install.sh\` and \`scripts/install.ps1\` automate install and verification."
+          if [ "$exists" = "1" ]; then
+            gh release upload "$tag" artifacts/* --clobber
+          else
+            gh release create "$tag" artifacts/* --title "N++ ${tag}" --notes "$notes"
+          fi

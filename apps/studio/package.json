@@ -1,7 +1,7 @@
 {
   "name": "npp-studio",
   "version": "1.0.0",
-  "description": "The NPP desktop IDE with multi-file editing, project navigation, compiler diagnostics and an integrated terminal",
+  "description": "The N++ desktop IDE with multi-file editing, project navigation, compiler diagnostics and an integrated terminal",
   "private": true,
   "main": "main.cjs",
   "scripts": {
@@ -21,7 +21,7 @@
   },
   "build": {
     "appId": "dev.fanxcz.nppstudio",
-    "productName": "NPP Studio",
+    "productName": "N++ Studio",
     "directories": {
       "output": "release"
     },
@@ -43,7 +43,7 @@
         "nsis",
         "portable"
       ],
-      "artifactName": "NPP-Studio-${version}-Windows-${arch}.${ext}"
+      "artifactName": "N++-Studio-${version}-Windows-${arch}.${ext}"
     },
     "nsis": {
       "oneClick": false,
@@ -55,8 +55,8 @@
         "AppImage",
         "deb"
       ],
-      "artifactName": "NPP-Studio-${version}-Linux-${arch}.${ext}",
-      "maintainer": "NPP Project <noreply@github.com>",
+      "artifactName": "N++-Studio-${version}-Linux-${arch}.${ext}",
+      "maintainer": "N++ Project <noreply@github.com>",
       "syncDesktopName": true
     },
     "mac": {
@@ -65,7 +65,7 @@
         "zip"
       ],
       "category": "public.app-category.developer-tools",
-      "artifactName": "NPP-Studio-${version}-macOS-${arch}.${ext}"
+      "artifactName": "N++-Studio-${version}-macOS-${arch}.${ext}"
     }
   },
   "author": {

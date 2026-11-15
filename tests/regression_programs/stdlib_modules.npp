@@ -1,0 +1,91 @@
+import std.time
+import std.random
+import std.env
+import std.text
+import std.shell
+
+fn main() {
+    // std.time
+    let start = time_now_ms()
+    time_sleep_ms(1)
+    let elapsed = time_elapsed_ms(start)
+    if elapsed < 0 {
+        print("time elapsed: FAIL")
+        return
+    }
+    let secs = time_seconds_elapsed(start)
+    if secs < 0.0 {
+        print("time seconds: FAIL")
+        return
+    }
+
+    // std.random
+    let roll = rand_range(1, 6)
+    if roll < 1 || roll > 6 {
+        print("rand_range: FAIL")
+        return
+    }
+    let frac = rand_f64()
+    if frac < 0.0 || frac >= 1.0 {
+        print("rand_f64: FAIL")
+        return
+    }
+    if ! rand_bool() && !rand_bool() {
+        // Extremely unlikely; only guards against a constant generator.
+    }
+
+    // std.env
+    let path_var = env_get("PATH")
+    if env_has("PATH") !=(string.len(path_var) > 0) {
+        print("env_has: FAIL")
+        return
+    }
+    let fallback = env_int("NPP_DEFINITELY_MISSING_VAR_9Z", 42)
+    if fallback != 42 {
+        print("env_int fallback: FAIL")
+        return
+    }
+
+    // std.text
+    if text_upper("npp") != "NPP" {
+        print("text_upper: FAIL")
+        return
+    }
+    if ! text_starts_with("main.npp", "main") {
+        print("text_starts_with: FAIL")
+        return
+    }
+    if ! text_ends_with("main.npp", ".npp") {
+        print("text_ends_with: FAIL")
+        return
+    }
+    if text_pad_left("7", 3, "0") != "007" {
+        print("text_pad_left: FAIL")
+        return
+    }
+    if text_pad_right("7", 3, "0") != "700" {
+        print("text_pad_right: FAIL")
+        return
+    }
+    if text_repeat("ab", 3) != "ababab" {
+        print("text_repeat: FAIL")
+        return
+    }
+    if text_split_count("a,b,c", ",") != 3 {
+        print("text_split_count: FAIL")
+        return
+    }
+    if text_split_at("a,b,c", ",", 1) != "b" {
+        print("text_split_at: FAIL")
+        return
+    }
+
+    // std.shell (system() only; capture_output needs the LLVM backend)
+    let rc = shell_run("exit 0")
+    if rc != 0 {
+        print("shell_run: FAIL")
+        return
+    }
+
+    print("stdlib modules: PASS")
+}

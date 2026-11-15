@@ -54,4 +54,4 @@ if(NOT rc EQUAL 0)
 endif()
 
 file(REMOVE_RECURSE "${SMOKE_DIR}")
-message(STATUS "NPP run working-directory smoke test: PASS")
+message(STATUS "N++ run working-directory smoke test: PASS")

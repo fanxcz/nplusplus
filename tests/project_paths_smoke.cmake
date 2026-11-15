@@ -81,4 +81,4 @@ if(NOT rc EQUAL 0)
 endif()
 
 file(REMOVE_RECURSE "${SMOKE_ROOT}")
-message(STATUS "NPP project path smoke test: PASS")
+message(STATUS "N++ project path smoke test: PASS")

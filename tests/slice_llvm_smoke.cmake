@@ -84,4 +84,4 @@ foreach(case index_oob range_oob)
   endif()
 endforeach()
 
-message(STATUS "NPP LLVM slice lowering: PASS")
+message(STATUS "N++ LLVM slice lowering: PASS")

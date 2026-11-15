@@ -39,7 +39,7 @@ if(NOT rc EQUAL 0 OR NOT EXISTS "${SMOKE_DIR}/docs/API.md")
   message(FATAL_ERROR "npp doc failed: ${out}\n${err}")
 endif()
 file(READ "${SMOKE_DIR}/docs/API.md" generated_api)
-if(generated_api MATCHES "NPP 2[.]0[.]0" OR
+if(generated_api MATCHES "N\\+\\+ 2[.]0[.]0" OR
    NOT generated_api MATCHES "Entry point documentation" OR
    NOT generated_api MATCHES "Compute a value" OR
    NOT generated_api MATCHES "fn answer")
@@ -206,7 +206,7 @@ if(NOT rc EQUAL 0 OR NOT EXISTS "${SMOKE_DIR}/.vscode/settings.json")
 endif()
 file(READ "${SMOKE_DIR}/.vscode/settings.json" editor_settings)
 if(NOT editor_settings MATCHES "\\.npp.*npp")
-  message(FATAL_ERROR "npp editor integration must associate .npp files with the NPP language ID: ${editor_settings}")
+  message(FATAL_ERROR "npp editor integration must associate .npp files with the N++ language ID: ${editor_settings}")
 endif()
 file(WRITE "${SMOKE_DIR}/src/main.npp" "fn main(){ const base: i64 = 2; let mut total: i64 = 0; for i in 1..6 { total += i * base } print(total) }\n")
 execute_process(
@@ -227,7 +227,7 @@ execute_process(
   ERROR_VARIABLE err
 )
 if(NOT rc EQUAL 0 OR NOT out MATCHES "check: OK")
-  message(FATAL_ERROR "NPP Focus example failed semantic check: ${out}\\n${err}")
+  message(FATAL_ERROR "N++ Focus example failed semantic check: ${out}\\n${err}")
 endif()
 
 # Regression test for native execution when both the working directory and
@@ -298,7 +298,7 @@ endif()
 file(WRITE "${SMOKE_DIR}/vendor/sample_lib/npp.toml" "${vendor_manifest_before_name_test}")
 
 # Invalid generated lockfiles and malformed dependency entries must fail closed.
-file(WRITE "${SMOKE_DIR}/npp.lock" "this is not a NPP lockfile\n")
+file(WRITE "${SMOKE_DIR}/npp.lock" "this is not a N++ lockfile\n")
 execute_process(COMMAND "${NPP_BIN}" pkg verify WORKING_DIRECTORY "${SMOKE_DIR}"
   RESULT_VARIABLE rc OUTPUT_VARIABLE out ERROR_VARIABLE err)
 set(bad_lock_output "${out}\n${err}")
@@ -346,7 +346,7 @@ set(STRICT_METADATA_DIR "${SMOKE_DIR}/strict-metadata")
 file(MAKE_DIRECTORY "${STRICT_METADATA_DIR}/src")
 file(WRITE "${STRICT_METADATA_DIR}/src/main.npp" "fn main() { print(1) }\n")
 file(WRITE "${STRICT_METADATA_DIR}/npp.lock" [=[
-# NPP lockfile v2 (SHA-256 content integrity)
+# N++ lockfile v2 (SHA-256 content integrity)
 package = "strict_manifest"
 version = "1.0.0"
 ]=])
@@ -404,7 +404,7 @@ artifact = "strict_manifest"
 target = "native"
 ]=])
 file(WRITE "${STRICT_METADATA_DIR}/npp.lock" [=[
-# NPP lockfile v2 (SHA-256 content integrity)
+# N++ lockfile v2 (SHA-256 content integrity)
 package = "different_project"
 version = "1.0.0"
 ]=])
@@ -416,7 +416,7 @@ if(rc EQUAL 0 OR NOT project_lock_mismatch MATCHES "package name differs")
 endif()
 
 file(WRITE "${STRICT_METADATA_DIR}/npp.lock" [=[
-# NPP lockfile v2 (SHA-256 content integrity)
+# N++ lockfile v2 (SHA-256 content integrity)
 package = "strict_manifest"
 version = "9.9.9"
 ]=])
@@ -428,7 +428,7 @@ if(rc EQUAL 0 OR NOT project_version_mismatch MATCHES "project version differs")
 endif()
 
 file(WRITE "${STRICT_METADATA_DIR}/npp.lock" [=[
-# NPP lockfile v2 (SHA-256 content integrity)
+# N++ lockfile v2 (SHA-256 content integrity)
 package = "strict_manifest"
 version = "1.0.0"
 ]=])
@@ -557,4 +557,4 @@ if(NOT WIN32)
 endif()
 
 file(REMOVE_RECURSE "${SMOKE_DIR}" "${RUN_SMOKE_DIR}")
-message(STATUS "NPP project workflow smoke test: PASS")
+message(STATUS "N++ project workflow smoke test: PASS")

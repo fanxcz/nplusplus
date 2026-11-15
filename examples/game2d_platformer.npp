@@ -1,4 +1,4 @@
-// NPP 2D platformer built from separate std modules.
+// N++ 2D platformer built from separate std modules.
 // Controls: A/D or LEFT/RIGHT to move, SPACE to jump, ESC to exit.
 
 import std.engine2d
@@ -8,7 +8,7 @@ import std.collision2d
 import std.tilemap_render
 
 fn main() {
-    if ! engine2d_init(960, 540, "NPP 2D Platformer") {
+    if ! engine2d_init(960, 540, "N++ 2D Platformer") {
         print("Could not initialize graphics: " + gfx_error())
         return
     }
@@ -116,7 +116,7 @@ fn main() {
         engine2d_draw_rect(player_x + 4.0, player_y + 6.0, 5.0, 5.0, 1.0, 0.94, 0.78, 1.0)
         engine2d_draw_rect(player_x + 15.0, player_y + 6.0, 5.0, 5.0, 1.0, 0.94, 0.78, 1.0)
 
-        engine2d_draw_text(24.0, 24.0, 1.4, "NPP MODULAR TILEMAP PLATFORMER", 0.85, 0.92, 1.0, 1.0)
+        engine2d_draw_text(24.0, 24.0, 1.4, "N++ MODULAR TILEMAP PLATFORMER", 0.85, 0.92, 1.0, 1.0)
         engine2d_draw_text(24.0, 48.0, 1.0, "Move: A/D or arrows   Jump: SPACE   Exit: ESC", 0.72, 0.80, 0.90, 1.0)
         engine2d_end_frame()
     }

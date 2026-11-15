@@ -98,4 +98,4 @@ expect_semantic_error(mutable_and_shared_call_arguments
   "fn update(read:[]i64, write:mut []i64){} fn main(){ let mut values:[i64;3]=[1,2,3]; update(values[1..3], mut values[0..2]); }"
   "conflicting shared and mutable slices of 'values' passed to one call")
 
-message(STATUS "NPP mutable slice lowering and borrow checks: PASS")
+message(STATUS "N++ mutable slice lowering and borrow checks: PASS")

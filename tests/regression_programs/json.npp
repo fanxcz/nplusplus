@@ -1,5 +1,5 @@
 fn main() {
-    let data = "{\"name\":\"NPP\",\"items\":[\"first\",\"second\"],\"active\":true}"
+    let data = "{\"name\":\"N++\",\"items\":[\"first\",\"second\"],\"active\":true}"
     let valid = json_valid(data)
     let name = json_get(data, "name")
     let kind = json_type(data, "items")

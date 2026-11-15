@@ -18,7 +18,7 @@ fn fibonacci(n: i64) -> i64 {
 }
 
 fn main() {
-    const title: string = "NPP v1.0 FULL STACK"
+    const title: string = "N++ v1.0 FULL STACK"
     print(title)
     let mut total: i64 = 0
     for i in 1..11 {
@@ -26,7 +26,7 @@ fn main() {
     }
     print(total)
 
-    let json = "{\"language\":\"NPP\",\"version\":1}"
+    let json = "{\"language\":\"N++\",\"version\":1}"
     print(json_field(json, "language"))
 
     let db = db_open(":memory:")
@@ -34,10 +34,10 @@ fn main() {
     db_close(db)
 
     let path = "/tmp/npp-v1-showcase.txt"
-    fs_write(path, "NPP 1.0")
+    fs_write(path, "N++ 1.0")
     print(fs_read(path))
 
-    print(hash_sha256("NPP"))
+    print(hash_sha256("N++"))
     let mem = memory_alloc(64)
     print(mem != 0)
     memory_free(mem)

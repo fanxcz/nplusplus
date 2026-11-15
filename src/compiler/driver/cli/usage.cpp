@@ -7,7 +7,7 @@ namespace npp {
         void usage() {
 
             std::cout
-                << "Npp " << kVersion << "\n"
+                << "N++ " << kVersion << "\n"
                 << "Usage: npp <command> [options]\n\n"
                 << "Interactive shell:\n"
                 << "  repl                 evaluate expressions (also starts by running npp with "

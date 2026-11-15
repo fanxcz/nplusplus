@@ -3,7 +3,7 @@
 // Requires a build with SDL2 and the LLVM backend.
 
 fn main() {
-    if ! gfx_init(800, 480, "NPP fonts") {
+    if ! gfx_init(800, 480, "N++ fonts") {
         print(gfx_error())
         return
     }

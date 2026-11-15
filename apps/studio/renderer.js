@@ -4,7 +4,7 @@
   const buffers = new Map(), welcome = $('welcome'), editorWrap = $('editorWrap'), output = $('terminalOutput'), treeEl = $('fileTree');
   const isDirty = path => { const b = buffers.get(path); return !!b && b.content !== b.saved; };
   const dirtyAny = () => tabs.some(isDirty);
-  const projectName = () => root.split(/[\\/]/).filter(Boolean).pop() || root || 'NPP';
+  const projectName = () => root.split(/[\\/]/).filter(Boolean).pop() || root || 'N++';
   function status(value) { $('saveStatus').textContent = value; }
   function renderTabs() {
     const host = $('editorTabs'); host.replaceChildren();
@@ -34,7 +34,7 @@
   }
   function ensureEditor() {
     if (editor) return;
-    if (!window.ace) { appendOutput('Ace editor could not be loaded. Reinstall NPP Studio dependencies.', 'error'); return; }
+    if (!window.ace) { appendOutput('Ace editor could not be loaded. Reinstall N++ Studio dependencies.', 'error'); return; }
     editor = ace.edit('editor'); editor.setTheme('ace/theme/npp'); editor.session.setMode('ace/mode/npp');
     editor.setOptions({fontSize:'14px',showPrintMargin:false,tabSize:4,useSoftTabs:true,wrap:false,highlightActiveLine:true,showLineNumbers:true,showGutter:true,scrollPastEnd:0.35});
     editor.session.on('change', () => { if (currentPath && buffers.has(currentPath)) { buffers.get(currentPath).content = editor.getValue(); markDirty(); } });
@@ -81,7 +81,7 @@
   function welcomeScreen() {
     currentPath=''; welcome.classList.remove('hidden'); editorWrap.classList.add('hidden');
     $('tabName').textContent='Welcome'; $('breadcrumbRoot').textContent=projectName(); $('breadcrumbCurrent').textContent='Welcome'; $('editorLanguage').textContent='WORKSPACE';
-    $('dirtyMark').textContent=''; $('statusLang').textContent='NPP'; $('cursorPosition').textContent='Ln 1, Col 1'; renderTabs(); drawTree(); status('Workspace ready');
+    $('dirtyMark').textContent=''; $('statusLang').textContent='N++'; $('cursorPosition').textContent='Ln 1, Col 1'; renderTabs(); drawTree(); status('Workspace ready');
   }
   async function openProject() {
     if(dirtyAny()&&!confirm('Discard unsaved editor changes and open another project?')) return;
@@ -101,7 +101,7 @@
       editor.setValue(buffers.get(path).content,-1); const npp=path.toLowerCase().endsWith('.npp');
       editor.session.setMode(npp?'ace/mode/npp':'ace/mode/text'); welcome.classList.add('hidden'); editorWrap.classList.remove('hidden');
       $('tabName').textContent=path.split(/[\\/]/).pop(); $('activeTab').title=path; $('breadcrumbRoot').textContent=projectName(); $('breadcrumbCurrent').textContent=path;
-      $('editorLanguage').textContent=npp?'NPP SOURCE':'TEXT FILE'; $('statusLang').textContent=npp?'NPP':'TEXT';
+      $('editorLanguage').textContent=npp?'N++ SOURCE':'TEXT FILE'; $('statusLang').textContent=npp?'N++':'TEXT';
       markDirty(); cursorPosition(); renderTabs(); await refreshTree(); editor.focus(); return true;
     } catch(error){appendOutput('Open file failed: '+error.message,'error');return false;}
   }
@@ -139,11 +139,11 @@
   function updateCompilerStatus() {
     const element=$('compilerStatus');
     if(compilerPath){element.textContent='Compiler: '+compilerPath.split(/[\\/]/).pop();element.title=compilerPath;element.className='compiler-ready';}
-    else{element.textContent='Compiler not selected';element.title='Select the installed NPP compiler';element.className='compiler-missing';}
+    else{element.textContent='Compiler not selected';element.title='Select the installed N++ compiler';element.className='compiler-missing';}
   }
   async function ensureCompiler() {
     const info=await api.compilerInfo();compilerPath=info.path||null;updateCompilerStatus();if(compilerPath)return true;
-    appendOutput('NPP compiler was not found. Select npp.cmd or npp-core.exe from your NPP installation.','error');await chooseCompiler();return !!compilerPath;
+    appendOutput('N++ compiler was not found. Select npp.cmd or npp-core.exe from your N++ installation.','error');await chooseCompiler();return !!compilerPath;
   }
   function parseDiagnostic(raw) {
     const text=String(raw).trim();if(!text)return;
@@ -160,7 +160,7 @@
   function renderProblems() {
     const host=$('problemList');$('problemCount').textContent=String(problems.length);$('problemBadge').textContent=String(problems.length);
     $('toggleProblems').classList.toggle('has-problems',problems.length>0);host.replaceChildren();
-    if(!problems.length){const empty=document.createElement('div');empty.className='problems-empty';empty.textContent='No problems detected. Build a NPP file to see diagnostics here.';host.appendChild(empty);return;}
+    if(!problems.length){const empty=document.createElement('div');empty.className='problems-empty';empty.textContent='No problems detected. Build a N++ file to see diagnostics here.';host.appendChild(empty);return;}
     problems.forEach(problem=>{
       const row=document.createElement('button');row.type='button';row.className='problem-row '+problem.severity;
       const marker=document.createElement('span');marker.className='problem-severity';marker.textContent=problem.severity==='warning'?'▲':'●';
@@ -192,8 +192,8 @@
     ['Save current file','Save the active editor buffer','↧','Ctrl S',saveCurrent],
     ['Save all open files','Save every modified editor tab','▣','',saveAll],
     ['Close active editor tab','Close the current file tab','×','Ctrl W',()=>closeTab(currentPath)],
-    ['Select NPP compiler','Choose compiler executable or launcher','⌘','',chooseCompiler],
-    ['Build current file','Compile the active NPP source file','↗','F7',()=>buildOrRun('build')],
+    ['Select N++ compiler','Choose compiler executable or launcher','⌘','',chooseCompiler],
+    ['Build current file','Compile the active N++ source file','↗','F7',()=>buildOrRun('build')],
     ['Build and run current file','Compile and launch the current source','▶','F5',()=>buildOrRun('run')],
     ['Show Problems panel','Review compiler errors and warnings','!','F8',()=>toggleProblems(true)],
     ['Filter project files','Search filenames in the project explorer','⌕','Ctrl P',()=>$('fileSearch').focus()],

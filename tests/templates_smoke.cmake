@@ -60,4 +60,4 @@ if(supported LESS 1)
 endif()
 
 file(REMOVE_RECURSE "${SMOKE_DIR}")
-message(STATUS "NPP template manifest smoke test: PASS (${supported} templates)")
+message(STATUS "N++ template manifest smoke test: PASS (${supported} templates)")

@@ -28,6 +28,11 @@ The checked-in standard library is deliberately small. Each `import std.NAME` lo
 | [std.collision2d](collision2d.md) | AABB, circle and tilemap collision movement |
 | [std.physics2d](physics2d.md) | Gravity, jump velocity, friction and tilemap movement |
 | [std.tilemap_render](tilemap_render.md) | Viewport tilemap rendering |
+| [std.time](time.md) | Clock, sleep and elapsed-time helpers |
+| [std.random](random.md) | `rand_range`, `rand_f64`, `rand_bool`, `rand_chance` |
+| [std.env](env.md) | Environment variables: `env_get`, `env_has`, `env_int` |
+| [std.text](text.md) | String composition: pad, repeat, join, starts/ends with |
+| [std.shell](shell.md) | Process execution: `shell_run`, `shell_output`, `shell_ok` |
 | [std.animation2d](animation2d.md) | Time-based sprite frame selection |
 | [std.sprite2d](sprite2d.md) | Texture and sprite-sheet drawing |
 | [std.camera2d](camera2d.md) | Camera wrappers |

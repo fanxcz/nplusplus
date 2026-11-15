@@ -1,4 +1,4 @@
-// Self-hosting step 3: type checking for the parser's subset, in NPP.
+// Self-hosting step 3: type checking for the parser's subset, in N++.
 // typecheck(src) -> "ok" or "error MESSAGE".
 //
 // Checks: variables must be declared before use, `+ - * / %` operands must be

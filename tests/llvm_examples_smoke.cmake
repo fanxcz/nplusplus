@@ -24,4 +24,4 @@ foreach(EXAMPLE IN ITEMS "ui_playground.npp" "game2d_starter.npp")
   message(STATUS "PASS LLVM example ${EXAMPLE}")
 endforeach()
 
-message(STATUS "NPP interactive LLVM example smoke test: PASS")
+message(STATUS "N++ interactive LLVM example smoke test: PASS")

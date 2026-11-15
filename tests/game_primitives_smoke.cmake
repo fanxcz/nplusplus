@@ -31,8 +31,8 @@ endif()
 
 string(REPLACE "\r\n" "\n" run_out "${run_out}")
 string(REGEX REPLACE "\n+$" "" run_out "${run_out}")
-if(NOT run_out STREQUAL "NPP game primitives: PASS")
+if(NOT run_out STREQUAL "N++ game primitives: PASS")
   message(FATAL_ERROR "Unexpected game primitive output: [${run_out}]\n${run_err}")
 endif()
 
-message(STATUS "NPP game primitives smoke test: PASS")
+message(STATUS "N++ game primitives smoke test: PASS")

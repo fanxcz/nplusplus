@@ -1,5 +1,5 @@
 fn main() {
-    print("Hello from Npp!")
+    print("Hello from N++!")
     let x = 40
     let y = 2
     print(x + y)

@@ -69,7 +69,7 @@ namespace npp {
                 errors.emplace_back(error.what());
 
                 // Synchronize at the next declaration instead of abandoning the
-                // entire file at the first syntax error. NPP does not allow
+                // entire file at the first syntax error. N++ does not allow
                 // nested function/type declarations, so these keywords form a
                 // safe recovery set for malformed top-level declarations.
                 std::size_t candidate = i_;
@@ -102,7 +102,7 @@ namespace npp {
 
         if (!errors.empty()) {
             std::ostringstream message;
-            message << "NPP found " << errors.size() << " syntax error";
+            message << "N++ found " << errors.size() << " syntax error";
             if (errors.size() != 1)
                 message << 's';
             message << ':';

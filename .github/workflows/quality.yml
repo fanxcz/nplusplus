@@ -103,3 +103,13 @@ jobs:
         uses: gitleaks/gitleaks-action@v3
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  repo-hygiene:
+    name: Repository hygiene checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Version consistency
+        run: python3 scripts/check_versions.py
+      - name: Documentation links
+        run: python3 scripts/check_docs_links.py

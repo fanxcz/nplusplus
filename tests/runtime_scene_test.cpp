@@ -96,9 +96,9 @@ int main() {
         result = 13;
 
     if (result != 0) {
-        std::fprintf(stderr, "NPP scene save test failed at check %d\n", result);
+        std::fprintf(stderr, "N++ scene save test failed at check %d\n", result);
         return result;
     }
-    std::puts("NPP scene save smoke: PASS");
+    std::puts("N++ scene save smoke: PASS");
     return 0;
 }

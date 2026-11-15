@@ -147,7 +147,7 @@ def main() -> int:
     parser.add_argument("--npp", required=True, type=Path)
     executable = parser.parse_args().npp.resolve()
     if not executable.is_file():
-        raise FileNotFoundError(f"NPP executable not found: {executable}")
+        raise FileNotFoundError(f"N++ executable not found: {executable}")
 
     with tempfile.TemporaryDirectory(prefix="npp-lsp-watch-") as temporary:
         workspace = Path(temporary)

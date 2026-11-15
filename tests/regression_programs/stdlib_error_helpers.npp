@@ -44,5 +44,5 @@ fn main() {
         return
     }
 
-    print("NPP stdlib error helpers: PASS")
+    print("N++ stdlib error helpers: PASS")
 }

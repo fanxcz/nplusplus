@@ -32,8 +32,8 @@ endif()
 
 string(REPLACE "\r\n" "\n" run_out "${run_out}")
 string(REGEX REPLACE "\n+$" "" run_out "${run_out}")
-if(NOT run_out STREQUAL "NPP tilemap: PASS")
+if(NOT run_out STREQUAL "N++ tilemap: PASS")
   message(FATAL_ERROR "Unexpected tilemap output: [${run_out}]\n${run_err}")
 endif()
 
-message(STATUS "NPP tilemap smoke test: PASS")
+message(STATUS "N++ tilemap smoke test: PASS")

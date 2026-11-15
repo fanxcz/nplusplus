@@ -5,7 +5,7 @@ namespace npp {
 
         std::string formatDiagnostic(const std::exception& error, const std::string& code) {
             const std::string raw = error.what();
-            if (raw.rfind("NPP found ", 0) == 0 &&
+            if (raw.rfind("N++ found ", 0) == 0 &&
                 (raw.find(" syntax error") != std::string::npos ||
                  raw.find(" semantic error") != std::string::npos)) {
                 const std::string nestedCode =

@@ -6,7 +6,7 @@ namespace npp {
 
 
         int commandRepl() {
-            std::cout << "NPP " << kVersion << " interactive shell\n"
+            std::cout << "N++ " << kVersion << " interactive shell\n"
                       << "Enter an expression to evaluate it. Use let x = 10 to keep a value.\n"
                       << "Commands: :help, :vars, :history, :history-clear, :clear, :quit\n\n";
 

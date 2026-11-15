@@ -1,4 +1,4 @@
-// Self-lexing smoke: the NPP-written lexer must tokenize its own source,
+// Self-lexing smoke: the N++-written lexer must tokenize its own source,
 // the stdlib sources and real examples without a single error line.
 // lexer_test.npp is intentionally excluded: its source embeds invalid inputs.
 import "lexer_lib.npp"

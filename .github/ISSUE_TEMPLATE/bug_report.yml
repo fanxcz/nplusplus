@@ -10,8 +10,8 @@ body:
   - type: input
     id: version
     attributes:
-      label: NPP Version
-      description: What version of NPP are you using? (run `npp --version`)
+      label: N++ Version
+      description: What version of N++ are you using? (run `npp --version`)
       placeholder: "1.0.0"
     validations:
       required: true

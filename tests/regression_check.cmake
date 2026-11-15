@@ -1,4 +1,4 @@
-# Regression tests for the NPP frontend + LLVM IR backend.
+# Regression tests for the N++ frontend + LLVM IR backend.
 # Runs `check` and `--emit-ir` only, so no external C++ toolchain is needed.
 if(NOT DEFINED NPP_BIN)
   message(FATAL_ERROR "NPP_BIN is required")
@@ -49,4 +49,4 @@ foreach(PROGRAM ${PROGRAMS})
   message(STATUS "  PASS ${NAME}")
 endforeach()
 
-message(STATUS "NPP regression (check + IR) smoke test: PASS (${COUNT} programs)")
+message(STATUS "N++ regression (check + IR) smoke test: PASS (${COUNT} programs)")

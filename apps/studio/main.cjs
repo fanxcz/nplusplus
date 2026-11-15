@@ -16,7 +16,7 @@ function createWindow() {
   win = new BrowserWindow({
     width: 1360, height: 900, minWidth: 900, minHeight: 620,
     backgroundColor: '#101722',
-    title: 'NPP Studio 1.0.0',
+    title: 'N++ Studio 1.0.0',
     webPreferences: {
       preload: path.join(__dirname, 'preload.cjs'),
       contextIsolation: true,
@@ -76,11 +76,11 @@ async function detectCompiler() {
   const home = app.getPath('home');
   const candidates = process.platform === 'win32' ? [
     process.env.NPP_COMPILER,
-    path.join(process.env.LOCALAPPDATA || home, 'Programs', 'NPP', 'npp.cmd'),
+    path.join(process.env.LOCALAPPDATA || home, 'Programs', 'N++', 'npp.cmd'),
     path.join(home, 'NPP_Windows_Portable', 'npp.cmd'),
-    path.join(home, 'NPP', 'npp.cmd'),
+    path.join(home, 'N++', 'npp.cmd'),
     path.join(home, 'Downloads', 'NPP_Windows_Portable', 'npp.cmd'),
-    path.join(process.env.ProgramFiles || 'C:\\Program Files', 'NPP', 'npp.cmd'),
+    path.join(process.env.ProgramFiles || 'C:\\Program Files', 'N++', 'npp.cmd'),
     findOnPath('npp.cmd'),
     findOnPath('npp.exe'),
     findOnPath('npp')
@@ -105,7 +105,7 @@ function helperScriptFor(compiler) {
   let root = path.dirname(compiler);
   if (name === 'npp-core.exe') root = path.dirname(root);
   if (!['npp.cmd', 'npp.exe', 'npp-core.exe', 'npp.bat'].includes(name)) return null;
-  return path.join(root, 'NPP-Windows.ps1');
+  return path.join(root, 'N++-Windows.ps1');
 }
 function quoteCmd(value) {
   return '"' + String(value).replace(/"/g, '""') + '"';
@@ -138,7 +138,7 @@ async function compileOrRun(event, mode, rel) {
   if (!(await existsFile(source))) throw new Error('Файл не найден: ' + source);
   const compiler = await detectCompiler();
   if (!compiler) {
-    throw new Error('Компилятор NPP не найден. Нажми «Компилятор…» и выбери npp.cmd из установленного NPP или npp-core.exe из папки bin.');
+    throw new Error('Компилятор N++ не найден. Нажми «Компилятор…» и выбери npp.cmd из установленного N++ или npp-core.exe из папки bin.');
   }
   const invocation = await compilerInvocation(mode, source, compiler);
   sendOutput(event.sender, 'command', (mode === 'build' ? 'BUILD ' : 'RUN ') + source + '\nКомпилятор: ' + compiler);
@@ -181,7 +181,7 @@ app.whenReady().then(async () => {
     const result = await dialog.showOpenDialog(win, {
       defaultPath: projectRoot,
       properties: ['openFile'],
-      filters: [{ name: 'NPP source files', extensions: ['npp'] }, { name: 'All files', extensions: ['*'] }]
+      filters: [{ name: 'N++ source files', extensions: ['npp'] }, { name: 'All files', extensions: ['*'] }]
     });
     if (result.canceled || !result.filePaths[0]) return null;
     const chosen = path.resolve(result.filePaths[0]);
@@ -230,8 +230,8 @@ app.whenReady().then(async () => {
   });
   ipcMain.handle('compiler:choose', async () => {
     const filters = process.platform === 'win32'
-      ? [{ name: 'NPP launcher or compiler', extensions: ['cmd', 'exe', 'bat'] }, { name: 'All files', extensions: ['*'] }]
-      : [{ name: 'NPP compiler', extensions: ['*'] }];
+      ? [{ name: 'N++ launcher or compiler', extensions: ['cmd', 'exe', 'bat'] }, { name: 'All files', extensions: ['*'] }]
+      : [{ name: 'N++ compiler', extensions: ['*'] }];
     const result = await dialog.showOpenDialog(win, { properties: ['openFile'], filters });
     if (result.canceled || !result.filePaths[0]) return null;
     selectedCompiler = result.filePaths[0];

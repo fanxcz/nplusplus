@@ -1,5 +1,5 @@
 fn main() {
-    let ok = gfx_init(900, 560, "NPP App")
+    let ok = gfx_init(900, 560, "N++ App")
     if ! ok { print("Graphics backend unavailable: " + gfx_error()); return }
     let mut clicks: i64 = 0
     while ! gfx_should_close() {
@@ -9,7 +9,7 @@ fn main() {
         gfx_begin()
         gfx_clear(0.04, 0.05, 0.09, 1.0)
         gfx_rect(40.0, 40.0, 820.0, 90.0, 0.08, 0.12, 0.22, 1.0)
-        gfx_text(70.0, 65.0, 3.0, "NPP APP", 0.5, 0.9, 1.0, 1.0)
+        gfx_text(70.0, 65.0, 3.0, "N++ APP", 0.5, 0.9, 1.0, 1.0)
         gfx_text(70.0, 115.0, 1.5, "NATIVE WINDOW / MOUSE / EVENTS", 0.75, 0.8, 0.9, 1.0)
         gfx_rect(70.0, 190.0, 260.0, 100.0, 0.12, 0.5, 0.9, 1.0)
         gfx_text(110.0, 225.0, 2.0, "CLICK ME", 1.0, 1.0, 1.0, 1.0)

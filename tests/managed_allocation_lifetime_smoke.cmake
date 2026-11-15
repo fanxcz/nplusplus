@@ -196,4 +196,4 @@ fn main() {
 ]=] "pass" "")
 
 file(REMOVE_RECURSE "${TEST_DIR}")
-message(STATUS "NPP managed allocation lifetime checks: PASS")
+message(STATUS "N++ managed allocation lifetime checks: PASS")

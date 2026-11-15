@@ -23,7 +23,7 @@ void npp_free(void* p) {
 void npp_bounds_check(int64_t i, int64_t n) {
     if (i < 0 || i >= n) {
         std::fprintf(stderr,
-                     "Npp runtime error: array index %lld out of bounds for size %lld\n",
+                     "N++ runtime error: array index %lld out of bounds for size %lld\n",
                      (long long)i,
                      (long long)n);
         std::exit(1);
@@ -32,18 +32,18 @@ void npp_bounds_check(int64_t i, int64_t n) {
 void npp_slice_bounds_check(int64_t start, int64_t end, int64_t length) {
     if (start < 0 || end < start || end > length) {
         std::fprintf(stderr,
-                     "Npp runtime error: invalid slice range [%lld..%lld] for length %lld\n",
+                     "N++ runtime error: invalid slice range [%lld..%lld] for length %lld\n",
                      (long long)start, (long long)end, (long long)length);
         std::exit(1);
     }
 }
 int64_t npp_division_check(int64_t dividend, int64_t divisor) {
     if (divisor == 0) {
-        std::fprintf(stderr, "NPP runtime error: division by zero\n");
+        std::fprintf(stderr, "N++ runtime error: division by zero\n");
         std::exit(1);
     }
     if (dividend == INT64_MIN && divisor == -1) {
-        std::fprintf(stderr, "NPP runtime error: signed integer division overflow\n");
+        std::fprintf(stderr, "N++ runtime error: signed integer division overflow\n");
         std::exit(1);
     }
     return divisor;
@@ -51,7 +51,7 @@ int64_t npp_division_check(int64_t dividend, int64_t divisor) {
 int64_t npp_division_check_typed(
     int64_t dividend, int64_t divisor, int64_t bits, bool isSigned) {
     if (divisor == 0) {
-        std::fprintf(stderr, "NPP runtime error: division by zero\n");
+        std::fprintf(stderr, "N++ runtime error: division by zero\n");
         std::exit(1);
     }
     if (isSigned && bits >= 2 && bits <= 64) {
@@ -59,7 +59,7 @@ int64_t npp_division_check_typed(
             ? INT64_MIN
             : -(INT64_C(1) << (bits - 1));
         if (dividend == minimum && divisor == -1) {
-            std::fprintf(stderr, "NPP runtime error: signed integer division overflow\n");
+            std::fprintf(stderr, "N++ runtime error: signed integer division overflow\n");
             std::exit(1);
         }
     }

@@ -1,6 +1,6 @@
 // Self-hosting step 4: LLVM IR text emission for the parser's i64/f64 subset.
 // codegen(src) -> string returns a complete .ll module. Verified with clang:
-// the output compiles and, linked with the NPP runtime, runs correctly.
+// the output compiles and, linked with the N++ runtime, runs correctly.
 //
 // Subset: let/assignment/print, + - * / %, comparisons, && ||, unary -,
 // if/else, while, functions, calls, strings, f64. Variables are stack slots.

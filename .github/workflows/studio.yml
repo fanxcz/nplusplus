@@ -1,4 +1,4 @@
-name: NPP Studio desktop builds
+name: N++ Studio desktop builds
 
 on:
   workflow_dispatch:
@@ -33,7 +33,7 @@ jobs:
         with:
           node-version: 22
       - run: npm run check
-      - run: npm install --no-audit --no-fund
+      - run: npm ci --no-audit --no-fund
       - run: ${{ matrix.command }}
       - name: Verify Windows Studio EXE metadata and checksums
         if: runner.os == 'Windows'

@@ -84,4 +84,4 @@ else()
   endif()
 endif()
 
-message(STATUS "NPP defer cleanup smoke test: PASS")
+message(STATUS "N++ defer cleanup smoke test: PASS")

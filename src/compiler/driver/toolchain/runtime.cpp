@@ -43,7 +43,7 @@ namespace npp {
             if (fs::is_regular_file(local))
                 return fs::weakly_canonical(local);
             throw std::runtime_error(
-                "Npp runtime not found; set NPP_RUNTIME_DIR or install the runtime files");
+                "N++ runtime not found; set NPP_RUNTIME_DIR or install the runtime files");
         }
 
 

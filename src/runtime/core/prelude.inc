@@ -57,7 +57,7 @@
 #include <signal.h>
 #endif
 
-// NPP runtime is deliberately built without SDL/OpenGL development headers.
+// N++ runtime is deliberately built without SDL/OpenGL development headers.
 // The graphics backend loads SDL2 at runtime and obtains OpenGL entry points
-// from SDL. This keeps the generated NPP application portable across hosts
+// from SDL. This keeps the generated N++ application portable across hosts
 // that provide SDL2/OpenGL without requiring a compiler-time SDK.

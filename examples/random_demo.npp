@@ -1,0 +1,16 @@
+// Randomness helpers from std.random: dice, coins, floats and picks.
+import std.random
+
+fn main() {
+    print("d20 roll: " + str_i64(rand_range(1, 20)))
+    print("coin: " + str_bool(rand_bool()))
+    print("float in [0,1): " + str_f64(rand_f64()))
+
+    let mut lucky = 0
+    let mut i: i64 = 0
+    while i < 100 {
+        if rand_chance(10) { lucky = lucky + 1 }
+        i = i + 1
+    }
+    print("lucky hits out of 100 @10%: " + str_i64(lucky))
+}

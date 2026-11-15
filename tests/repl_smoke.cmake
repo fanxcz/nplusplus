@@ -30,14 +30,14 @@ execute_process(
 file(REMOVE "${input_file}" "${repl_main_history}")
 
 if(NOT rc EQUAL 0)
-  message(FATAL_ERROR "NPP default interactive shell exited with ${rc}: ${err}\n${out}")
+  message(FATAL_ERROR "N++ default interactive shell exited with ${rc}: ${err}\n${out}")
 endif()
 
 if(NOT out MATCHES "4" OR NOT out MATCHES "10" OR
    NOT out MATCHES "true" OR NOT out MATCHES "42" OR
    NOT out MATCHES "22" OR NOT out MATCHES "NPP_REPL_OK" OR
    NOT err MATCHES "division by zero")
-  message(FATAL_ERROR "NPP REPL did not evaluate arithmetic and retain bindings: ${out}\n${err}")
+  message(FATAL_ERROR "N++ REPL did not evaluate arithmetic and retain bindings: ${out}\n${err}")
 endif()
 
 set(input_file "${CMAKE_CURRENT_BINARY_DIR}/npp-repl-history-input.txt")
@@ -144,4 +144,4 @@ if(NOT rc EQUAL 0 OR NOT out MATCHES "3" OR err MATCHES "will not persist")
   message(FATAL_ERROR "REPL did not preserve state from a pure while block: ${out}\n${err}")
 endif()
 
-message(STATUS "NPP interactive shell smoke test: PASS")
+message(STATUS "N++ interactive shell smoke test: PASS")

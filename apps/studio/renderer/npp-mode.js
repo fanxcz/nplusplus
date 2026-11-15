@@ -44,7 +44,7 @@ ace.define("ace/mode/npp", [
   exports.Mode = Mode;
 });
 
-// NPP Studio theme: near-black editor with a restrained yellow syntax accent.
+// N++ Studio theme: near-black editor with a restrained yellow syntax accent.
 ace.define("ace/theme/npp", [
   "require", "exports", "module", "ace/lib/dom"
 ], function(require, exports, module) {

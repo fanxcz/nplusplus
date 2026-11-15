@@ -63,6 +63,6 @@ int main() {
 
     if (failures != 0)
         return 1;
-    std::printf("NPP backend state smoke: PASS\n");
+    std::printf("N++ backend state smoke: PASS\n");
     return 0;
 }

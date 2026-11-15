@@ -65,4 +65,4 @@ foreach(program arith calls loops for_ranges wide_frame print_types strings_full
   message(STATUS "  PASS backend parity: ${program}.npp")
 endforeach()
 
-message(STATUS "NPP native/LLVM backend parity: PASS")
+message(STATUS "N++ native/LLVM backend parity: PASS")

@@ -1,5 +1,5 @@
 fn main() {
-    let ok = gfx_init(1280, 720, "NPP 3D")
+    let ok = gfx_init(1280, 720, "N++ 3D")
     if ! ok { print("Graphics backend unavailable: " + gfx_error()); return }
     while ! gfx_should_close() {
         gfx_poll()

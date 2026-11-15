@@ -48,7 +48,7 @@ npp_paint.bmp
 
 # Keep source assets tracked
 !examples/assets/*.obj
-# NPP source files should always be tracked
+# N++ source files should always be tracked
 !.npp
 editors/vscode/node_modules/
 *.vsix

@@ -64,4 +64,4 @@ ${llvm_output}")
 endforeach()
 
 file(REMOVE_RECURSE "${OUTPUT_DIR}")
-message(STATUS "NPP native/LLVM differential tests: PASS")
+message(STATUS "N++ native/LLVM differential tests: PASS")

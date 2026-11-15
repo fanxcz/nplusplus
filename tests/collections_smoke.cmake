@@ -1,4 +1,4 @@
-# Exercise checked dynamic integer/string lists from NPP source.
+# Exercise checked dynamic integer/string lists from N++ source.
 if(NOT DEFINED NPP_BIN OR NOT DEFINED NPP_SOURCE_DIR)
   message(FATAL_ERROR "NPP_BIN and NPP_SOURCE_DIR are required")
 endif()
@@ -32,7 +32,7 @@ endif()
 
 string(REPLACE "\r\n" "\n" run_out "${run_out}")
 string(REGEX REPLACE "\n+$" "" run_out "${run_out}")
-if(NOT run_out STREQUAL "NPP collections: PASS")
+if(NOT run_out STREQUAL "N++ collections: PASS")
   message(FATAL_ERROR "Unexpected collection output: [${run_out}]\n${run_err}")
 endif()
-message(STATUS "NPP checked collections smoke test: PASS")
+message(STATUS "N++ checked collections smoke test: PASS")

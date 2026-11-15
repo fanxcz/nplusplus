@@ -93,7 +93,7 @@ namespace npp {
                           << "  \"project\": " << (!project.empty() ? "true" : "false") << "\n"
                           << "}\n";
             } else {
-                std::cout << "NPP doctor " << kVersion << "\n"
+                std::cout << "N++ doctor " << kVersion << "\n"
                           << "  executable:     "
                           << (gExecutable.empty() ? "unknown" : gExecutable.string()) << "\n"
                           << "  native backend: "
@@ -142,7 +142,7 @@ namespace npp {
             std::string reason;
             const bool nativeSupported = targetSupported && native::supports(program, reason);
 
-            std::cout << "NPP backend report\n"
+            std::cout << "N++ backend report\n"
                       << "  source: " << fs::absolute(file).string() << "\n"
                       << "  target: " << selectedTarget << "\n";
             if (nativeSupported) {

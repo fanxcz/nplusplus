@@ -130,5 +130,5 @@ fn main() {
         return
     }
 
-    print("NPP collections: PASS")
+    print("N++ collections: PASS")
 }

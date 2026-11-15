@@ -66,5 +66,5 @@ fn main() {
         print("sqrt regression failed")
         return
     }
-    print("NPP trig builtins: PASS")
+    print("N++ trig builtins: PASS")
 }

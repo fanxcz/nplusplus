@@ -11,13 +11,13 @@ fn main() {
     let _ = system("echo c >nul")
 
     // String builtins
-    let s = "  Hello NPP  "
+    let s = "  Hello N++  "
     let t = string.trim(s)
     print("[" + t + "]")
     print(string.upper(t))
     print(string.lower(t))
-    print(string.contains(t, "NPP"))
-    print(string.find(t, "NPP"))
+    print(string.contains(t, "N++"))
+    print(string.find(t, "N++"))
     print(string.slice(t, 6, 11))
 
     // split

@@ -216,7 +216,7 @@ namespace npp {
     };
 
     // A bounded slice expression, e.g. `values[start..end]`. The upper
-    // bound is exclusive, matching NPP's existing half-open for-ranges.
+    // bound is exclusive, matching N++'s existing half-open for-ranges.
     // Lowered to a non-owning { pointer, length } pair by the LLVM backend.
     struct SliceExpr : Expr {
         Expr::Ptr object, start, end;

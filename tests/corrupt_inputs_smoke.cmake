@@ -81,4 +81,4 @@ if(combined MATCHES "basic_filebuf|underflow")
 endif()
 
 file(REMOVE_RECURSE "${SMOKE_DIR}")
-message(STATUS "NPP corrupt input smoke test: PASS")
+message(STATUS "N++ corrupt input smoke test: PASS")

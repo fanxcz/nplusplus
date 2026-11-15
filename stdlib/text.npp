@@ -1,0 +1,76 @@
+// Higher-level string helpers on top of the string.* builtins.
+// For raw byte access see std.string; this module adds composition
+// helpers that would otherwise be reimplemented in every project.
+
+fn text_len(s: string) -> i64 { return string.len(s) }
+
+fn text_upper(s: string) -> string { return string.upper(s) }
+
+fn text_lower(s: string) -> string { return string.lower(s) }
+
+fn text_trim(s: string) -> string { return string.trim(s) }
+
+fn text_contains(s: string, part: string) -> bool { return string.contains(s, part) }
+
+fn text_find(s: string, part: string) -> i64 { return string.find(s, part) }
+
+fn text_slice(s: string, start: i64, len: i64) -> string {
+    return string.slice(s, start, len)
+}
+
+fn text_split_count(s: string, sep: string) -> i64 {
+    return string.split_count(s, sep)
+}
+
+fn text_split_at(s: string, sep: string, index: i64) -> string {
+    return string.split_at(s, sep, index)
+}
+
+fn text_starts_with(s: string, prefix: string) -> bool {
+    if string.len(prefix) > string.len(s) { return false }
+    return string.slice(s, 0, string.len(prefix)) == prefix
+}
+
+fn text_ends_with(s: string, suffix: string) -> bool {
+    if string.len(suffix) > string.len(s) { return false }
+    let start = string.len(s) - string.len(suffix)
+    return string.slice(s, start, string.len(suffix)) == suffix
+}
+
+fn text_repeat(s: string, count: i64) -> string {
+    let mut out = ""
+    let mut i: i64 = 0
+    while i < count {
+        out = out + s
+        i = i + 1
+    }
+    return out
+}
+
+fn text_pad_left(s: string, width: i64, fill: string) -> string {
+    let missing = width - string.len(s)
+    if missing <= 0 { return s }
+    return text_repeat(fill, missing) + s
+}
+
+fn text_pad_right(s: string, width: i64, fill: string) -> string {
+    let missing = width - string.len(s)
+    if missing <= 0 { return s }
+    return s + text_repeat(fill, missing)
+}
+
+fn text_join(list: i64, sep: string) -> string {
+    // list is a handle from std.collections string_list_* helpers.
+    let mut out = ""
+    let count = slist_len(list)
+    let mut i: i64 = 0
+    while i < count {
+        let mut item: string = ""
+        if slist_try_get(list, i,&item) {
+            if i > 0 { out = out + sep }
+            out = out + item
+        }
+        i = i + 1
+    }
+    return out
+}

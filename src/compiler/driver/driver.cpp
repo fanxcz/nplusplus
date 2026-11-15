@@ -29,7 +29,7 @@ namespace npp {
             }
             if (cmd == "version" || cmd == "--version") {
 
-                std::cout << "Npp " << kVersion
+                std::cout << "N++ " << kVersion
                           << " (C++20/LLVM IR + Native Graphics/Audio/Game Runtime)\n";
 
                 return 0;

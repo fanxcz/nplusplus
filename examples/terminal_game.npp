@@ -1,5 +1,5 @@
 fn main() {
-    screen_set_title("NPP Terminal Game")
+    screen_set_title("N++ Terminal Game")
     screen_begin()
     let mut x: i64 = 10
     let mut y: i64 = 8
@@ -7,7 +7,7 @@ fn main() {
     let mut running = true
     while running {
         screen_clear()
-        screen_put(0, 0, "NPP TERMINAL GAME")
+        screen_put(0, 0, "N++ TERMINAL GAME")
         screen_put(0, 1, "WASD move | Q quit")
         screen_put(x, y, "@")
         screen_put(0, 22, "Score: " + str_i64(score))

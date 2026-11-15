@@ -6,7 +6,7 @@ fn main() {
     let empty = ""
     print(empty)
     print("a" + "b" + "c")
-    print(greet("Npp"))
+    print(greet("N++"))
     let x = "foo"
     let y = "foo"
     let z = "bar"

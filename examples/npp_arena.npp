@@ -48,7 +48,7 @@ fn rank_name(score: i64) -> string {
 
 fn main() {
     print("========================================")
-    print("          NPP // TERMINAL ARENA       ")
+    print("          N++ // TERMINAL ARENA       ")
     print("========================================")
     print("Universal-language feature showcase")
     print("")
@@ -67,7 +67,7 @@ fn main() {
     let mut wave: i64 = 0
 
     match state {
-        GameState::Boot => { print("[BOOT] NPP runtime initialized") }
+        GameState::Boot => { print("[BOOT] N++ runtime initialized") }
         _ => { print("[BOOT] unexpected state") }
     }
 
@@ -222,5 +222,5 @@ fn main() {
     }
 
     print("")
-    print("NPP ARENA COMPLETE")
+    print("N++ ARENA COMPLETE")
 }

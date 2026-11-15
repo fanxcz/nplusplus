@@ -43,4 +43,4 @@ run_lint("crlf_trailing" CRLF_TRAILING "NX9001" "")
 run_lint("marker" MARKER "NX9002" "")
 
 file(REMOVE_RECURSE "${LINT_DIR}")
-message(STATUS "NPP lint smoke test: PASS")
+message(STATUS "N++ lint smoke test: PASS")
