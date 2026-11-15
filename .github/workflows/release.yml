@@ -84,9 +84,14 @@ jobs:
         run: |
           $ErrorActionPreference = 'Stop'
           choco install nsis -y --no-progress | Out-Null
+          # Refresh PATH: choco updates the machine PATH after this shell started.
+          $env:Path = [System.Environment]::GetEnvironmentVariable('Path', 'Machine') + ';' +
+                       [System.Environment]::GetEnvironmentVariable('Path', 'User')
           $version = (Select-String -Path 'CMakeLists.txt' -Pattern 'VERSION ([0-9]+[.][0-9]+[.][0-9]+)').Matches[0].Groups[1].Value
-          $makensis = "$env:ProgramFiles(x86)\NSIS\makensis.exe"
-          if (-not (Test-Path $makensis)) { $makensis = (Get-Command makensis.exe).Source }
+          $makensis = (Get-Command makensis.exe -ErrorAction SilentlyContinue).Source
+          if (-not $makensis) { $makensis = "$env:ProgramFiles(x86)\NSIS\makensis.exe" }
+          if (-not (Test-Path $makensis)) { $makensis = "$env:ProgramFiles\NSIS\makensis.exe" }
+          if (-not (Test-Path $makensis)) { throw 'makensis.exe not found after choco install nsis' }
           & $makensis "/DNPP_VERSION=$version" scripts/npp-setup.nsi
           if ($LASTEXITCODE -ne 0) { throw 'makensis failed' }
           $installer = Get-Item "npp-setup-$version-windows-x86_64.exe"
