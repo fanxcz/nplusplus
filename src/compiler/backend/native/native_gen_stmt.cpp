@@ -5,7 +5,6 @@
 namespace npp::native {
     namespace detail {
 
-
         void Generator::genStmt(const Stmt* s) {
             if (const auto* nested = dynamic_cast<const Block*>(s)) {
                 genBlock(nested);
@@ -113,8 +112,7 @@ namespace npp::native {
                 out_.jmp(continueStack_.back());
                 return;
             }
-            throw std::runtime_error(
-                "builtin native v0: unsupported statement reached codegen");
+            throw std::runtime_error("builtin native v0: unsupported statement reached codegen");
         }
 
         void Generator::genExpr(const Expr* e) {
@@ -363,8 +361,7 @@ namespace npp::native {
                     out_.addRsp(static_cast<std::uint32_t>(8 * c->args.size()));
                 return;
             }
-            throw std::runtime_error(
-                "builtin native v0: unsupported expression reached codegen");
+            throw std::runtime_error("builtin native v0: unsupported expression reached codegen");
         }
 
         void Generator::genPrint(const Expr* arg) {
@@ -386,8 +383,8 @@ namespace npp::native {
                 out_.call("__nx_print_i64");
         }
 
-            // True for string-typed expressions (literals, string vars/params, string
-            // concatenation, and the input/str_i64 builtins).
+        // True for string-typed expressions (literals, string vars/params, string
+        // concatenation, and the input/str_i64 builtins).
         bool Generator::exprIsString(const Expr* e) {
             if (dynamic_cast<const StringExpr*>(e))
                 return true;
@@ -399,8 +396,7 @@ namespace npp::native {
                 return b->op == TokenKind::Plus && exprIsString(b->lhs.get()) &&
                        exprIsString(b->rhs.get());
             if (const auto* c = dynamic_cast<const CallExpr*>(e)) {
-                if (c->callee == "input" || c->callee == "str_i64" ||
-                    c->callee == "str_bool")
+                if (c->callee == "input" || c->callee == "str_i64" || c->callee == "str_bool")
                     return true;
                 if (c->callee == "print")
                     return false;
@@ -410,7 +406,7 @@ namespace npp::native {
             return false;
         }
 
-            // Mirrors the checker's kind rules to select the right print helper.
+        // Mirrors the checker's kind rules to select the right print helper.
         bool Generator::exprIsBool(const Expr* e) {
             if (dynamic_cast<const BoolExpr*>(e))
                 return true;
@@ -506,8 +502,7 @@ namespace npp::native {
                 }
             }
             if (const auto* c = dynamic_cast<const CallExpr*>(e)) {
-                if (c->callee == "input" || c->callee == "str_i64" ||
-                    c->callee == "str_bool")
+                if (c->callee == "input" || c->callee == "str_i64" || c->callee == "str_bool")
                     return Kind::Str;
                 if (c->callee == "file_exists")
                     return Kind::Bool;
@@ -520,10 +515,10 @@ namespace npp::native {
             return Kind::I64;
         }
 
-            // Call the shared write helper. r10/r11 do NOT survive OS calls
-            // (the syscall instruction itself clobbers rcx+r11, and ntdll
-            // trampolines clobber r10), so the stack pointer is sheltered in the
-            // callee-saved rbx instead. Nothing else in the stubs uses rbx.
+        // Call the shared write helper. r10/r11 do NOT survive OS calls
+        // (the syscall instruction itself clobbers rcx+r11, and ntdll
+        // trampolines clobber r10), so the stack pointer is sheltered in the
+        // callee-saved rbx instead. Nothing else in the stubs uses rbx.
         void Generator::stubCall(const std::string& target) {
             if (target_ == NativeTarget::WindowsX64) {
                 out_.pushRbx();

@@ -120,9 +120,8 @@ namespace npp::native {
                     if (f->rangeEnd) {
                         if (!slots_.contains(f->name))
                             slots_[f->name] = slotCount_++;
-                        const std::string limitName =
-                            std::string("\x01native_for_limit_") +
-                            std::to_string(forLimitCounter_++);
+                        const std::string limitName = std::string("\x01native_for_limit_") +
+                                                      std::to_string(forLimitCounter_++);
                         forLimitNames_[f] = limitName;
                         slots_[limitName] = slotCount_++;
                     }

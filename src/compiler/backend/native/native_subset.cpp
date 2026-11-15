@@ -347,9 +347,10 @@ namespace npp::native {
             if (const auto* l = dynamic_cast<const LetStmt*>(s)) {
                 Kind declared = Kind::Void;
                 if (!kindOfType(l->type, declared) || declared == Kind::Void) {
-                    reason = "variable '" + l->name +
-                             "' has a declared type outside the builtin native v0 subset "
-                             "(only i64, bool, and string locals are supported; use --backend llvm)";
+                    reason =
+                        "variable '" + l->name +
+                        "' has a declared type outside the builtin native v0 subset "
+                        "(only i64, bool, and string locals are supported; use --backend llvm)";
                     return;
                 }
                 const Kind actual = checkExpr(l->init.get(), env, fns, reason);
@@ -373,7 +374,8 @@ namespace npp::native {
                 return;
             }
             if (dynamic_cast<const DerefAssignStmt*>(s)) {
-                reason = "pointer assignment is outside the builtin native v0 subset; use --backend llvm";
+                reason = "pointer assignment is outside the builtin native v0 subset; use "
+                         "--backend llvm";
                 return;
             }
             if (dynamic_cast<const MemberAssignStmt*>(s) ||
@@ -413,7 +415,8 @@ namespace npp::native {
             }
             if (const auto* loop = dynamic_cast<const ForStmt*>(s)) {
                 if (!loop->rangeEnd || !loop->start) {
-                    reason = "array/string iteration is outside the builtin native v0 subset; use --backend llvm";
+                    reason = "array/string iteration is outside the builtin native v0 subset; use "
+                             "--backend llvm";
                     return;
                 }
                 if (env.contains(loop->name)) {
