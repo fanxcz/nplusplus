@@ -5,6 +5,11 @@ namespace npp {
     int run(int argc, char** argv) {
         using namespace driver;
 
+        // Interactive `.npp` launches (double-click / `npp run file.npp`)
+        // keep the console window open even when compilation fails, so the
+        // error message does not flash by unnoticed.
+        bool pauseOnExit = false;
+
         try {
 
             gExecutable = argc > 0 ? fs::absolute(argv[0]) : fs::path();
@@ -19,6 +24,7 @@ namespace npp {
                            [](unsigned char ch) { return static_cast<char>(std::tolower(ch)); });
             const bool directFileInvocation = (firstExtension == ".npp");
             const std::string cmd = directFileInvocation ? "run" : firstArg;
+            pauseOnExit = cmd == "run";
 
             if (cmd == "repl")
                 return commandRepl();
@@ -368,6 +374,8 @@ namespace npp {
                                               : fs::current_path();
                     return launchExecutable(out, root);
                 }
+                if (cmd == "run" && rc != 0)
+                    pauseIfInteractive();
                 std::cout << "build: OK -> " << out << "\n";
 
                 return rc;
@@ -380,6 +388,9 @@ namespace npp {
         } catch (const std::exception& e) {
 
             std::cerr << formatDiagnostic(e) << "\n";
+
+            if (pauseOnExit)
+                pauseIfInteractive();
 
             return 2;
         }

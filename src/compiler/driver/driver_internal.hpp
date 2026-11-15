@@ -54,7 +54,6 @@
 #define NPP_VERSION "dev"
 #endif
 
-
 namespace npp {
 
     namespace fs = std::filesystem;
@@ -62,7 +61,6 @@ namespace npp {
     // Internal interface shared by the driver translation units. None
     // of these symbols are exported from the compiler binary.
     namespace driver {
-
 
         struct ProjectConfig {
 
@@ -95,7 +93,6 @@ namespace npp {
             std::map<std::string, std::string> metadata;
             std::map<std::string, std::map<std::string, std::string>> sections;
         };
-
 
         enum class ReplInputResult { Line, EndOfInput, Interrupted };
 
@@ -168,6 +165,8 @@ namespace npp {
                                bool release,
                                bool windowsTarget);
         int launchExecutable(const fs::path& executable, const fs::path& workingDirectory);
+
+        void pauseIfInteractive();
         bool hostIsX64();
         void writeBinaryRetry(const fs::path& out, const std::uint8_t* data, std::size_t size);
         int compileFile(const fs::path& in,
