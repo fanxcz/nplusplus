@@ -5,7 +5,22 @@ All notable changes to N++ are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.2.0] - Unreleased
+## [1.2.1] - Unreleased
+
+### Added
+
+- `npp run` and direct `.npp` file invocation now pause with
+  `Press Enter to exit...` when stdin is an interactive console, so the
+  window stays open after the program finishes. Piped input is unaffected.
+
+### Fixed
+
+- LLVM backend: added missing `npp_json_valid`, `npp_json_type`,
+  `npp_json_array_len` and `npp_json_array_get` declarations, fixing
+  compilation of programs using `std.json` wrappers such as
+  `examples/npp_v1_full_stack.npp`.
+
+## [1.2.0] - 2026-11-15
 
 ### Added
 
