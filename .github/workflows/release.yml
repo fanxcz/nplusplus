@@ -95,7 +95,9 @@ jobs:
           }
           if (-not $makensis) { throw 'makensis.exe not found after choco install nsis' }
           $version = (Select-String -Path 'CMakeLists.txt' -Pattern 'VERSION ([0-9]+[.][0-9]+[.][0-9]+)').Matches[0].Groups[1].Value
-          & $makensis "/DNPP_VERSION=$version" scripts/npp-setup.nsi
+          # NSIS resolves File paths relative to the script; pass an absolute stage dir.
+          $dist = Join-Path (Get-Location).Path 'dist'
+          & $makensis "/DNPP_VERSION=$version" "/DDIST_DIR=$dist" scripts/npp-setup.nsi
           if ($LASTEXITCODE -ne 0) { throw 'makensis failed' }
           $installer = Get-Item "npp-setup-$version-windows-x86_64.exe"
           $hash = (Get-FileHash -Algorithm SHA256 -Path $installer.FullName).Hash.ToLowerInvariant()
