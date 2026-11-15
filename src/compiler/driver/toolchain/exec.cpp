@@ -17,10 +17,20 @@ namespace npp {
 #endif
             if (!interactive)
                 return;
+#ifdef _WIN32
+            // Drop keystrokes typed while the program was running so the
+            // pause always waits for a fresh Enter.
+            FlushConsoleInputBuffer(GetStdHandle(STD_INPUT_HANDLE));
             std::cout << "\nPress Enter to exit..." << std::flush;
             int ch = 0;
             while (ch != '\n' && ch != '\r' && ch != EOF)
                 ch = std::cin.get();
+#else
+            std::cout << "\nPress Enter to exit..." << std::flush;
+            int ch = 0;
+            while (ch != '\n' && ch != '\r' && ch != EOF)
+                ch = std::cin.get();
+#endif
         }
 
         int launchExecutable(const fs::path& executable, const fs::path& workingDirectory) {
