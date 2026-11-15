@@ -21,7 +21,7 @@
   },
   "build": {
     "appId": "dev.fanxcz.nppstudio",
-    "productName": "N++ Studio",
+    "productName": "NPP Studio",
     "directories": {
       "output": "release"
     },
@@ -43,7 +43,7 @@
         "nsis",
         "portable"
       ],
-      "artifactName": "N++-Studio-${version}-Windows-${arch}.${ext}"
+      "artifactName": "NPP-Studio-${version}-Windows-${arch}.${ext}"
     },
     "nsis": {
       "oneClick": false,
@@ -55,7 +55,7 @@
         "AppImage",
         "deb"
       ],
-      "artifactName": "N++-Studio-${version}-Linux-${arch}.${ext}",
+      "artifactName": "NPP-Studio-${version}-Linux-${arch}.${ext}",
       "maintainer": "N++ Project <noreply@github.com>",
       "syncDesktopName": true
     },
@@ -65,7 +65,7 @@
         "zip"
       ],
       "category": "public.app-category.developer-tools",
-      "artifactName": "N++-Studio-${version}-macOS-${arch}.${ext}"
+      "artifactName": "NPP-Studio-${version}-macOS-${arch}.${ext}"
     }
   },
   "author": {
