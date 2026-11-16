@@ -654,6 +654,117 @@ namespace npp::native {
                 b(0x07);
                 b(0x00);
             }
+            void movBytePtrRdiFromAl() { // mov [rdi], al
+                b(0x88);
+                b(0x07);
+            }
+            void movRdiToRbp(std::int64_t off) { // mov [rbp+off], rdi
+                memToReg(0x48, 0x89, 0x7D, 0xBD, off);
+            }
+            void movRaxRsp() { // mov rax, rsp
+                b(0x48);
+                b(0x89);
+                b(0xE0);
+            }
+            void movRaxFromRsp() { // mov rax, [rsp]
+                b(0x48);
+                b(0x8B);
+                b(0x04);
+                b(0x24);
+            }
+            void movRcxFromRax() { // mov rcx, rax
+                b(0x48);
+                b(0x89);
+                b(0xC1);
+            }
+            void movRdxFromRax() { // mov rdx, rax
+                b(0x48);
+                b(0x89);
+                b(0xC2);
+            }
+            void movRsiFromRax() { // mov rsi, rax
+                b(0x48);
+                b(0x89);
+                b(0xC6);
+            }
+            void movRdiFromRax() { // mov rdi, rax
+                b(0x48);
+                b(0x89);
+                b(0xC7);
+            }
+            void movRaxFromRaxPtr() { // mov rax, [rax]
+                b(0x48);
+                b(0x8B);
+                b(0x00);
+            }
+            void movRcxFromRaxPtr() { // mov rcx, [rax]
+                b(0x48);
+                b(0x8B);
+                b(0x08);
+            }
+            void movRdxFromRaxPtr() { // mov rdx, [rax]
+                b(0x48);
+                b(0x8B);
+                b(0x10);
+            }
+            void movRsiFromRaxPtr() { // mov rsi, [rax]
+                b(0x48);
+                b(0x8B);
+                b(0x30);
+            }
+            void movRdiFromRaxPtr() { // mov rdi, [rax]
+                b(0x48);
+                b(0x8B);
+                b(0x38);
+            }
+            void shlRaxImm8(std::uint8_t v) { // shl rax, imm8
+                b(0x48);
+                b(0xC1);
+                b(0xE0);
+                b(v);
+            }
+            void shlRcxImm8(std::uint8_t v) { // shl rcx, imm8
+                b(0x48);
+                b(0xC1);
+                b(0xE1);
+                b(v);
+            }
+            // Stack-arg / spill slots: [rsp+disp8] <-> r64 (Win64 arg5+ area).
+            void movRspDisp8FromRax(std::uint8_t d) { // mov [rsp+d], rax
+                b(0x48);
+                b(0x89);
+                b(0x44);
+                b(0x24);
+                b(d);
+            }
+            void movRspDisp8FromRcx(std::uint8_t d) { // mov [rsp+d], rcx
+                b(0x48);
+                b(0x89);
+                b(0x4C);
+                b(0x24);
+                b(d);
+            }
+            void movRspDisp8FromRdx(std::uint8_t d) { // mov [rsp+d], rdx
+                b(0x48);
+                b(0x89);
+                b(0x54);
+                b(0x24);
+                b(d);
+            }
+            void movRaxFromRspDisp8(std::uint8_t d) { // mov rax, [rsp+d]
+                b(0x48);
+                b(0x8B);
+                b(0x44);
+                b(0x24);
+                b(d);
+            }
+            void movRcxFromRspDisp8(std::uint8_t d) { // mov rcx, [rsp+d]
+                b(0x48);
+                b(0x8B);
+                b(0x4C);
+                b(0x24);
+                b(d);
+            }
             void storeDlRsi() {
                 b(0x88);
                 b(0x16);
@@ -678,6 +789,17 @@ namespace npp::native {
             void movEdiImm32(std::uint32_t v) {
                 b(0xBF);
                 i32(v);
+            }
+            void leaR9FromRbp(std::int64_t off) { // lea r9, [rbp+off]
+                b(0x4C);
+                b(0x8D);
+                if (off >= -128 && off < 0) {
+                    b(0x4D);
+                    b(static_cast<std::uint8_t>(256 + off));
+                } else {
+                    b(0x8D);
+                    i32(static_cast<std::uint32_t>(off));
+                }
             }
             void leaR9FromRsp8(std::uint8_t d) {
                 b(0x4C);
@@ -748,6 +870,53 @@ namespace npp::native {
                 b(0x7A);
                 b(d);
             }
+            void movRaxFromR10Disp8(std::uint8_t d) { // mov rax, [r10+d]
+                b(0x49);
+                b(0x8B);
+                b(0x42);
+                b(d);
+            }
+            void movRsiFromR10Disp8(std::uint8_t d) { // mov rsi, [r10+d]
+                b(0x49);
+                b(0x8B);
+                b(0x72);
+                b(d);
+            }
+            void movRcxFromR10Disp8(std::uint8_t d) { // mov rcx, [r10+d]
+                b(0x49);
+                b(0x8B);
+                b(0x4A);
+                b(d);
+            }
+            void movRdxFromR10Disp8(std::uint8_t d) { // mov rdx, [r10+d]
+                b(0x49);
+                b(0x8B);
+                b(0x52);
+                b(d);
+            }
+            void movR10FromRcx() { // mov [r10], rcx
+                b(0x49);
+                b(0x89);
+                b(0x0A);
+            }
+            void movR10Disp8FromRcx(std::uint8_t d) { // mov [r10+d], rcx
+                b(0x49);
+                b(0x89);
+                b(0x4A);
+                b(d);
+            }
+            void movR10Disp8FromRdx(std::uint8_t d) { // mov [r10+d], rdx
+                b(0x49);
+                b(0x89);
+                b(0x52);
+                b(d);
+            }
+            void movR10Disp8FromRdi(std::uint8_t d) { // mov [r10+d], rdi
+                b(0x49);
+                b(0x89);
+                b(0x7A);
+                b(d);
+            }
             void movR10FromRax() {
                 b(0x49);
                 b(0x89);
@@ -765,8 +934,22 @@ namespace npp::native {
                 b(0x72);
                 b(d);
             }
+            void leaRcxFromRbp(std::int64_t off) { // lea rcx, [rbp+off]
+                b(0x48);
+                b(0x8D);
+                if (off >= -128 && off < 0) {
+                    b(0x4D);
+                    b(static_cast<std::uint8_t>(256 + off));
+                } else {
+                    b(0x8D);
+                    i32(static_cast<std::uint32_t>(off));
+                }
+            }
             void leaRdxFromRbp(std::int64_t off) {
                 leaFromRbp(0x55, 0x95, off);
+            }
+            void leaRaxFromRbp(std::int64_t off) {
+                leaFromRbp(0x45, 0x85, off);
             }
             void leaRsiFromRbp(std::int64_t off) {
                 leaFromRbp(0x75, 0xB5, off);
@@ -778,6 +961,12 @@ namespace npp::native {
             }
             void subRaxFromRbp(std::int64_t off) {
                 memToReg(0x48, 0x2B, 0x45, 0x85, off);
+            }
+            void subRcxFromRbp(std::int64_t off) {
+                memToReg(0x48, 0x2B, 0x4D, 0x8D, off);
+            }
+            void addRcxFromRbp(std::int64_t off) {
+                memToReg(0x48, 0x03, 0x4D, 0x8D, off);
             }
             void movRsiFromRbp(std::int64_t off) {
                 memToReg(0x48, 0x8B, 0x75, 0xB5, off);
@@ -833,6 +1022,20 @@ namespace npp::native {
             void movRbpFromRdx(std::int64_t off) {
                 memToReg(0x48, 0x89, 0x55, 0x95, off);
             }
+            void movRbpFromR8(std::int64_t off) {
+                memToReg(0x4C, 0x89, 0x45, 0x85, off);
+            }
+            void movRdxR8() { // mov rdx, r8
+                b(0x4C);
+                b(0x89);
+                b(0xC2);
+            }
+            void movRdxImm64(std::uint64_t v) {
+                b(0x48);
+                b(0xBA);
+                for (int i = 0; i < 8; ++i)
+                    b(static_cast<std::uint8_t>(v >> (8 * i)));
+            }
             void cmpRaxFromRbp(std::int64_t off) {
                 memToReg(0x48, 0x3B, 0x45, 0x85, off);
             }
@@ -840,6 +1043,116 @@ namespace npp::native {
                 b(0x49);
                 b(0x8B);
                 b(0x02);
+            }
+            void movRaxFromR11() { // mov rax, [r11]
+                b(0x49);
+                b(0x8B);
+                b(0x03);
+            }
+            void movDlFromRcx() { // mov dl, [rcx]
+                b(0x8A);
+                b(0x11);
+            }
+            void testDlDl() { // test dl, dl
+                b(0x84);
+                b(0xD2);
+            }
+            void movEaxEax() { // mov eax, eax (zero-extends rax)
+                b(0x89);
+                b(0xC0);
+            }
+            void movAlFromRdi() { // mov al, [rdi]
+                b(0x8A);
+                b(0x07);
+            }
+            void movAlFromRdx() { // mov al, [rdx]
+                b(0x8A);
+                b(0x02);
+            }
+            void movDlFromRdi() { // mov dl, [rdi]
+                b(0x8A);
+                b(0x17);
+            }
+            void movDlFromRsi() { // mov dl, [rsi]
+                b(0x8A);
+                b(0x16);
+            }
+            void movBytePtrRbpFromAl(std::int64_t off) { // mov [rbp+off], al
+                b(0x88);
+                if (off >= -128 && off < 0) {
+                    b(0x45);
+                    b(static_cast<std::uint8_t>(256 + off));
+                } else {
+                    b(0x85);
+                    i32(static_cast<std::uint32_t>(off));
+                }
+            }
+            void movAlFromRbp(std::int64_t off) { // mov al, [rbp+off]
+                b(0x8A);
+                if (off >= -128 && off < 0) {
+                    b(0x45);
+                    b(static_cast<std::uint8_t>(256 + off));
+                } else {
+                    b(0x85);
+                    i32(static_cast<std::uint32_t>(off));
+                }
+            }
+            void movRdxRcx() { // mov rdx, rcx
+                b(0x48);
+                b(0x89);
+                b(0xCA);
+            }
+            void movRdiRdx() { // mov rdi, rdx
+                b(0x48);
+                b(0x89);
+                b(0xD7);
+            }
+            void movRdxRdi() { // mov rdx, rdi
+                b(0x48);
+                b(0x89);
+                b(0xFA);
+            }
+            void movRsiRdi() { // mov rsi, rdi
+                b(0x48);
+                b(0x89);
+                b(0xFE);
+            }
+            void subRdxRax() { // sub rdx, rax
+                b(0x48);
+                b(0x29);
+                b(0xC2);
+            }
+            void subRaxImm32(std::uint32_t v) { // sub rax, imm32
+                b(0x48);
+                b(0x2D);
+                i32(v);
+            }
+            void decRdx() { // dec rdx
+                b(0x48);
+                b(0xFF);
+                b(0xCA);
+            }
+            void testEaxEax() { // test eax, eax
+                b(0x85);
+                b(0xC0);
+            }
+            void movBytePtrRdiFromCl() { // mov [rdi], cl
+                b(0x88);
+                b(0x0F);
+            }
+            void movBytePtrRdxImm0() { // mov byte [rdx], 0
+                b(0xC6);
+                b(0x02);
+                b(0x00);
+            }
+            void movBytePtrRaxImm0() { // mov byte [rax], 0
+                b(0xC6);
+                b(0x00);
+                b(0x00);
+            }
+            void movBytePtrRsiFromAl() { // mov [rsi], al
+                b(0x88);
+                b(0x06);
             }
             void movRdiRax() {
                 b(0x48);
@@ -1042,6 +1355,12 @@ namespace npp::native {
                 b(0x0F);
                 b(0x5C);
                 b(0xC1);
+            }
+            void subsdXmm0Xmm2() { // subsd xmm0, xmm2
+                b(0xF2);
+                b(0x0F);
+                b(0x5C);
+                b(0xC2);
             }
             void subsdXmm2Xmm0() { // subsd xmm2, xmm0
                 b(0xF2);
@@ -1499,6 +1818,17 @@ namespace npp::native {
                 b(0x89);
                 b(0x08);
             }
+            void addRdxImm8(std::uint8_t v) { // add rdx, imm8
+                b(0x48);
+                b(0x83);
+                b(0xC2);
+                b(v);
+            }
+            void addR11Rax() { // add r11, rax
+                b(0x4C);
+                b(0x01);
+                b(0xC3);
+            }
             void addRaxImm8(std::uint8_t v) { // add rax, imm8
                 b(0x48);
                 b(0x83);
@@ -1516,6 +1846,96 @@ namespace npp::native {
                 b(0xC1);
                 b(0xE8);
                 b(v);
+            }
+
+            // --- x87 scalar transcendental helpers -------------------------
+            // x87 ops take no REX prefix; memory forms use [rbp+off] like
+            // sseMemModrm (reg field baked into the modrm byte).
+            void fldRbp(std::int64_t off) { // fld qword [rbp+off]
+                b(0xDD);
+                if (off >= -128 && off < 0) {
+                    b(0x45);
+                    b(static_cast<std::uint8_t>(256 + off));
+                } else {
+                    b(0x85);
+                    i32(static_cast<std::uint32_t>(off));
+                }
+            }
+            void fstpRbp(std::int64_t off) { // fstp qword [rbp+off]
+                b(0xDD);
+                if (off >= -128 && off < 0) {
+                    b(0x5D);
+                    b(static_cast<std::uint8_t>(256 + off));
+                } else {
+                    b(0x9D);
+                    i32(static_cast<std::uint32_t>(off));
+                }
+            }
+            void fstpSt0() { // fstp st(0) — pop top of x87 stack
+                b(0xDD);
+                b(0xD8);
+            }
+            void fsin() { // fsin
+                b(0xD9);
+                b(0xFE);
+            }
+            void fcos() { // fcos
+                b(0xD9);
+                b(0xFF);
+            }
+            void fptan() { // fptan — ST0 = tan, pushes 1.0 on top
+                b(0xD9);
+                b(0xF2);
+            }
+            void fpatan() { // fpatan — ST1 = atan2(ST1, ST0), pop
+                b(0xD9);
+                b(0xF3);
+            }
+            void fyl2x() { // fyl2x — ST1 = ST1 * log2(ST0), pop
+                b(0xD9);
+                b(0xF1);
+            }
+            void f2xm1() { // f2xm1 — ST0 = 2^ST0 - 1
+                b(0xD9);
+                b(0xF0);
+            }
+            void fld1() { // fld1
+                b(0xD9);
+                b(0xE8);
+            }
+            void faddp() { // faddp st(1), st(0)
+                b(0xDE);
+                b(0xC1);
+            }
+            void mulsdXmm0FromRbp(std::int64_t off) { // mulsd xmm0, [rbp+off]
+                b(0xF2);
+                b(0x0F);
+                b(0x59);
+                sseMemModrm(0x45, 0x85, off);
+            }
+            void mulsdXmm0Xmm0() { // mulsd xmm0, xmm0
+                b(0xF2);
+                b(0x0F);
+                b(0x59);
+                b(0xC0);
+            }
+            void mulsdXmm2Xmm2() { // mulsd xmm2, xmm2
+                b(0xF2);
+                b(0x0F);
+                b(0x59);
+                b(0xD2);
+            }
+            void ucomisdXmm0Xmm0() { // ucomisd xmm0, xmm0 (NaN check)
+                b(0x66);
+                b(0x0F);
+                b(0x2E);
+                b(0xC0);
+            }
+            void sqrtsdXmm0Xmm0() { // sqrtsd xmm0, xmm0
+                b(0xF2);
+                b(0x0F);
+                b(0x51);
+                b(0xC0);
             }
 
         private:
@@ -1565,7 +1985,7 @@ namespace npp::native {
         constexpr std::uint8_t CC_E = 0x94, CC_NE = 0x95, CC_L = 0x9C, CC_LE = 0x9E;
         constexpr std::uint8_t CC_G = 0x9F, CC_GE = 0x9D;
         constexpr std::uint8_t CC_B = 0x92, CC_BE = 0x96, CC_A = 0x97, CC_AE = 0x93;
-        constexpr std::uint8_t J_E = 0x84, J_NE = 0x85, J_NS = 0x89;
+        constexpr std::uint8_t J_E = 0x84, J_NE = 0x85, J_NS = 0x89, J_S = 0x88;
         constexpr std::uint8_t J_L = 0x8C, J_AE = 0x83, J_B = 0x82, J_G = 0x8F;
         constexpr std::uint8_t J_A = 0x87, J_LE = 0x8E, J_PE = 0x8A;
         constexpr std::uint8_t J_BE = 0x86, J_GE = 0x8D;

@@ -48,6 +48,60 @@ namespace npp::native {
             genAlloc();
             genDup();
             genOob();
+            genStrlen();
+            genArgsInit();
+            genOsArgsCount();
+            genOsArgsGet();
+            genEnv();
+            genFileRead();
+            genFileReadChecked();
+            genFileWrite();
+            genMemAlloc();
+            genMemFree();
+            genMemRead();
+            genMemSet();
+            genMemCopy();
+            genBeep();
+            genKeyPressed();
+            genReadKey();
+            genUtf8Dec();
+            genStrChars();
+            genStrCharAt();
+            genStrValidUtf8();
+            genStrFromChar();
+            genStrTrim();
+            genStrUpper();
+            genStrLower();
+            genStrFind();
+            genStrContains();
+            genStrSlice();
+            genStrSplitCount();
+            genStrSplitAt();
+            genLcNew();
+            genLcGrow();
+            genLcLen();
+            genLcGet();
+            genLcSet(false);
+            genLcSet(true);
+            genLcPush(false);
+            genLcPush(true);
+            genLcReserve();
+            genLcClear(false);
+            genLcClear(true);
+            genLcInsert();
+            genLcTryGet();
+            genLcRemove();
+            genLcTryPop();
+            genMathSqrt();
+            genMathSin();
+            genMathCos();
+            genMathTan();
+            genMathFloor();
+            genMathCeil();
+            genMathAtan2();
+            genMathPow();
+            genPhysicsAabb();
+            genPhysicsCircle();
             genOom();
             genDivZero();
             genDivOverflow();
@@ -107,8 +161,15 @@ namespace npp::native {
             endLabel_ = out_.label(f.name + "$end");
             breakStack_.clear();
             continueStack_.clear();
+            fnDefers_.clear();
+            for (const auto& s : f.body->statements) {
+                if (const auto* d = dynamic_cast<const DeferStmt*>(s.get()))
+                    fnDefers_.push_back(d->call.get());
+            }
             genBlock(f.body.get());
             out_.def(endLabel_);
+            for (auto it = fnDefers_.rbegin(); it != fnDefers_.rend(); ++it)
+                genExpr(*it);
             if (f.name == "main" && f.ret.kind == TypeKind::Void)
                 out_.xorEax();
             out_.movRspRbp();
@@ -164,6 +225,14 @@ namespace npp::native {
                         const std::string base =
                             std::string("\x01native_cmp_") + std::to_string(compoundCounter_++);
                         compoundNames_[ia] = {base + "_cur", base + "_rhs"};
+                        slots_[base + "_cur"] = slotCount_++;
+                        slots_[base + "_rhs"] = slotCount_++;
+                    }
+                } else if (const auto* da = dynamic_cast<const DerefAssignStmt*>(s.get())) {
+                    if (da->op != TokenKind::Equal) {
+                        const std::string base =
+                            std::string("\x01native_cmp_") + std::to_string(compoundCounter_++);
+                        compoundNames_[da] = {base + "_cur", base + "_rhs"};
                         slots_[base + "_cur"] = slotCount_++;
                         slots_[base + "_rhs"] = slotCount_++;
                     }

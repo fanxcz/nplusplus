@@ -172,6 +172,11 @@ set(NPP_NATIVE_SOURCES
     src/compiler/backend/native/native_gen_core.cpp
     src/compiler/backend/native/native_gen_stmt.cpp
     src/compiler/backend/native/native_gen_runtime.cpp
+    src/compiler/backend/native/native_gen_sys.cpp
+    src/compiler/backend/native/native_gen_str.cpp
+    src/compiler/backend/native/native_gen_list.cpp
+    src/compiler/backend/native/native_gen_math.cpp
+    src/compiler/backend/native/native_gen_phys.cpp
     src/compiler/backend/native/target.cpp
     src/compiler/backend/native/pe_elf.cpp
 )

@@ -24,6 +24,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   fixed notation for exponents in `[-4, 14]`, scientific otherwise),
   `input_f64`/`str_to_f64` parsing, `to_f64`/`to_i64` conversions.
 - New native smoke fixtures: `f64.npp`, `input_f64.npp`.
+- Native backend pointers (`*T`, `&x`, `*p` read/write) for output
+  parameters and raw memory, plus `mem_alloc`/`mem_read`/`mem_set`/
+  `mem_copy`/`mem_free`.
+- Native backend system surface: `os.args_count`/`os.args_get`, `env`,
+  `file_exists`, `file_read`/`file_read_checked`/`file_write`,
+  `beep`, `key_pressed`, `read_key`.
+- Native backend string builtins: `string.len`, `string.byte_at`,
+  `string.char_at`, `string.chars`, `string.contains`, `string.find`,
+  `string.slice`, `string.split_at`, `string.split_count`,
+  `string.trim`, `string.upper`, `string.lower`, `string.from_char`,
+  `string.valid_utf8` (UTF-8 aware), used by `std.string`/`std.text`.
+- Native backend collections: `ilist_*` and `slist_*` handles (new,
+  push, push_checked, len, get/try_get/set/set_checked/try_pop, insert,
+  remove, reserve, clear, free) with `*T` out-parameters, and top-level
+  `defer call()` support used by `std.collections` cleanup.
+- Native backend math: `sin`, `cos`, `tan`, `sqrt`, `floor`, `ceil`,
+  `atan2`, `pow` (x87 FPU), and physics helpers `physics_aabb` /
+  `physics_circle` (SSE2).
+- Native-compilable stdlib modules: `io`, `os`, `env`, `fs`, `sys`,
+  `string`, `text`, `math`, `random`, `time`, `memory`, `collections`,
+  `physics2d`, `collision2d`, `tilemap`, `vec2`, `vec3`, `animation2d`.
+- New native smoke fixtures: `lists.npp`, `math_phys.npp`, `defer.npp`.
 
 ### Fixed
 

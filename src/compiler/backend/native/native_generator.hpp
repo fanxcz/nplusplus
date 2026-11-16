@@ -48,6 +48,9 @@ namespace npp::native {
             std::string endLabel_;
             std::vector<std::string> breakStack_;
             std::vector<std::string> continueStack_;
+            // Top-level `defer` calls of the current function; emitted in
+            // reverse order at the function epilogue (endLabel_).
+            std::vector<const Expr*> fnDefers_;
             const Function* currentFn_ = nullptr;
 
             static std::int64_t slotOff(std::size_t slot);
@@ -67,6 +70,10 @@ namespace npp::native {
             void genForCollection(const ForStmt* f);
 
             void genExpr(const Expr* e);
+
+            // Emit code leaving the address of an lvalue in rax (used by
+            // unary `&`). Handles variables, member/index chains, and `*p`.
+            void genAddr(const Expr* e);
 
             void genPrint(const Expr* arg);
 
@@ -224,6 +231,80 @@ namespace npp::native {
 
             // __nx_oob: index-out-of-bounds runtime failure (stderr + exit 1).
             void genOob();
+
+            // System/OS helpers (native_gen_sys.cpp).
+            void genStrlen();
+            void genArgsInit();
+            void genOsArgsCount();
+            void genOsArgsGet();
+            void genEnv();
+            void genFileRead();
+            void genFileReadChecked();
+            void genFileWrite();
+            void genMemAlloc();
+            void genMemFree();
+            void genMemRead();
+            void genMemSet();
+            void genMemCopy();
+            void genBeep();
+            void genKeyPressed();
+            void genReadKey();
+
+            // String builtins (native_gen_str.cpp). Strings stay
+            // NUL-terminated arena pointers; helpers return fresh arena
+            // strings or scalars per the LLVM runtime utf8.inc semantics.
+            void emitIsSpaceByte(const std::string& spLabel, const std::string& nsLabel);
+            void genUtf8Dec();
+            void genStrChars();
+            void genStrCharAt();
+            void genStrValidUtf8();
+            void genStrFromChar();
+            void genStrTrim();
+            void genStrCase(bool upper);
+            void genStrUpper();
+            void genStrLower();
+            void genStrFindCore(bool contains);
+            void genStrFind();
+            void genStrContains();
+            void genStrSlice();
+            void genStrSplitCount();
+            void genStrSplitAt();
+
+            // Growable list helpers (native_gen_list.cpp). Handles are
+            // opaque i64 pointers to arena header blocks; tag 1 = int
+            // list, tag 2 = string list (mirrors lists.inc).
+            void emitLcValid(const std::string& bad);
+            void genLcNew();
+            void genLcGrow();
+            void genLcLen();
+            void genLcGet();
+            void genLcSet(bool checked);
+            void genLcPush(bool checked);
+            void genLcReserve();
+            void genLcClear(bool freeIt);
+            void genLcInsert();
+            void genLcTryGet();
+            void genLcRemove();
+            void genLcTryPop();
+
+            // f64 math builtins (native_gen_math.cpp). Unary helpers take
+            // xmm0 in/out; atan2/pow take raw f64 bits on the stack like
+            // user-function parameters.
+            void genMathUnaryX87(const char* name, int op);
+            void genMathSqrt();
+            void genMathRound(bool isFloor);
+            void genMathAtan2();
+            void genMathPow();
+            void genMathSin();
+            void genMathCos();
+            void genMathTan();
+            void genMathFloor();
+            void genMathCeil();
+
+            // Game-physics predicates (native_gen_phys.cpp): f64 args as
+            // raw bits on the stack, bool result in rax.
+            void genPhysicsAabb();
+            void genPhysicsCircle();
 
             // Clean runtime failures for allocation and integer division.
             void genOom();

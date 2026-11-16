@@ -88,6 +88,13 @@ namespace npp::native {
                     return false;
                 }
                 return supportedType(*t.element, structs, reason, depth + 1);
+            case TypeKind::Pointer:
+                if (!t.pointee) {
+                    reason = "malformed pointer type is outside the " + std::string(kSubset) +
+                             " (use --backend llvm)";
+                    return false;
+                }
+                return supportedType(*t.pointee, structs, reason, depth + 1);
             case TypeKind::Struct: {
                 const StructDecl* decl = findStruct(structs, t.name);
                 if (!decl) {
@@ -107,7 +114,7 @@ namespace npp::native {
             default:
                 reason = "type '" + std::to_string(static_cast<int>(t.kind)) + "' is outside the " +
                          std::string(kSubset) +
-                         " (pointers, slices, enums, and mutable references need --backend "
+                         " (slices, enums, and mutable references need --backend "
                          "llvm)";
                 return false;
             }
@@ -134,6 +141,8 @@ namespace npp::native {
                 return Kind::Str;
             case TypeKind::F64:
                 return Kind::F64;
+            case TypeKind::Pointer:
+                return Kind::I64;
             case TypeKind::Array:
             case TypeKind::Struct:
                 return Kind::Ptr;
@@ -222,12 +231,27 @@ namespace npp::native {
                            : ret == TypeKind::I64  ? i64T()
                                                    : f64T();
                 }
-                if (c->callee == "os.args_count" || c->callee == "time_ms") {
+                if (c->callee == "os.args_count" || c->callee == "time_ms" ||
+                    c->callee == "read_key") {
                     if (c->args.size() != 0) {
                         reason = c->callee + "() takes no arguments";
                         return i64T();
                     }
                     return i64T();
+                }
+                if (c->callee == "beep") {
+                    if (c->args.size() != 0) {
+                        reason = "beep() takes no arguments";
+                        return voidT();
+                    }
+                    return voidT();
+                }
+                if (c->callee == "key_pressed") {
+                    if (c->args.size() != 0) {
+                        reason = "key_pressed() takes no arguments";
+                        return boolT();
+                    }
+                    return boolT();
                 }
                 if (c->callee == "os.args_get") {
                     if (c->args.size() != 1) {
@@ -351,6 +375,292 @@ namespace npp::native {
                     }
                     return boolT();
                 }
+                if (c->callee == "env") {
+                    if (c->args.size() != 1) {
+                        reason = "env() takes exactly 1 argument (name)";
+                        return strT();
+                    }
+                    const Type a = checkExpr(c->args[0].get(), env, fns, structs, reason);
+                    if (!reason.empty())
+                        return strT();
+                    if (a.kind != TypeKind::String) {
+                        reason = "env() takes a string name";
+                        return strT();
+                    }
+                    return strT();
+                }
+                if (c->callee == "file_read") {
+                    if (c->args.size() != 1) {
+                        reason = "file_read() takes exactly 1 argument (path)";
+                        return strT();
+                    }
+                    const Type a = checkExpr(c->args[0].get(), env, fns, structs, reason);
+                    if (!reason.empty())
+                        return strT();
+                    if (a.kind != TypeKind::String) {
+                        reason = "file_read() takes a string path";
+                        return strT();
+                    }
+                    return strT();
+                }
+                if (c->callee == "file_read_checked") {
+                    if (c->args.size() != 2) {
+                        reason = "file_read_checked() takes exactly 2 arguments (path, out)";
+                        return boolT();
+                    }
+                    const Type a = checkExpr(c->args[0].get(), env, fns, structs, reason);
+                    if (!reason.empty())
+                        return boolT();
+                    if (a.kind != TypeKind::String) {
+                        reason = "file_read_checked() first argument must be a string path";
+                        return boolT();
+                    }
+                    const Type b = checkExpr(c->args[1].get(), env, fns, structs, reason);
+                    if (!reason.empty())
+                        return boolT();
+                    if (b.kind != TypeKind::Pointer || !b.pointee ||
+                        b.pointee->kind != TypeKind::String) {
+                        reason = "file_read_checked() second argument must be *string";
+                        return boolT();
+                    }
+                    return boolT();
+                }
+                if (c->callee == "file_write") {
+                    if (c->args.size() != 2) {
+                        reason = "file_write() takes exactly 2 arguments (path, data)";
+                        return i64T();
+                    }
+                    const Type a = checkExpr(c->args[0].get(), env, fns, structs, reason);
+                    if (!reason.empty())
+                        return i64T();
+                    const Type b = checkExpr(c->args[1].get(), env, fns, structs, reason);
+                    if (!reason.empty())
+                        return i64T();
+                    if (a.kind != TypeKind::String || b.kind != TypeKind::String) {
+                        reason = "file_write() takes two string arguments";
+                        return i64T();
+                    }
+                    return i64T();
+                }
+                if (c->callee == "mem_alloc") {
+                    if (c->args.size() != 1) {
+                        reason = "mem_alloc() takes exactly 1 argument (bytes)";
+                        return i64T();
+                    }
+                    const Type a = checkExpr(c->args[0].get(), env, fns, structs, reason);
+                    if (!reason.empty())
+                        return i64T();
+                    if (a.kind != TypeKind::I64) {
+                        reason = "mem_alloc() takes an i64 byte count";
+                        return i64T();
+                    }
+                    return i64T();
+                }
+                if (c->callee == "mem_free" || c->callee == "mem_read") {
+                    if (c->args.size() != 1) {
+                        reason = c->callee + "() takes exactly 1 argument (i64)";
+                        return c->callee == "mem_free" ? voidT() : i64T();
+                    }
+                    const Type a = checkExpr(c->args[0].get(), env, fns, structs, reason);
+                    if (!reason.empty())
+                        return c->callee == "mem_free" ? voidT() : i64T();
+                    if (a.kind != TypeKind::I64) {
+                        reason = c->callee + "() takes an i64 argument";
+                        return c->callee == "mem_free" ? voidT() : i64T();
+                    }
+                    return c->callee == "mem_free" ? voidT() : i64T();
+                }
+                if (c->callee == "mem_set" || c->callee == "mem_copy") {
+                    if (c->args.size() != 3) {
+                        reason = c->callee + "() takes exactly 3 arguments (i64, i64, i64)";
+                        return voidT();
+                    }
+                    for (const auto& arg : c->args) {
+                        const Type a = checkExpr(arg.get(), env, fns, structs, reason);
+                        if (!reason.empty())
+                            return voidT();
+                        if (a.kind != TypeKind::I64) {
+                            reason = c->callee + "() takes three i64 arguments";
+                            return voidT();
+                        }
+                    }
+                    return voidT();
+                }
+                if (c->callee == "sqrt" || c->callee == "sin" || c->callee == "cos" ||
+                    c->callee == "tan" || c->callee == "floor" || c->callee == "ceil") {
+                    if (c->args.size() != 1) {
+                        reason = c->callee + "() takes exactly 1 argument (f64)";
+                        return f64T();
+                    }
+                    const Type a = checkExpr(c->args[0].get(), env, fns, structs, reason);
+                    if (!reason.empty())
+                        return f64T();
+                    if (a.kind != TypeKind::F64) {
+                        reason = c->callee + "() takes an f64 argument";
+                        return f64T();
+                    }
+                    return f64T();
+                }
+                if (c->callee == "atan2" || c->callee == "pow") {
+                    if (c->args.size() != 2) {
+                        reason = c->callee + "() takes exactly 2 arguments (f64, f64)";
+                        return f64T();
+                    }
+                    for (const auto& arg : c->args) {
+                        const Type a = checkExpr(arg.get(), env, fns, structs, reason);
+                        if (!reason.empty())
+                            return f64T();
+                        if (a.kind != TypeKind::F64) {
+                            reason = c->callee + "() takes two f64 arguments";
+                            return f64T();
+                        }
+                    }
+                    return f64T();
+                }
+                if (c->callee == "physics_aabb" || c->callee == "physics_circle") {
+                    const std::size_t want = c->callee == "physics_aabb" ? 8 : 6;
+                    if (c->args.size() != want) {
+                        reason = c->callee + "() takes exactly " + std::to_string(want) +
+                                 " f64 arguments";
+                        return boolT();
+                    }
+                    for (const auto& arg : c->args) {
+                        const Type a = checkExpr(arg.get(), env, fns, structs, reason);
+                        if (!reason.empty())
+                            return boolT();
+                        if (a.kind != TypeKind::F64) {
+                            reason = c->callee + "() takes only f64 arguments";
+                            return boolT();
+                        }
+                    }
+                    return boolT();
+                }
+                // UTF-8 / string transformation builtins (native_gen_str.cpp).
+                const std::string& cn = c->callee;
+                const bool isStr1 = cn == "string.chars" || cn == "string.valid_utf8" ||
+                                    cn == "string.trim" || cn == "string.upper" ||
+                                    cn == "string.lower";
+                const bool isStr2 =
+                    cn == "string.contains" || cn == "string.find" || cn == "string.split_count";
+                const bool isSlice = cn == "string.slice";
+                const bool isSplitAt = cn == "string.split_at";
+                const bool isCharAt = cn == "string.char_at";
+                const bool isFromChar = cn == "string.from_char";
+                if (isStr1 || isStr2 || isSlice || isSplitAt || isCharAt || isFromChar) {
+                    const std::size_t want = isStr1 || isFromChar   ? 1
+                                             : isSlice || isSplitAt ? 3
+                                                                    : 2;
+                    if (c->args.size() != want) {
+                        reason = cn + "() takes " + std::to_string(want) + " argument(s)";
+                        return cn == "string.chars" || cn == "string.find" ||
+                                       cn == "string.split_count" || cn == "string.char_at"
+                                   ? i64T()
+                               : cn == "string.valid_utf8" || cn == "string.contains" ? boolT()
+                                                                                      : strT();
+                    }
+                    auto argIs = [&](std::size_t i, TypeKind k) {
+                        const Type a = checkExpr(c->args[i].get(), env, fns, structs, reason);
+                        if (!reason.empty())
+                            return false;
+                        if (a.kind != k) {
+                            reason = cn + "() argument " + std::to_string(i + 1) +
+                                     " has an unsupported type";
+                            return false;
+                        }
+                        return true;
+                    };
+                    bool ok = true;
+                    if (isFromChar) {
+                        ok = argIs(0, TypeKind::I64);
+                    } else {
+                        ok = argIs(0, TypeKind::String);
+                        if (ok && (isStr2 || isSplitAt))
+                            ok = argIs(1, TypeKind::String);
+                        if (ok && isSlice) {
+                            ok = argIs(1, TypeKind::I64) && argIs(2, TypeKind::I64);
+                        } else if (ok && isSplitAt) {
+                            ok = argIs(2, TypeKind::I64);
+                        } else if (ok && isCharAt) {
+                            ok = argIs(1, TypeKind::I64);
+                        }
+                    }
+                    if (!ok) {
+                        if (reason.empty())
+                            reason = cn + "() argument types are not supported here";
+                        return cn == "string.chars" || cn == "string.find" ||
+                                       cn == "string.split_count" || cn == "string.char_at"
+                                   ? i64T()
+                               : cn == "string.valid_utf8" || cn == "string.contains" ? boolT()
+                                                                                      : strT();
+                    }
+                    if (cn == "string.chars" || cn == "string.find" || cn == "string.split_count" ||
+                        cn == "string.char_at")
+                        return i64T();
+                    if (cn == "string.valid_utf8" || cn == "string.contains")
+                        return boolT();
+                    return strT();
+                }
+                // Growable list builtins (native_gen_list.cpp): ilist_*
+                // and slist_* share one runtime; handles are i64.
+                const bool isIL = cn.rfind("ilist_", 0) == 0;
+                const bool isSL = cn.rfind("slist_", 0) == 0;
+                if (isIL || isSL) {
+                    const std::string op = cn.substr(6);
+                    const Type elemT = isIL ? i64T() : strT();
+                    const Type outT = Type::ptr(elemT);
+                    const std::size_t want =
+                        op == "new"                                    ? 0
+                        : op == "len" || op == "clear" || op == "free" ? 1
+                        : op == "try_pop"                              ? 2
+                        : op == "push" || op == "push_checked" || op == "get" || op == "reserve"
+                            ? 2
+                            : 3;
+                    const Type retT = op == "new" || op == "len"    ? i64T()
+                                      : op == "get"                 ? elemT
+                                      : op == "push" || op == "set" ? voidT()
+                                                                    : boolT();
+                    if (c->args.size() != want) {
+                        reason = cn + "() takes " + std::to_string(want) + " argument(s)";
+                        return retT;
+                    }
+                    auto argIs = [&](std::size_t i, const Type& wantT) {
+                        const Type a = checkExpr(c->args[i].get(), env, fns, structs, reason);
+                        if (!reason.empty())
+                            return false;
+                        bool kindOk = a.kind == wantT.kind;
+                        if (kindOk && a.kind == TypeKind::Pointer && wantT.pointee && a.pointee)
+                            kindOk = a.pointee->kind == wantT.pointee->kind;
+                        if (!kindOk) {
+                            reason = cn + "() argument " + std::to_string(i + 1) +
+                                     " has an unsupported type";
+                            return false;
+                        }
+                        return true;
+                    };
+                    bool ok = true;
+                    if (want >= 1)
+                        ok = argIs(0, i64T());
+                    if (ok && want >= 2) {
+                        if (op == "try_pop")
+                            ok = argIs(1, outT);
+                        else if (op == "get" || op == "reserve" || want == 3)
+                            ok = argIs(1, i64T());
+                        else
+                            ok = argIs(1, elemT);
+                    }
+                    if (ok && want == 3) {
+                        if (op == "try_get" || op == "remove")
+                            ok = argIs(2, outT);
+                        else
+                            ok = argIs(2, elemT);
+                    }
+                    if (!ok) {
+                        if (reason.empty())
+                            reason = cn + "() argument types are not supported here";
+                        return retT;
+                    }
+                    return retT;
+                }
                 reason = "call to '" + c->callee +
                          "' is outside the builtin native v0 subset (unknown function or "
                          "unsupported builtin; use --backend llvm)";
@@ -404,6 +714,29 @@ namespace npp::native {
                     return t;
                 if (u->op == TokenKind::Bang && t.kind == TypeKind::Bool)
                     return boolT();
+                if (u->op == TokenKind::Ampersand) {
+                    // Address-of: the operand must be an lvalue (variable,
+                    // member, index, or dereference).
+                    const bool lvalue =
+                        dynamic_cast<const VarExpr*>(u->rhs.get()) ||
+                        dynamic_cast<const MemberExpr*>(u->rhs.get()) ||
+                        dynamic_cast<const IndexExpr*>(u->rhs.get()) ||
+                        (dynamic_cast<const UnaryExpr*>(u->rhs.get()) &&
+                         static_cast<const UnaryExpr*>(u->rhs.get())->op == TokenKind::Star);
+                    if (!lvalue) {
+                        reason = "address-of requires a variable, member, index, or "
+                                 "dereference in the builtin native v0 subset";
+                        return Type::void_();
+                    }
+                    return Type::ptr(t);
+                }
+                if (u->op == TokenKind::Star) {
+                    if (t.kind == TypeKind::Pointer && t.pointee)
+                        return *t.pointee;
+                    reason = "dereference requires a pointer in the builtin native v0 "
+                             "subset";
+                    return Type::void_();
+                }
                 reason = "this unary operator is outside the builtin native v0 subset";
                 return Type::void_();
             }
@@ -553,7 +886,7 @@ namespace npp::native {
                 return Type::named(s->typeName);
             }
             reason = "this expression is outside the builtin native v0 subset "
-                     "(slices, pointers, enums, and match values need --backend llvm)";
+                     "(slices, enums, and match values need --backend llvm)";
             return Type::void_();
         }
 
@@ -587,6 +920,7 @@ namespace npp::native {
                         const std::map<std::string, FnSig>& fns,
                         const std::map<std::string, const StructDecl*>& structs,
                         bool inLoop,
+                        bool fnScope,
                         std::string& reason);
 
         void checkStmt(const Stmt* s,
@@ -594,12 +928,13 @@ namespace npp::native {
                        const std::map<std::string, FnSig>& fns,
                        const std::map<std::string, const StructDecl*>& structs,
                        bool inLoop,
+                       bool fnScope,
                        std::string& reason) {
             if (!reason.empty())
                 return;
             if (const auto* nested = dynamic_cast<const Block*>(s)) {
                 auto saved = env;
-                checkBlock(nested, env, fns, structs, inLoop, reason);
+                checkBlock(nested, env, fns, structs, inLoop, false, reason);
                 env = std::move(saved);
                 return;
             }
@@ -636,9 +971,29 @@ namespace npp::native {
                 }
                 return;
             }
-            if (dynamic_cast<const DerefAssignStmt*>(s)) {
-                reason = "pointer assignment is outside the builtin native v0 subset; use "
-                         "--backend llvm";
+            if (const auto* da = dynamic_cast<const DerefAssignStmt*>(s)) {
+                const Type t = checkExpr(da->target.get(), env, fns, structs, reason);
+                if (!reason.empty())
+                    return;
+                if (t.kind != TypeKind::Pointer || !t.pointee) {
+                    reason = "dereference assignment requires a pointer target";
+                    return;
+                }
+                const Type v = checkExpr(da->value.get(), env, fns, structs, reason);
+                if (!reason.empty())
+                    return;
+                if (da->op == TokenKind::Equal) {
+                    if (!sameType(v, *t.pointee)) {
+                        reason = "dereference assignment has a mismatched pointee type";
+                        return;
+                    }
+                    return;
+                }
+                if (!compoundTypeOk(da->op, *t.pointee, v)) {
+                    reason = "compound dereference assignment has an unsupported "
+                             "type/operator combination";
+                    return;
+                }
                 return;
             }
             if (const auto* ma = dynamic_cast<const MemberAssignStmt*>(s)) {
@@ -708,8 +1063,26 @@ namespace npp::native {
                 checkExpr(e->expr.get(), env, fns, structs, reason);
                 return;
             }
-            if (dynamic_cast<const DeferStmt*>(s)) {
-                reason = "defer is outside the builtin native v0 subset; use --backend llvm";
+            if (const auto* d = dynamic_cast<const DeferStmt*>(s)) {
+                // Only top-level function-body defers are supported: they
+                // run once at function exit (see genFunction epilogue).
+                if (!fnScope) {
+                    reason = "defer inside a nested scope is outside the builtin "
+                             "native v0 subset; use --backend llvm";
+                    return;
+                }
+                if (!dynamic_cast<const CallExpr*>(d->call.get())) {
+                    reason = "defer requires a call expression";
+                    return;
+                }
+                const Type t = checkExpr(d->call.get(), env, fns, structs, reason);
+                if (!reason.empty())
+                    return;
+                if (t.kind != TypeKind::Void) {
+                    reason = "defer call must return void in the builtin native v0 "
+                             "subset";
+                    return;
+                }
                 return;
             }
             if (const auto* r = dynamic_cast<const ReturnStmt*>(s)) {
@@ -726,10 +1099,10 @@ namespace npp::native {
                     return;
                 }
                 auto saved = env;
-                checkBlock(i->thenBlock.get(), env, fns, structs, inLoop, reason);
+                checkBlock(i->thenBlock.get(), env, fns, structs, inLoop, false, reason);
                 env = saved;
                 if (i->elseBlock) {
-                    checkBlock(i->elseBlock.get(), env, fns, structs, inLoop, reason);
+                    checkBlock(i->elseBlock.get(), env, fns, structs, inLoop, false, reason);
                     env = saved;
                 }
                 return;
@@ -778,7 +1151,7 @@ namespace npp::native {
                 }
                 auto saved = env;
                 env[loop->name] = elemType;
-                checkBlock(loop->body.get(), env, fns, structs, true, reason);
+                checkBlock(loop->body.get(), env, fns, structs, true, false, reason);
                 env = std::move(saved);
                 return;
             }
@@ -791,7 +1164,7 @@ namespace npp::native {
                     return;
                 }
                 auto saved = env;
-                checkBlock(w->body.get(), env, fns, structs, true, reason);
+                checkBlock(w->body.get(), env, fns, structs, true, false, reason);
                 env = saved;
                 return;
             }
@@ -809,9 +1182,10 @@ namespace npp::native {
                         const std::map<std::string, FnSig>& fns,
                         const std::map<std::string, const StructDecl*>& structs,
                         bool inLoop,
+                        bool fnScope,
                         std::string& reason) {
             for (const auto& s : b->statements) {
-                checkStmt(s.get(), env, fns, structs, inLoop, reason);
+                checkStmt(s.get(), env, fns, structs, inLoop, fnScope, reason);
                 if (!reason.empty())
                     return;
             }

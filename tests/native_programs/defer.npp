@@ -1,0 +1,14 @@
+fn cleanup() {
+    print("cleanup ran")
+}
+
+fn main() {
+    defer cleanup()
+    let h = ilist_new()
+    ilist_push(h, 1)
+    ilist_push(h, 2)
+    print(ilist_len(h))
+    if ilist_len(h) > 1 {
+        print("two items")
+    }
+}

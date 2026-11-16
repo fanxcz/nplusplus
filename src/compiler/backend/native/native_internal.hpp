@@ -33,6 +33,7 @@ namespace npp::native {
                         const std::map<std::string, FnSig>& fns,
                         const std::map<std::string, const StructDecl*>& structs,
                         bool inLoop,
+                        bool fnScope,
                         std::string& reason);
 
         // True when `t` is representable by the native backend (scalars plus

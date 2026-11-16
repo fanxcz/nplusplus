@@ -79,8 +79,29 @@ namespace npp::native {
                 genStoreToRcx(kindOf(*ot.element));
                 return;
             }
+            if (const auto* da = dynamic_cast<const DerefAssignStmt*>(s)) {
+                // `*p = v`: p evaluates to the slot address; store v through it.
+                const Type tt = exprType(da->target.get());
+                const Type pt = tt.pointee ? *tt.pointee : Type::i64();
+                genExpr(da->target.get());
+                out_.pushRax(); // [rsp] = &pointee slot
+                if (da->op != TokenKind::Equal) {
+                    genCompoundAssign(da, da->value.get(), pt, da->op);
+                    return;
+                }
+                genExpr(da->value.get());
+                out_.popRcx();
+                genStoreToRcx(kindOf(pt));
+                return;
+            }
             if (const auto* e = dynamic_cast<const ExprStmt*>(s)) {
                 genExpr(e->expr.get());
+                return;
+            }
+            if (const auto* d = dynamic_cast<const DeferStmt*>(s)) {
+                // Top-level defers are emitted at the function epilogue
+                // (see genFunction); nested defers never reach codegen.
+                (void)d;
                 return;
             }
             if (const auto* r = dynamic_cast<const ReturnStmt*>(s)) {
@@ -211,6 +232,20 @@ namespace npp::native {
                 return;
             }
             if (const auto* u = dynamic_cast<const UnaryExpr*>(e)) {
+                if (u->op == TokenKind::Ampersand) {
+                    genAddr(u->rhs.get());
+                    return;
+                }
+                if (u->op == TokenKind::Star) {
+                    // `*p`: the pointer value is the slot address; load the
+                    // pointee (f64 lands in xmm0, everything else in rax).
+                    genExpr(u->rhs.get());
+                    const Type pt = exprType(u->rhs.get());
+                    const Type pt2 = pt.pointee ? *pt.pointee : Type::i64();
+                    out_.movRcxRax();
+                    genLoadFromRcx(kindOf(pt2));
+                    return;
+                }
                 genExpr(u->rhs.get());
                 if (u->op == TokenKind::Minus) {
                     if (exprKind(u->rhs.get()) == Kind::F64) {
@@ -440,6 +475,12 @@ namespace npp::native {
                     out_.call("__nx_os_args_count");
                     return;
                 }
+                if (c->callee == "beep" || c->callee == "key_pressed" || c->callee == "read_key") {
+                    out_.call(c->callee == "beep"          ? "__nx_beep"
+                              : c->callee == "key_pressed" ? "__nx_key_pressed"
+                                                           : "__nx_read_key");
+                    return;
+                }
                 if (c->callee == "os.args_get") {
                     genExpr(c->args[0].get());
                     out_.call("__nx_os_args_get");
@@ -504,6 +545,75 @@ namespace npp::native {
                     out_.call("__nx_file_exists");
                     return;
                 }
+                if (c->callee == "env") {
+                    genExpr(c->args[0].get());
+                    out_.movRcxRax();
+                    out_.call("__nx_env");
+                    return;
+                }
+                if (c->callee == "file_read") {
+                    genExpr(c->args[0].get());
+                    out_.movRcxRax();
+                    out_.call("__nx_file_read");
+                    return;
+                }
+                if (c->callee == "file_read_checked") {
+                    genExpr(c->args[0].get());
+                    out_.pushRax();
+                    genExpr(c->args[1].get());
+                    out_.movRdxRax();
+                    out_.popRcx();
+                    out_.call("__nx_file_read_checked");
+                    return;
+                }
+                if (c->callee == "file_write") {
+                    genExpr(c->args[0].get());
+                    out_.pushRax();
+                    genExpr(c->args[1].get());
+                    out_.movRdxRax();
+                    out_.popRcx();
+                    out_.call("__nx_file_write");
+                    return;
+                }
+                if (c->callee == "mem_alloc") {
+                    genExpr(c->args[0].get());
+                    out_.call("__nx_mem_alloc");
+                    return;
+                }
+                if (c->callee == "mem_free") {
+                    genExpr(c->args[0].get());
+                    out_.call("__nx_mem_free");
+                    return;
+                }
+                if (c->callee == "mem_read") {
+                    genExpr(c->args[0].get());
+                    out_.call("__nx_mem_read");
+                    return;
+                }
+                if (c->callee == "mem_set") {
+                    genExpr(c->args[0].get());
+                    out_.pushRax();
+                    genExpr(c->args[1].get());
+                    out_.pushRax();
+                    genExpr(c->args[2].get());
+                    out_.movRdxRax();
+                    out_.popRcx();
+                    out_.popRax();
+                    out_.call("__nx_mem_set");
+                    return;
+                }
+                if (c->callee == "mem_copy") {
+                    genExpr(c->args[0].get());
+                    out_.pushRax();
+                    genExpr(c->args[1].get());
+                    out_.pushRax();
+                    genExpr(c->args[2].get());
+                    out_.movRdxRax();
+                    out_.popRcx();
+                    out_.popRax();
+                    out_.call("__nx_mem_copy");
+                    return;
+                }
                 if (c->callee == "str_f64") {
                     genExpr(c->args[0].get());
                     out_.call("__nx_str_f64");
@@ -532,6 +642,146 @@ namespace npp::native {
                 if (c->callee == "to_i64") {
                     genExpr(c->args[0].get());
                     out_.cvttsd2siRaxXmm0();
+                    return;
+                }
+                // f64 math builtins: unary helpers take xmm0 in/out;
+                // atan2/pow take raw f64 bits pushed left-to-right.
+                if (c->callee == "sqrt" || c->callee == "sin" || c->callee == "cos" ||
+                    c->callee == "tan" || c->callee == "floor" || c->callee == "ceil") {
+                    genExpr(c->args[0].get());
+                    out_.call(c->callee == "sqrt"    ? "__nx_math_sqrt"
+                              : c->callee == "sin"   ? "__nx_math_sin"
+                              : c->callee == "cos"   ? "__nx_math_cos"
+                              : c->callee == "tan"   ? "__nx_math_tan"
+                              : c->callee == "floor" ? "__nx_math_floor"
+                                                     : "__nx_math_ceil");
+                    return;
+                }
+                if (c->callee == "atan2" || c->callee == "pow") {
+                    for (const auto& a : c->args) {
+                        genExpr(a.get());
+                        out_.movqRaxXmm0();
+                        out_.pushRax();
+                    }
+                    out_.call(c->callee == "atan2" ? "__nx_math_atan2" : "__nx_math_pow");
+                    out_.addRsp(static_cast<std::uint32_t>(8 * c->args.size()));
+                    return;
+                }
+                // Physics predicates: all-f64 args pushed as raw bits,
+                // bool result in rax.
+                if (c->callee == "physics_aabb" || c->callee == "physics_circle") {
+                    for (const auto& a : c->args) {
+                        genExpr(a.get());
+                        out_.movqRaxXmm0();
+                        out_.pushRax();
+                    }
+                    out_.call(c->callee == "physics_aabb" ? "__nx_physics_aabb"
+                                                          : "__nx_physics_circle");
+                    out_.addRsp(static_cast<std::uint32_t>(8 * c->args.size()));
+                    return;
+                }
+                // Growable list builtins (ilist_*/slist_*): helpers take
+                // rax = handle, rcx = type tag (1 = int, 2 = string),
+                // rdx = arg1, r8 = arg2.
+                const std::string& lc = c->callee;
+                const bool isI = lc.rfind("ilist_", 0) == 0;
+                const bool isS = !isI && lc.rfind("slist_", 0) == 0;
+                if (isI || isS) {
+                    const std::int64_t tag = isI ? 1 : 2;
+                    const std::string op = lc.substr(6);
+                    const auto tagReg = [&] { out_.movRcxImm64(tag); };
+                    if (op == "new") {
+                        out_.movRaxImm64(tag);
+                        out_.call("__nx_lc_new");
+                        return;
+                    }
+                    if (op == "len" || op == "clear" || op == "free") {
+                        genExpr(c->args[0].get());
+                        tagReg();
+                        out_.call(op == "len"     ? "__nx_lc_len"
+                                  : op == "clear" ? "__nx_lc_clear"
+                                                  : "__nx_lc_free");
+                        return;
+                    }
+                    if (op == "push" || op == "push_checked" || op == "get" || op == "reserve") {
+                        genExpr(c->args[0].get());
+                        out_.pushRax();
+                        genExpr(c->args[1].get());
+                        out_.movRdxRax();
+                        out_.popRax();
+                        tagReg();
+                        out_.call(op == "push"           ? "__nx_lc_push"
+                                  : op == "push_checked" ? "__nx_lc_push_checked"
+                                  : op == "get"          ? "__nx_lc_get"
+                                                         : "__nx_lc_reserve");
+                        return;
+                    }
+                    if (op == "try_pop") {
+                        genExpr(c->args[0].get());
+                        out_.pushRax();
+                        genExpr(c->args[1].get());
+                        out_.movR8Rax();
+                        out_.popRax();
+                        tagReg();
+                        out_.call("__nx_lc_try_pop");
+                        return;
+                    }
+                    // set / set_checked / insert / try_get / remove:
+                    // (handle, index, value|out)
+                    genExpr(c->args[0].get());
+                    out_.pushRax();
+                    genExpr(c->args[1].get());
+                    out_.pushRax();
+                    genExpr(c->args[2].get());
+                    out_.movR8Rax();
+                    out_.popRcx();
+                    out_.movRdxRcx();
+                    out_.popRax();
+                    tagReg();
+                    out_.call(op == "set"           ? "__nx_lc_set"
+                              : op == "set_checked" ? "__nx_lc_set_checked"
+                              : op == "insert"      ? "__nx_lc_insert"
+                              : op == "try_get"     ? "__nx_lc_try_get"
+                                                    : "__nx_lc_remove");
+                    return;
+                }
+                // UTF-8 string builtins: helpers take rax = arg0,
+                // rcx = arg1, rdx = arg2.
+                const std::string& sc = c->callee;
+                if (sc == "string.chars" || sc == "string.valid_utf8" || sc == "string.trim" ||
+                    sc == "string.upper" || sc == "string.lower" || sc == "string.from_char") {
+                    genExpr(c->args[0].get());
+                    out_.call(sc == "string.chars"        ? "__nx_str_chars"
+                              : sc == "string.valid_utf8" ? "__nx_str_valid_utf8"
+                              : sc == "string.trim"       ? "__nx_str_trim"
+                              : sc == "string.upper"      ? "__nx_str_upper"
+                              : sc == "string.lower"      ? "__nx_str_lower"
+                                                          : "__nx_str_from_char");
+                    return;
+                }
+                if (sc == "string.char_at" || sc == "string.contains" || sc == "string.find" ||
+                    sc == "string.split_count") {
+                    genExpr(c->args[0].get());
+                    out_.pushRax();
+                    genExpr(c->args[1].get());
+                    out_.movRcxRax();
+                    out_.popRax();
+                    out_.call(sc == "string.char_at"    ? "__nx_str_char_at"
+                              : sc == "string.contains" ? "__nx_str_contains"
+                              : sc == "string.find"     ? "__nx_str_find"
+                                                        : "__nx_str_split_count");
+                    return;
+                }
+                if (sc == "string.slice" || sc == "string.split_at") {
+                    genExpr(c->args[0].get());
+                    out_.pushRax();
+                    genExpr(c->args[1].get());
+                    out_.pushRax();
+                    genExpr(c->args[2].get());
+                    out_.movRdxRax();
+                    out_.popRcx();
+                    out_.popRax();
+                    out_.call(sc == "string.slice" ? "__nx_str_slice" : "__nx_str_split_at");
                     return;
                 }
                 for (std::size_t ai = 0; ai < c->args.size(); ++ai) {
@@ -724,6 +974,18 @@ namespace npp::native {
             if (const auto* u = dynamic_cast<const UnaryExpr*>(e)) {
                 if (u->op == TokenKind::Bang)
                     return Type::boolean();
+                if (u->op == TokenKind::Ampersand) {
+                    const Type t = exprType(u->rhs.get());
+                    if (t.kind == TypeKind::Void)
+                        return Type::void_();
+                    return Type::ptr(t);
+                }
+                if (u->op == TokenKind::Star) {
+                    const Type t = exprType(u->rhs.get());
+                    if (t.kind == TypeKind::Pointer && t.pointee)
+                        return *t.pointee;
+                    return Type::void_();
+                }
                 return exprType(u->rhs.get());
             }
             if (const auto* b = dynamic_cast<const BinaryExpr*>(e)) {
@@ -748,17 +1010,49 @@ namespace npp::native {
             if (const auto* c = dynamic_cast<const CallExpr*>(e)) {
                 if (c->callee == "print" || c->callee == "exit" || c->callee == "sleep")
                     return Type::void_();
-                if (c->callee == "len" || c->callee == "os.args_count" ||
+                if (c->callee == "len" || c->callee == "os.args_count" || c->callee == "read_key" ||
                     c->callee == "string.len" || c->callee == "string.byte_at" ||
+                    c->callee == "string.chars" || c->callee == "string.char_at" ||
+                    c->callee == "string.find" || c->callee == "string.split_count" ||
                     c->callee == "time_ms" || c->callee == "random_i64" || c->callee == "to_i64")
                     return Type::i64();
                 if (c->callee == "os.args_get" || c->callee == "input" || c->callee == "str_i64" ||
-                    c->callee == "str_bool" || c->callee == "str_f64")
+                    c->callee == "str_bool" || c->callee == "str_f64" ||
+                    c->callee == "string.trim" || c->callee == "string.upper" ||
+                    c->callee == "string.lower" || c->callee == "string.slice" ||
+                    c->callee == "string.split_at" || c->callee == "string.from_char")
                     return Type::string();
-                if (c->callee == "file_exists")
+                if (c->callee == "file_exists" || c->callee == "file_read_checked" ||
+                    c->callee == "key_pressed" || c->callee == "string.valid_utf8" ||
+                    c->callee == "string.contains" || c->callee == "physics_aabb" ||
+                    c->callee == "physics_circle")
                     return Type::boolean();
-                if (c->callee == "input_f64" || c->callee == "to_f64")
+                if (c->callee == "env" || c->callee == "file_read")
+                    return Type::string();
+                if (c->callee == "file_write" || c->callee == "mem_alloc" ||
+                    c->callee == "mem_read")
+                    return Type::i64();
+                if (c->callee == "mem_free" || c->callee == "mem_set" || c->callee == "mem_copy")
+                    return Type::void_();
+                if (c->callee == "input_f64" || c->callee == "to_f64" || c->callee == "sqrt" ||
+                    c->callee == "sin" || c->callee == "cos" || c->callee == "tan" ||
+                    c->callee == "floor" || c->callee == "ceil" || c->callee == "atan2" ||
+                    c->callee == "pow")
                     return Type::f64();
+                // ilist_*/slist_* mirrors builtins_collections.hpp.
+                const std::string& cc = c->callee;
+                const bool ci = cc.rfind("ilist_", 0) == 0;
+                const bool cs = cc.rfind("slist_", 0) == 0;
+                if (ci || cs) {
+                    const std::string op = cc.substr(6);
+                    if (op == "get")
+                        return cs ? Type::string() : Type::i64();
+                    if (op == "new" || op == "len")
+                        return Type::i64();
+                    if (op == "push" || op == "set")
+                        return Type::void_();
+                    return Type::boolean();
+                }
                 const auto it = sigs_.find(c->callee);
                 if (it != sigs_.end())
                     return it->second.ret;
@@ -963,6 +1257,47 @@ namespace npp::native {
             }
             out_.popRax();  // dst
             out_.addRsp(8); // drop src
+        }
+
+        void Generator::genAddr(const Expr* e) {
+            // Leaves the address of the lvalue's 8-byte slot in rax.
+            if (const auto* v = dynamic_cast<const VarExpr*>(e)) {
+                out_.leaRaxFromRbp(slotOff(slots_.at(v->name)));
+                return;
+            }
+            if (const auto* m = dynamic_cast<const MemberExpr*>(e)) {
+                // &obj.field = (struct block pointer) + field*8. The object
+                // expression evaluates to the block pointer like a load does.
+                const Type ot = exprType(m->object.get());
+                genExpr(m->object.get());
+                out_.movRcxRax();
+                const int fi = structFieldIndex(ot.name, m->member);
+                const std::int64_t off = static_cast<std::int64_t>(fi) * 8;
+                if (off > 0)
+                    out_.addRcxImm32(static_cast<std::uint32_t>(off));
+                out_.movRaxRcx();
+                return;
+            }
+            if (const auto* x = dynamic_cast<const IndexExpr*>(e)) {
+                const Type ot = exprType(x->object.get());
+                genExpr(x->object.get());
+                out_.pushRax();
+                genExpr(x->index.get());
+                genIndexCheck(ot.arraySize);
+                out_.movRdxRax();
+                out_.shlRdxImm8(3);
+                out_.popRcx();
+                out_.addRcxRdx();
+                out_.movRaxRcx();
+                return;
+            }
+            if (const auto* u = dynamic_cast<const UnaryExpr*>(e); u && u->op == TokenKind::Star) {
+                // &*p == p: the pointer value already is the address.
+                genExpr(u->rhs.get());
+                return;
+            }
+            throw std::runtime_error(
+                "builtin native v0: address-of on a non-lvalue reached codegen");
         }
 
         // Call the shared write helper. r10/r11 do NOT survive OS calls

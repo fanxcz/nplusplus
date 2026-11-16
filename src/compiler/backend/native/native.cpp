@@ -79,7 +79,7 @@ namespace npp::native {
             for (std::size_t i = 0; i < f.params.size(); ++i)
                 env[f.params[i].name] = f.params[i].type;
             if (f.body)
-                detail::checkBlock(f.body.get(), env, fns, structs, false, reason);
+                detail::checkBlock(f.body.get(), env, fns, structs, false, true, reason);
             if (!reason.empty()) {
                 reason = "in function '" + f.name + "': " + reason;
                 return false;
@@ -101,7 +101,14 @@ namespace npp::native {
                              "ReadFile",
                              "GetTickCount64",
                              "Sleep",
-                             "GetFileAttributesA"};
+                             "GetFileAttributesA",
+                             "GetCommandLineA",
+                             "GetEnvironmentVariableA",
+                             "CreateFileA",
+                             "GetFileSize",
+                             "CloseHandle",
+                             "GetNumberOfConsoleInputEvents",
+                             "ReadConsoleInputA"};
         }
         detail::Generator gen(image, target);
         gen.generate(program);

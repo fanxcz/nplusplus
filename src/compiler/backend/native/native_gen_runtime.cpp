@@ -911,6 +911,15 @@ namespace npp::native {
 
         void Generator::genEntry() {
             out_.def("_start");
+            if (target_ == NativeTarget::LinuxX64) {
+                // Save argc/argv for os.args_*: [rsp]=argc, [rsp+8]=argv.
+                out_.movRaxFromRsp();
+                out_.leaR10Rip("__nx_args_raw");
+                out_.movR10Disp8FromRax(0);
+                out_.movRaxRsp();
+                out_.addRaxImm32(8);
+                out_.movR10Disp8FromRax(8);
+            }
             // Reserve the string bump arena before user code runs: 16 MiB of
             // committed/mapped memory, tracked in the __nx_arena words.
             const std::string noArena = out_.label("start.noarena");
@@ -1743,6 +1752,25 @@ namespace npp::native {
             out_.jmp(loop);
             out_.def(done);
             out_.movRaxRdx();
+            out_.ret();
+        }
+
+        // __nx_strlen: rsi = NUL-terminated string. Returns length in rax.
+        // rcx is the counter; al is reused for the byte (rax would be clobbered).
+        void Generator::genStrlen() {
+            const std::string loop = out_.label("strlen.loop");
+            const std::string done = out_.label("strlen.done");
+            out_.def("__nx_strlen");
+            out_.xorEcx();
+            out_.def(loop);
+            out_.movAlFromRsi();
+            out_.testAlAl();
+            out_.jcc(J_E, done);
+            out_.incRsi();
+            out_.incRcx();
+            out_.jmp(loop);
+            out_.def(done);
+            out_.movRaxRcx();
             out_.ret();
         }
 

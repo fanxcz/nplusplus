@@ -21,9 +21,10 @@ This matrix records evidence in the source tree at the current baseline. "Suppor
 | Structs (fields, member access/assignment, params/returns, nesting) | Supported (arena blocks, deep-copy value semantics) | Supported for tested declaration, construction and access paths | Native fixtures (`structs.npp`); regression tests exist |
 | Enum payloads | Not supported | Supported for tested declaration, construction and access paths | Native subset excludes enums |
 | `match` and exhaustiveness over bool/enum | Not supported | Supported for tested finite domains | Match smoke tests and 2.2.0 changelog |
-| Pointer operations and borrow/lifetime patterns | Not supported | Needs verification per operation and lifetime pattern | Semantic analysis contains conservative provenance checks; do not infer general pointer safety |
+| Pointer operations (`*T`, `&x`, dereference) | Supported for raw memory/output parameters | Needs verification per operation and lifetime pattern | Native subset supports pointers for `mem_*`/out-params; borrow/lifetime analysis stays on the LLVM path |
 | `extern` declarations / FFI | Not supported | Needs verification | Native subset explicitly rejects `extern`; inspect target ABI and runtime tests |
-| Standard-library I/O, filesystem, JSON, networking, crypto, database | Not supported as native builtins | Needs verification per module/API and target | Runtime implementations exist; native subset documents only a smaller builtin surface |
+| Standard library: io, os, env, fs, sys, string, text, math, random, time, memory, collections, physics2d, collision2d, tilemap, vec2, vec3, animation2d | Supported (native builtins + pure-N++ modules) | Supported | Module-import smoke check with `--backend native`; collection fixtures |
+| Standard library: json, crypto, net, db, shell, option, result, audio2d, engine2d, sprite2d, ui, camera2d, tilemap_render | Not supported as native builtins | Needs verification per module/API and target | Runtime implementations exist; native subset documents only a smaller builtin surface |
 | Graphics, audio, UI, ECS and other SDL-dependent APIs | Not supported as native builtins | Needs verification per API and host | Runtime sources exist; SDL2 is optional and not every API has cross-platform test coverage |
 | Project/package commands | Driver functionality, not generated-code backend support | Driver functionality, not generated-code backend support | See project and package docs |
 
