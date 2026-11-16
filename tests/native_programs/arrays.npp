@@ -1,0 +1,40 @@
+fn total(xs: [i64; 4]) -> i64 {
+    let mut acc = 0
+    for i in 0..4 {
+        acc = acc + xs[i]
+    }
+    return acc
+}
+
+fn main() {
+    let xs = [1, 2, 3, 4]
+    print(len(xs))
+    print(total(xs))
+    let mut ys = [10, 20, 30]
+    ys[1] = 99
+    print(ys[0])
+    print(ys[1])
+    print(ys[2])
+    // Assignment copies the block: zb does not alias xs.
+    let mut zb = xs
+    zb[0] = 999
+    print(xs[0])
+    print(zb[0])
+    // f64 elements keep xmm handling inside the block.
+    let mut fs = [1.5, 2.5, 3.5]
+    fs[1] = 9.75
+    print(fs[0])
+    print(fs[1])
+    print(fs[2])
+    // Nested arrays and string/bool elements.
+    let mut m = [[1, 2], [3, 4]]
+    m[1][1] = 40
+    print(m[0][1])
+    print(m[1][0])
+    print(m[1][1])
+    let ss = ["a", "b", "c"]
+    print(ss[2])
+    let bs = [true, false]
+    print(bs[0])
+    print(bs[1])
+}

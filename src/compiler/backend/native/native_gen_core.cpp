@@ -9,23 +9,17 @@ namespace npp::native {
             : image_(image), out_(image), target_(target) {}
 
         Kind Generator::typeKind(const Type& t) {
-            if (t.kind == TypeKind::Bool)
-                return Kind::Bool;
-            if (t.kind == TypeKind::String)
-                return Kind::Str;
-            if (t.kind == TypeKind::F64)
-                return Kind::F64;
-            if (t.kind == TypeKind::Void)
-                return Kind::Void;
-            return Kind::I64;
+            return kindOf(t);
         }
 
         void Generator::generate(const Program& program) {
+            for (const auto& s : program.structs)
+                structs_[s.name] = &s;
             for (const auto& f : program.functions) {
                 FnSig sig;
                 for (const auto& p : f.params)
-                    sig.params.push_back(typeKind(p.type));
-                sig.ret = typeKind(f.ret);
+                    sig.params.push_back(p.type);
+                sig.ret = f.ret;
                 sigs_[f.name] = sig;
             }
             for (const auto& f : program.functions)
@@ -51,6 +45,9 @@ namespace npp::native {
             genPrintF64();
             genStrToF64();
             genInputF64();
+            genAlloc();
+            genDup();
+            genOob();
             genOom();
             genDivZero();
             genDivOverflow();

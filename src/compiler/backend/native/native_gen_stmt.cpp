@@ -13,6 +13,8 @@ namespace npp::native {
             }
             if (const auto* l = dynamic_cast<const LetStmt*>(s)) {
                 genExpr(l->init.get());
+                if (needsDup(l->init.get()))
+                    genDupValue(exprType(l->init.get()));
                 if (exprKind(l->init.get()) == Kind::F64)
                     out_.movsdXmm0ToRbp(slotOff(slots_.at(l->name)));
                 else
@@ -21,10 +23,48 @@ namespace npp::native {
             }
             if (const auto* a = dynamic_cast<const AssignStmt*>(s)) {
                 genExpr(a->value.get());
+                if (needsDup(a->value.get()))
+                    genDupValue(exprType(a->value.get()));
                 if (exprKind(a->value.get()) == Kind::F64)
                     out_.movsdXmm0ToRbp(slotOff(slots_.at(a->name)));
                 else
                     out_.movRbpFromRax(slotOff(slots_.at(a->name)));
+                return;
+            }
+            if (const auto* ma = dynamic_cast<const MemberAssignStmt*>(s)) {
+                // Evaluate the object, form the field address, then evaluate
+                // the value and store it through rcx.
+                genExpr(ma->object.get());
+                out_.movRcxRax();
+                const Type ot = exprType(ma->object.get());
+                const int fi = structFieldIndex(ot.name, ma->member);
+                const std::int64_t off = static_cast<std::int64_t>(fi) * 8;
+                if (off > 0)
+                    out_.addRcxImm32(static_cast<std::uint32_t>(off));
+                out_.pushRcx();
+                genExpr(ma->value.get());
+                if (needsDup(ma->value.get()))
+                    genDupValue(exprType(ma->value.get()));
+                out_.popRcx();
+                genStoreToRcx(kindOf(exprType(ma->value.get())));
+                return;
+            }
+            if (const auto* ia = dynamic_cast<const IndexAssignStmt*>(s)) {
+                const Type ot = exprType(ia->object.get());
+                genExpr(ia->object.get());
+                out_.pushRax();
+                genExpr(ia->index.get());
+                genIndexCheck(ot.arraySize);
+                out_.movRdxRax();
+                out_.shlRdxImm8(3);
+                out_.popRcx();
+                out_.addRcxRdx();
+                out_.pushRcx();
+                genExpr(ia->value.get());
+                if (needsDup(ia->value.get()))
+                    genDupValue(exprType(ia->value.get()));
+                out_.popRcx();
+                genStoreToRcx(kindOf(*ot.element));
                 return;
             }
             if (const auto* e = dynamic_cast<const ExprStmt*>(s)) {
@@ -462,20 +502,108 @@ namespace npp::native {
                     out_.cvtsi2sdXmm0Rax();
                     return;
                 }
+                if (c->callee == "len") {
+                    const Type at = exprType(c->args[0].get());
+                    if (at.kind == TypeKind::Array) {
+                        out_.movRaxImm64(at.arraySize);
+                        return;
+                    }
+                    genExpr(c->args[0].get());
+                    out_.call("__nx_string_len");
+                    return;
+                }
                 if (c->callee == "to_i64") {
                     genExpr(c->args[0].get());
                     out_.cvttsd2siRaxXmm0();
                     return;
                 }
-                for (const auto& a : c->args) {
-                    genExpr(a.get());
-                    if (exprKind(a.get()) == Kind::F64)
+                for (std::size_t ai = 0; ai < c->args.size(); ++ai) {
+                    genExpr(c->args[ai].get());
+                    const Kind ak = exprKind(c->args[ai].get());
+                    if (ak == Kind::F64)
                         out_.movqRaxXmm0(); // pass the raw double bits on the stack
+                    else if (ak == Kind::Ptr) {
+                        // Aggregate arguments are copied so the callee cannot
+                        // mutate the caller's block (value semantics).
+                        const auto sit = sigs_.find(c->callee);
+                        if (sit != sigs_.end() && ai < sit->second.params.size())
+                            genDupValue(sit->second.params[ai]);
+                    }
                     out_.pushRax();
                 }
                 out_.call(c->callee);
                 if (!c->args.empty())
                     out_.addRsp(static_cast<std::uint32_t>(8 * c->args.size()));
+                return;
+            }
+            if (const auto* arr = dynamic_cast<const ArrayExpr*>(e)) {
+                const std::size_t n = arr->elements.size();
+                out_.movRaxImm64(n * 8);
+                out_.call("__nx_alloc");
+                out_.pushRax(); // base stays at [rsp] across element evaluation
+                for (std::size_t i = 0; i < n; ++i) {
+                    genExpr(arr->elements[i].get());
+                    out_.movRcxFromRsp();
+                    if (i > 0)
+                        out_.addRcxImm32(static_cast<std::uint32_t>(i * 8));
+                    genStoreToRcx(kindOf(exprType(arr->elements[i].get())));
+                }
+                out_.popRax();
+                return;
+            }
+            if (const auto* x = dynamic_cast<const IndexExpr*>(e)) {
+                const Type ot = exprType(x->object.get());
+                genExpr(x->object.get());
+                out_.pushRax();
+                genExpr(x->index.get());
+                genIndexCheck(ot.arraySize);
+                out_.movRdxRax();
+                out_.shlRdxImm8(3);
+                out_.popRcx();
+                out_.addRcxRdx();
+                genLoadFromRcx(kindOf(*ot.element));
+                return;
+            }
+            if (const auto* m = dynamic_cast<const MemberExpr*>(e)) {
+                const Type ot = exprType(m->object.get());
+                genExpr(m->object.get());
+                out_.movRcxRax();
+                const int fi = structFieldIndex(ot.name, m->member);
+                const std::int64_t off = static_cast<std::int64_t>(fi) * 8;
+                if (off > 0)
+                    out_.addRcxImm32(static_cast<std::uint32_t>(off));
+                const StructDecl* decl = nullptr;
+                const auto sit = structs_.find(ot.name);
+                if (sit != structs_.end())
+                    decl = sit->second;
+                const Kind fk = decl && fi >= 0
+                                    ? kindOf(decl->fields[static_cast<std::size_t>(fi)].type)
+                                    : Kind::I64;
+                genLoadFromRcx(fk);
+                return;
+            }
+            if (const auto* s = dynamic_cast<const StructInitExpr*>(e)) {
+                const auto sit = structs_.find(s->typeName);
+                if (sit == structs_.end())
+                    throw std::runtime_error("builtin native backend: unknown struct '" +
+                                             s->typeName + "'");
+                const StructDecl* decl = sit->second;
+                out_.movRaxImm64(decl->fields.size() * 8);
+                out_.call("__nx_alloc");
+                out_.pushRax();
+                for (const auto& [fname, fexpr] : s->fields) {
+                    const int fi = structFieldIndex(s->typeName, fname);
+                    if (fi < 0)
+                        throw std::runtime_error("builtin native backend: struct '" + s->typeName +
+                                                 "' has no member '" + fname + "'");
+                    genExpr(fexpr.get());
+                    out_.movRcxFromRsp();
+                    const std::int64_t off = static_cast<std::int64_t>(fi) * 8;
+                    if (off > 0)
+                        out_.addRcxImm32(static_cast<std::uint32_t>(off));
+                    genStoreToRcx(kindOf(decl->fields[static_cast<std::size_t>(fi)].type));
+                }
+                out_.popRax();
                 return;
             }
             throw std::runtime_error("builtin native v0: unsupported expression reached codegen");
@@ -502,49 +630,31 @@ namespace npp::native {
                 out_.call("__nx_print_i64");
         }
 
-        // True for string-typed expressions (literals, string vars/params, string
-        // concatenation, and the input/str_i64 builtins).
+        // True for string-typed expressions (literals, vars/params, member and
+        // index accesses, concatenation, and the string builtins).
         bool Generator::exprIsString(const Expr* e) {
-            if (dynamic_cast<const StringExpr*>(e))
-                return true;
-            if (dynamic_cast<const IntExpr*>(e) || dynamic_cast<const BoolExpr*>(e))
-                return false;
-            if (const auto* v = dynamic_cast<const VarExpr*>(e))
-                return localKind(v->name) == Kind::Str;
-            if (const auto* b = dynamic_cast<const BinaryExpr*>(e))
-                return b->op == TokenKind::Plus && exprIsString(b->lhs.get()) &&
-                       exprIsString(b->rhs.get());
-            if (const auto* c = dynamic_cast<const CallExpr*>(e)) {
-                if (c->callee == "input" || c->callee == "str_i64" || c->callee == "str_bool" ||
-                    c->callee == "str_f64")
-                    return true;
-                if (c->callee == "print")
-                    return false;
-                const auto it = sigs_.find(c->callee);
-                return it != sigs_.end() && it->second.ret == Kind::Str;
-            }
-            return false;
+            return exprType(e).kind == TypeKind::String;
         }
 
         bool Generator::exprIsF64(const Expr* e) {
             return exprKind(e) == Kind::F64;
         }
 
-        Kind Generator::exprKind(const Expr* e) {
+        Type Generator::exprType(const Expr* e) {
             if (dynamic_cast<const IntExpr*>(e))
-                return Kind::I64;
+                return Type::i64();
             if (dynamic_cast<const FloatExpr*>(e))
-                return Kind::F64;
+                return Type::f64();
             if (dynamic_cast<const BoolExpr*>(e))
-                return Kind::Bool;
+                return Type::boolean();
             if (dynamic_cast<const StringExpr*>(e))
-                return Kind::Str;
+                return Type::string();
             if (const auto* v = dynamic_cast<const VarExpr*>(e))
-                return localKind(v->name);
+                return localType(v->name);
             if (const auto* u = dynamic_cast<const UnaryExpr*>(e)) {
                 if (u->op == TokenKind::Bang)
-                    return Kind::Bool;
-                return exprKind(u->rhs.get());
+                    return Type::boolean();
+                return exprType(u->rhs.get());
             }
             if (const auto* b = dynamic_cast<const BinaryExpr*>(e)) {
                 switch (b->op) {
@@ -556,32 +666,62 @@ namespace npp::native {
                 case TokenKind::GreaterEqual:
                 case TokenKind::AndAnd:
                 case TokenKind::OrOr:
-                    return Kind::Bool;
+                    return Type::boolean();
                 case TokenKind::Plus:
                     if (exprIsString(b->lhs.get()))
-                        return Kind::Str;
-                    return exprKind(b->lhs.get());
+                        return Type::string();
+                    return exprType(b->lhs.get());
                 default:
-                    return exprKind(b->lhs.get());
+                    return exprType(b->lhs.get());
                 }
             }
             if (const auto* c = dynamic_cast<const CallExpr*>(e)) {
-                if (c->callee == "print")
-                    return Kind::Void;
-                if (c->callee == "input" || c->callee == "str_i64" || c->callee == "str_bool" ||
-                    c->callee == "str_f64")
-                    return Kind::Str;
+                if (c->callee == "print" || c->callee == "exit" || c->callee == "sleep")
+                    return Type::void_();
+                if (c->callee == "len" || c->callee == "os.args_count" ||
+                    c->callee == "string.len" || c->callee == "string.byte_at" ||
+                    c->callee == "time_ms" || c->callee == "random_i64" || c->callee == "to_i64")
+                    return Type::i64();
+                if (c->callee == "os.args_get" || c->callee == "input" || c->callee == "str_i64" ||
+                    c->callee == "str_bool" || c->callee == "str_f64")
+                    return Type::string();
                 if (c->callee == "file_exists")
-                    return Kind::Bool;
+                    return Type::boolean();
                 if (c->callee == "input_f64" || c->callee == "to_f64")
-                    return Kind::F64;
-                if (c->callee == "to_i64")
-                    return Kind::I64;
+                    return Type::f64();
                 const auto it = sigs_.find(c->callee);
                 if (it != sigs_.end())
                     return it->second.ret;
+                return Type::void_();
             }
-            return Kind::I64;
+            if (const auto* a = dynamic_cast<const ArrayExpr*>(e)) {
+                if (a->elements.empty())
+                    return Type::void_();
+                return Type::array(exprType(a->elements[0].get()), a->elements.size());
+            }
+            if (const auto* x = dynamic_cast<const IndexExpr*>(e)) {
+                const Type ot = exprType(x->object.get());
+                if (ot.kind == TypeKind::Array && ot.element)
+                    return *ot.element;
+                return Type::void_();
+            }
+            if (const auto* m = dynamic_cast<const MemberExpr*>(e)) {
+                const Type ot = exprType(m->object.get());
+                if (ot.kind != TypeKind::Struct)
+                    return Type::void_();
+                const int fi = structFieldIndex(ot.name, m->member);
+                const auto sit = structs_.find(ot.name);
+                if (fi < 0 || sit == structs_.end())
+                    return Type::void_();
+                return sit->second->fields[static_cast<std::size_t>(fi)].type;
+            }
+            if (const auto* s = dynamic_cast<const StructInitExpr*>(e))
+                return Type::named(s->typeName);
+            return Type::void_();
+        }
+
+        Kind Generator::exprKind(const Expr* e) {
+            return kindOf(exprType(e));
         }
 
         // Mirrors the checker's kind rules to select the right print helper.
@@ -589,21 +729,25 @@ namespace npp::native {
             return exprKind(e) == Kind::Bool;
         }
 
-        Kind Generator::localKind(const std::string& name) {
+        Type Generator::localType(const std::string& name) {
             if (currentFn_) {
                 for (const auto& p : currentFn_->params)
                     if (p.name == name)
-                        return typeKind(p.type);
-                Kind found = Kind::I64;
+                        return p.type;
+                Type found = Type::void_();
                 bool ok = false;
                 findLet(currentFn_->body.get(), name, found, ok);
                 if (ok)
                     return found;
             }
-            return Kind::I64;
+            return Type::i64();
         }
 
-        void Generator::findLet(const Block* b, const std::string& name, Kind& found, bool& ok) {
+        Kind Generator::localKind(const std::string& name) {
+            return kindOf(localType(name));
+        }
+
+        void Generator::findLet(const Block* b, const std::string& name, Type& found, bool& ok) {
             for (const auto& s : b->statements) {
                 if (ok)
                     return;
@@ -611,7 +755,7 @@ namespace npp::native {
                     findLet(nested, name, found, ok);
                 } else if (const auto* l = dynamic_cast<const LetStmt*>(s.get())) {
                     if (l->name == name) {
-                        found = initKind(l->init.get());
+                        found = initType(l->init.get());
                         ok = true;
                     }
                 } else if (const auto* i = dynamic_cast<const IfStmt*>(s.get())) {
@@ -620,12 +764,89 @@ namespace npp::native {
                         findLet(i->elseBlock.get(), name, found, ok);
                 } else if (const auto* w = dynamic_cast<const WhileStmt*>(s.get())) {
                     findLet(w->body.get(), name, found, ok);
+                } else if (const auto* f = dynamic_cast<const ForStmt*>(s.get())) {
+                    findLet(f->body.get(), name, found, ok);
                 }
             }
         }
 
-        Kind Generator::initKind(const Expr* e) {
-            return exprKind(e);
+        Type Generator::initType(const Expr* e) {
+            return exprType(e);
+        }
+
+        void Generator::genLoadFromRcx(Kind k) {
+            if (k == Kind::F64)
+                out_.movsdXmm0FromRcx();
+            else
+                out_.movRaxFromRcx();
+        }
+
+        void Generator::genStoreToRcx(Kind k) {
+            if (k == Kind::F64)
+                out_.movsdXmm0ToRcx();
+            else
+                out_.movToRcxFromRax();
+        }
+
+        void Generator::genIndexCheck(std::size_t count) {
+            const std::string ok = out_.label("idx.ok");
+            out_.cmpRaxImm32(static_cast<std::uint32_t>(count));
+            out_.jcc(J_B, ok); // unsigned below: 0 <= index < count
+            out_.jmp("__nx_oob");
+            out_.def(ok);
+        }
+
+        bool Generator::needsDup(const Expr* e) {
+            if (exprKind(e) != Kind::Ptr)
+                return false;
+            return !dynamic_cast<const ArrayExpr*>(e) && !dynamic_cast<const StructInitExpr*>(e);
+        }
+
+        int Generator::structFieldIndex(const std::string& typeName, const std::string& member) {
+            const auto it = structs_.find(typeName);
+            if (it == structs_.end())
+                return -1;
+            const StructDecl* decl = it->second;
+            for (std::size_t i = 0; i < decl->fields.size(); ++i)
+                if (decl->fields[i].name == member)
+                    return static_cast<int>(i);
+            return -1;
+        }
+
+        Type Generator::aggregateFieldType(const Type& t, std::size_t i) {
+            if (t.kind == TypeKind::Array && t.element)
+                return *t.element;
+            if (t.kind == TypeKind::Struct) {
+                const auto it = structs_.find(t.name);
+                if (it != structs_.end() && i < it->second->fields.size())
+                    return it->second->fields[i].type;
+            }
+            return Type::void_();
+        }
+
+        void Generator::genDupValue(const Type& t) {
+            // rax = source aggregate pointer -> rax = fresh deep copy.
+            // Stack layout inside the loop: [rsp] = dst, [rsp+8] = src.
+            const std::size_t n = aggregateSlots(t, structs_);
+            out_.pushRax(); // src
+            out_.movRaxImm64(n * 8);
+            out_.call("__nx_alloc");
+            out_.pushRax(); // dst
+            for (std::size_t i = 0; i < n; ++i) {
+                const Type ft = aggregateFieldType(t, i);
+                const bool nested = ft.kind == TypeKind::Array || ft.kind == TypeKind::Struct;
+                out_.movRcxFromRspOff(8); // src base
+                out_.movRaxFromRcxOff(static_cast<std::int64_t>(i * 8));
+                if (nested) {
+                    genDupValue(ft); // rax = deep copy of the inner block
+                }
+                out_.movRcxFromRsp(); // dst base
+                if (i > 0)
+                    out_.addRcxImm32(static_cast<std::uint32_t>(i * 8));
+                out_.movToRcxFromRax();
+            }
+            out_.popRax();  // dst
+            out_.addRsp(8); // drop src
         }
 
         // Call the shared write helper. r10/r11 do NOT survive OS calls

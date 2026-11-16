@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Native backend aggregate support: fixed-size arrays (`[T; n]`
+  annotations, `[a, b, c]` literals, bounds-checked `xs[i]` reads and
+  `xs[i] = v` writes, `len(array)`) and structs (fields, `P { ... }`
+  literals, `p.field` access/assignment, nesting). Aggregates are
+  arena-allocated and deep-copied on `let`/`=`/call boundaries, matching
+  value semantics; they can be passed to and returned from functions.
+- New native smoke fixtures: `arrays.npp`, `structs.npp`.
 - Native backend `f64` support: SSE2 scalar arithmetic, `f64`
   parameters/returns, `print(f64)`/`str_f64` (shortest-round-trip decimal,
   fixed notation for exponents in `[-4, 14]`, scientific otherwise),

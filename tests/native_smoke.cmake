@@ -138,6 +138,8 @@ endif()
 message(STATUS "  PASS exit_builtin.npp (exit 7)")
 
 check_native(f64 "0\n1.5\n-2.75\n3.14159\n100\n999.99\n12345.678\n-0.001\n0.0001\n0.0001\n123456789\n1e15\n1e16\n25000000000\n-1.5e20\n9.99e30\n1e18\n1e99\n1e100\n1e-05\n1e-12\n1e-15\n3.75\n2.5\n9\ntrue\ntrue\n3\n42\n-7\n2.5")
+check_native(arrays "4\n10\n10\n99\n30\n1\n999\n1.5\n9.75\n3.5\n2\n3\n40\nc\ntrue\nfalse")
+check_native(structs "7\n100\n4.5\nhero\n42\n100\n101\n7\n8\n42\n43")
 
 # input_i64.npp prompts, skips invalid lines on stderr, parses "  -17 ".
 if(WIN32)

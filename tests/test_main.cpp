@@ -878,23 +878,26 @@ int main() {
                     entryReason.find("must return") == std::string::npos)
                     return 60;
             }
-            // Builtin native backend: non-subset programs rejected precisely.
+            // Builtin native backend: structs and fixed arrays are supported.
             auto p = parse("struct P { x: i64 } fn main(){ let v = P { x: 1 }; print(v.x) }");
             npp::SemanticAnalyzer().analyze(p);
             std::string reason;
-            if (npp::native::supports(p, reason))
-                return 10;
-            if (reason.find("struct") == std::string::npos)
+            if (!npp::native::supports(p, reason))
                 return 10;
             // f64 literals are accepted by the native subset.
             auto q = parse("fn main(){ print(1.5) }");
             npp::SemanticAnalyzer().analyze(q);
             if (!npp::native::supports(q, reason))
                 return 10;
-            // ...while constructs outside the subset are still rejected.
+            // ...as are fixed-size arrays with indexing.
             auto r = parse("fn main(){ let xs = [1, 2, 3]; print(xs[0]) }");
             npp::SemanticAnalyzer().analyze(r);
-            if (npp::native::supports(r, reason))
+            if (!npp::native::supports(r, reason))
+                return 10;
+            // ...while constructs outside the subset are still rejected.
+            auto s2 = parse("enum E { A, B } fn main(){ print(1) }");
+            npp::SemanticAnalyzer().analyze(s2);
+            if (npp::native::supports(s2, reason))
                 return 10;
             // ...and strings are accepted.
             auto s = parse("fn main(){ let name = \"N++\"; print(\"Hello, \" + name); print(name "

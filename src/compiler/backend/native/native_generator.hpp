@@ -31,6 +31,7 @@ namespace npp::native {
             Emitter out_;
             NativeTarget target_;
             std::map<std::string, FnSig> sigs_;
+            std::map<std::string, const StructDecl*> structs_;
             std::map<std::string, std::size_t> slots_;
             std::map<const ForStmt*, std::string> forLimitNames_;
             std::size_t forLimitCounter_ = 0;
@@ -65,15 +66,42 @@ namespace npp::native {
 
             bool exprIsF64(const Expr* e);
 
-            // Best-effort result kind of an expression, mirroring the subset
-            // checker. Used to pick xmm0 (f64) vs rax (everything else).
+            // Best-effort result type of an expression, mirroring the subset
+            // checker. Used to pick xmm0 (f64) vs rax (everything else) and to
+            // resolve array element / struct field types.
+            Type exprType(const Expr* e);
+
             Kind exprKind(const Expr* e);
+
+            Type localType(const std::string& name);
 
             Kind localKind(const std::string& name);
 
-            void findLet(const Block* b, const std::string& name, Kind& found, bool& ok);
+            void findLet(const Block* b, const std::string& name, Type& found, bool& ok);
 
-            Kind initKind(const Expr* e);
+            Type initType(const Expr* e);
+
+            // Load/store a value through rcx (computed aggregate address).
+            void genLoadFromRcx(Kind k);
+            void genStoreToRcx(Kind k);
+
+            // Emit an unsigned bounds check: rax = index, jumps to __nx_oob
+            // when index >= count (negative indices wrap and fail too).
+            void genIndexCheck(std::size_t count);
+
+            // True when an aggregate-typed expression needs a defensive copy
+            // before being stored (fresh literals already own their block).
+            bool needsDup(const Expr* e);
+
+            // Index of `member` in the named struct's field list (-1 if absent).
+            int structFieldIndex(const std::string& typeName, const std::string& member);
+
+            // Emit a deep copy of the aggregate in rax (fresh arena block,
+            // aggregate fields recursively duplicated). Returns rax = copy.
+            void genDupValue(const Type& t);
+
+            // Type of aggregate slot `i` (array element or struct field).
+            Type aggregateFieldType(const Type& t, std::size_t i);
 
             // Call the shared write helper. r10/r11 do NOT survive OS calls
             // (the syscall instruction itself clobbers rcx+r11, and ntdll
@@ -162,6 +190,18 @@ namespace npp::native {
             // __nx_input_f64: rax = prompt. Prints it, reads a line and parses
             // it as f64, re-prompting on invalid input. Returns xmm0.
             void genInputF64();
+
+            // __nx_alloc: rax = size in bytes (multiple of 8). Bumps the
+            // string arena and returns a raw pointer in rax. Used for
+            // array/struct storage.
+            void genAlloc();
+
+            // __nx_dup: rax = src pointer, rdx = size bytes. Returns a fresh
+            // arena copy of the block in rax (aggregate copy semantics).
+            void genDup();
+
+            // __nx_oob: index-out-of-bounds runtime failure (stderr + exit 1).
+            void genOob();
 
             // Clean runtime failures for allocation and integer division.
             void genOom();

@@ -1,0 +1,35 @@
+struct Inner {
+    v: i64
+}
+
+struct Player {
+    id: i64
+    health: i64
+    speed: f64
+    tag: string
+    inner: Inner
+}
+
+fn bump(p: Player) -> Player {
+    p.health = p.health + 1
+    return p
+}
+
+fn main() {
+    let p = Player { id: 7, health: 100, speed: 4.5, tag: "hero", inner: Inner { v: 42 } }
+    print(p.id)
+    print(p.health)
+    print(p.speed)
+    print(p.tag)
+    print(p.inner.v)
+    let q = bump(p)
+    print(p.health)
+    print(q.health)
+    let mut r = p
+    r.id = 8
+    r.inner.v = 43
+    print(p.id)
+    print(r.id)
+    print(p.inner.v)
+    print(r.inner.v)
+}

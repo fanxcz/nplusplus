@@ -58,6 +58,22 @@ namespace npp::native {
             void popRcx() {
                 b(0x59);
             }
+            void pushRcx() {
+                b(0x51);
+            }
+            void movRcxFromRsp() { // mov rcx, [rsp]
+                b(0x48);
+                b(0x8B);
+                b(0x0C);
+                b(0x24);
+            }
+            void movRcxFromRspOff(std::uint8_t d) { // mov rcx, [rsp+d]
+                b(0x48);
+                b(0x8B);
+                b(0x4C);
+                b(0x24);
+                b(d);
+            }
             void popRbx() {
                 b(0x5B);
             }
@@ -1370,6 +1386,136 @@ namespace npp::native {
                 b(0x81);
                 b(0xFA);
                 i32(v);
+            }
+
+            // --- aggregate (array/struct) element access via rcx -----------
+            // rcx holds a computed element/field address.
+            void movRaxFromRcx() { // mov rax, [rcx]
+                b(0x48);
+                b(0x8B);
+                b(0x01);
+            }
+            void movToRcxFromRax() { // mov [rcx], rax
+                b(0x48);
+                b(0x89);
+                b(0x01);
+            }
+            void movsdXmm0FromRcx() { // movsd xmm0, [rcx]
+                b(0xF2);
+                b(0x0F);
+                b(0x10);
+                b(0x01);
+            }
+            void movsdXmm0ToRcx() { // movsd [rcx], xmm0
+                b(0xF2);
+                b(0x0F);
+                b(0x11);
+                b(0x01);
+            }
+            void rcxDisp8(std::uint8_t modrm, std::int64_t off) {
+                b(modrm);
+                b(static_cast<std::uint8_t>(256 + off));
+            }
+            void rcxDisp32(std::uint8_t modrm, std::int64_t off) {
+                b(modrm | 0x80);
+                i32(static_cast<std::uint32_t>(off));
+            }
+            void movRaxFromRcxOff(std::int64_t off) {
+                b(0x48);
+                b(0x8B);
+                if (off >= -128 && off <= 127)
+                    rcxDisp8(0x41, off);
+                else
+                    rcxDisp32(0x81, off);
+            }
+            void movToRcxFromRaxOff(std::int64_t off) {
+                b(0x48);
+                b(0x89);
+                if (off >= -128 && off <= 127)
+                    rcxDisp8(0x41, off);
+                else
+                    rcxDisp32(0x81, off);
+            }
+            void movsdXmm0FromRcxOff(std::int64_t off) {
+                b(0xF2);
+                b(0x0F);
+                b(0x10);
+                if (off >= -128 && off <= 127)
+                    rcxDisp8(0x41, off);
+                else
+                    rcxDisp32(0x81, off);
+            }
+            void movsdXmm0ToRcxOff(std::int64_t off) {
+                b(0xF2);
+                b(0x0F);
+                b(0x11);
+                if (off >= -128 && off <= 127)
+                    rcxDisp8(0x41, off);
+                else
+                    rcxDisp32(0x81, off);
+            }
+            void addRcxRdx() { // add rcx, rdx
+                b(0x48);
+                b(0x01);
+                b(0xD1);
+            }
+            void addRcxImm32(std::uint32_t v) { // add rcx, imm32
+                b(0x48);
+                b(0x81);
+                b(0xC1);
+                i32(v);
+            }
+            // --- arena bump allocation ------------------------------------
+            void addR11Rdx() { // add r11, rdx
+                b(0x49);
+                b(0x01);
+                b(0xD3);
+            }
+            void cmpR11Imm32(std::uint32_t v) { // cmp r11, imm32
+                b(0x49);
+                b(0x81);
+                b(0xFB);
+                i32(v);
+            }
+            void movR10Disp8FromR11(std::uint8_t d) { // mov [r10+d], r11
+                b(0x4D);
+                b(0x89);
+                b(0x5A);
+                b(d);
+            }
+            // --- __nx_dup copy loop ----------------------------------------
+            void movR8Rdx() { // mov r8, rdx
+                b(0x49);
+                b(0x89);
+                b(0xD0);
+            }
+            void movR9FromRcx() { // mov r9, [rcx]
+                b(0x4C);
+                b(0x8B);
+                b(0x09);
+            }
+            void movToRaxFromR9() { // mov [rax], r9
+                b(0x4C);
+                b(0x89);
+                b(0x08);
+            }
+            void addRaxImm8(std::uint8_t v) { // add rax, imm8
+                b(0x48);
+                b(0x83);
+                b(0xC0);
+                b(v);
+            }
+            void addRcxImm8(std::uint8_t v) { // add rcx, imm8
+                b(0x48);
+                b(0x83);
+                b(0xC1);
+                b(v);
+            }
+            void shrR8Imm8(std::uint8_t v) { // shr r8, imm8
+                b(0x49);
+                b(0xC1);
+                b(0xE8);
+                b(v);
             }
 
         private:

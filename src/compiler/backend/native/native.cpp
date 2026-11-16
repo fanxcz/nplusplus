@@ -13,35 +13,39 @@ namespace npp::native {
 
     bool supports(const Program& program, std::string& reason) {
         reason.clear();
-        if (!program.structs.empty()) {
-            reason = "struct '" + program.structs.front().name +
-                     "' is outside the builtin native v0 subset (use --backend llvm)";
-            return false;
-        }
         if (!program.enums.empty()) {
             reason = "enum '" + program.enums.front().name +
                      "' is outside the builtin native v0 subset (use --backend llvm)";
             return false;
         }
+        std::map<std::string, const StructDecl*> structs;
+        for (const auto& s : program.structs)
+            structs[s.name] = &s;
+        for (const auto& s : program.structs) {
+            for (const auto& f : s.fields) {
+                if (!detail::supportedType(f.type, structs, reason)) {
+                    reason = "field '" + f.name + "' of struct '" + s.name + "': " + reason;
+                    return false;
+                }
+            }
+        }
         std::map<std::string, detail::FnSig> fns;
         for (const auto& f : program.functions) {
             detail::FnSig sig;
             for (const auto& p : f.params) {
-                detail::Kind k = detail::Kind::Void;
-                if (!detail::kindOfType(p.type, k) || k == detail::Kind::Void) {
+                if (!detail::supportedType(p.type, structs, reason)) {
                     reason = "parameter '" + p.name + "' of '" + f.name +
-                             "' has a type outside the builtin native v0 subset (only i64, bool, "
-                             "string, and f64 are supported)";
+                             "' has a type outside the builtin native v0 subset: " + reason;
                     return false;
                 }
-                sig.params.push_back(k);
+                sig.params.push_back(p.type);
             }
-            if (!detail::kindOfType(f.ret, sig.ret)) {
+            if (f.ret.kind != TypeKind::Void && !detail::supportedType(f.ret, structs, reason)) {
                 reason = "result type of '" + f.name +
-                         "' is outside the builtin native v0 subset (only i64, bool, string, f64, "
-                         "and void are supported)";
+                         "' is outside the builtin native v0 subset: " + reason;
                 return false;
             }
+            sig.ret = f.ret;
             if (f.external) {
                 reason = "extern function '" + f.name +
                          "' is outside the builtin native v0 subset (use --backend llvm)";
@@ -61,9 +65,9 @@ namespace npp::native {
                 reason = "main function of the builtin native v0 backend must not take parameters";
                 return false;
             }
-            const auto resultKind = fns.at("main").ret;
-            if (resultKind != detail::Kind::Void && resultKind != detail::Kind::I64 &&
-                resultKind != detail::Kind::Bool) {
+            const auto& resultKind = fns.at("main").ret.kind;
+            if (resultKind != TypeKind::Void && resultKind != TypeKind::I64 &&
+                resultKind != TypeKind::Bool) {
                 reason = "main function of the builtin native v0 backend must return void, i64, "
                          "or bool";
                 return false;
@@ -71,11 +75,11 @@ namespace npp::native {
             break;
         }
         for (const auto& f : program.functions) {
-            std::map<std::string, detail::Kind> env;
+            std::map<std::string, Type> env;
             for (std::size_t i = 0; i < f.params.size(); ++i)
-                env[f.params[i].name] = fns[f.name].params[i];
+                env[f.params[i].name] = f.params[i].type;
             if (f.body)
-                detail::checkBlock(f.body.get(), env, fns, false, reason);
+                detail::checkBlock(f.body.get(), env, fns, structs, false, reason);
             if (!reason.empty()) {
                 reason = "in function '" + f.name + "': " + reason;
                 return false;

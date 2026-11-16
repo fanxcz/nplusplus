@@ -15,10 +15,11 @@ This matrix records evidence in the source tree at the current baseline. "Suppor
 | i64 bitwise and shift operators | Supported | Supported | Native and LLVM parity fixtures; 2.2.0 changelog |
 | Fixed-width integers (`i8/i16/i32`, `u8/u16/u32/u64`) and `f32` | Not supported | Supported for documented scalar lowering paths | 1.0.0 changelog; native subset excludes these types |
 | `f64` and floating-point expressions | Supported (SSE2 scalar ops, `f64` params/returns, formatting/parsing) | Supported for documented builtins/expressions | Native fixtures (`f64.npp`, `input_f64.npp`); LLVM math tests exist |
-| Fixed arrays | Not supported | Supported for tested declarations, indexing and aggregate paths | Native subset excludes arrays; regression tests exist |
+| Fixed arrays | Supported (arena blocks, bounds-checked indexing, `len`, copy semantics) | Supported for tested declarations, indexing and aggregate paths | Native fixtures (`arrays.npp`); regression tests exist |
 | Read-only slices `[]T` | Not supported | Supported for tested slice expressions, indexing, parameters and returns | Unreleased changelog and `tests/slice_llvm_smoke.cmake` |
 | Mutable slices `mut []T` | Not supported | Supported for documented lexical exclusive-borrow subset | Unreleased changelog and `tests/mutable_slice_smoke.cmake` |
-| Structs and enum payloads | Not supported | Supported for tested declaration, construction and access paths | Native subset excludes aggregates; regression tests exist |
+| Structs (fields, member access/assignment, params/returns, nesting) | Supported (arena blocks, deep-copy value semantics) | Supported for tested declaration, construction and access paths | Native fixtures (`structs.npp`); regression tests exist |
+| Enum payloads | Not supported | Supported for tested declaration, construction and access paths | Native subset excludes enums |
 | `match` and exhaustiveness over bool/enum | Not supported | Supported for tested finite domains | Match smoke tests and 2.2.0 changelog |
 | Pointer operations and borrow/lifetime patterns | Not supported | Needs verification per operation and lifetime pattern | Semantic analysis contains conservative provenance checks; do not infer general pointer safety |
 | `extern` declarations / FFI | Not supported | Needs verification | Native subset explicitly rejects `extern`; inspect target ABI and runtime tests |

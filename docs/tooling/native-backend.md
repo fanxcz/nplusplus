@@ -30,15 +30,24 @@ bundled wrapper — see `npp doctor`).
 
 ## Supported subset (v0)
 
-- Types: `i64`, `bool`, `string`, `f64`, `void`.
-- Functions with `i64`/`bool`/`string`/`f64` parameters and results,
-  including recursion; `fn main()` (returning nothing or `i64` exit code)
-  is required.
+- Types: `i64`, `bool`, `string`, `f64`, `void`, fixed-size arrays
+  (`[T; n]` syntax in annotations, `[a, b, c]` literals), and structs
+  whose fields are themselves supported types (including nesting).
+- Functions with `i64`/`bool`/`string`/`f64`/array/struct parameters and
+  results, including recursion; `fn main()` (returning nothing or `i64`
+  exit code) is required.
 - Statements: `let`/`mut`, assignment (`=`, `+=`, …), `if`/`else`,
-  `while`, desugared `for i in a..b`, `break`, `continue`, `return`.
+  `while`, desugared `for i in a..b`, `break`, `continue`, `return`,
+  member assignment (`p.field = v`), and index assignment (`xs[i] = v`).
 - Expressions: integer `+ - * / %`, floating-point `+ - * /` on `f64`,
   unary minus, comparisons (integer and floating-point), boolean
-  `&& || !`, string concatenation (`+`), string `==`/`!=`, calls.
+  `&& || !`, string concatenation (`+`), string `==`/`!=`, calls,
+  array literals, indexing (`xs[i]`), member access (`p.field`),
+  struct literals (`P { x: 1 }`), and `len(array)` (compile-time size).
+- Aggregates are arena-allocated blocks of 8-byte slots and behave like
+  values: `let`/`=`/call arguments deep-copy them (nested aggregates
+  included), so mutating a copy never aliases the original. Indexing is
+  bounds-checked and aborts with `index out of bounds` on stderr.
 - I/O: `print(i64 | bool | string | f64)` (trailing newline, like the
   runtime; `f64` prints shortest-round-trip decimal, fixed notation for
   decimal exponents in `[-4, 14]` and scientific notation otherwise),
@@ -55,8 +64,9 @@ bundled wrapper — see `npp doctor`).
   `out of string memory` error instead of corrupting memory. There is no
   per-allocation heap overhead and no leak across runs.
 
-Everything else (arrays, structs, enums, `match`, pointers,
-file/network/graphics/audio/UI/ECS builtins, `extern`) is rejected with a
+Everything else (slices, pointers, enums, `match`, compound member/index
+assignment, `for x in collection`, file/network/graphics/audio/UI/ECS
+builtins, `extern`) is rejected with a
 precise `outside the builtin native v0 subset` reason naming the construct
 and function. With `--backend auto` that reason appears only when the LLVM
 fallback also cannot proceed; `--backend native` surfaces it directly.

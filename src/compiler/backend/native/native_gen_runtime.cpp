@@ -1700,5 +1700,71 @@ namespace npp::native {
             out_.ret();
         }
 
+        // __nx_alloc: rax = size in bytes (multiple of 8). Bumps the string
+        // arena and returns the raw pointer in rax for array/struct storage.
+        void Generator::genAlloc() {
+            const std::string oom = out_.label("alloc.oom");
+            out_.def("__nx_alloc");
+            out_.movRdxRax(); // rdx = size
+            out_.leaR10Rip("__nx_arena");
+            out_.movR11FromR10Disp8(8); // r11 = pos offset
+            out_.movRaxFromR10();       // rax = arena base
+            out_.addRaxR11();           // rax = base + pos = result ptr
+            out_.addR11Rdx();           // r11 = pos + size = new pos
+            out_.cmpR11Imm32(kArenaSize);
+            out_.jcc(J_A, oom);
+            out_.movR10Disp8FromR11(8); // store new pos
+            out_.ret();
+            out_.def(oom);
+            out_.jmp("__nx_oom");
+        }
+
+        // __nx_dup: rax = source pointer, rdx = size in bytes (multiple of 8).
+        // Allocates a fresh arena block and copies the contents; returns the
+        // new pointer in rax. Used to give aggregate values copy semantics.
+        void Generator::genDup() {
+            const std::string loop = out_.label("dup.loop");
+            const std::string done = out_.label("dup.done");
+            out_.def("__nx_dup");
+            out_.movR8Rdx();  // r8 = size
+            out_.movRcxRax(); // rcx = src
+            out_.movRaxRdx(); // rax = size arg
+            out_.call("__nx_alloc");
+            out_.movRdxRax(); // rdx = dst base
+            out_.shrR8Imm8(3);
+            out_.def(loop);
+            out_.testR8R8();
+            out_.jcc(J_E, done);
+            out_.movR9FromRcx();   // r9 = [rcx]
+            out_.movToRaxFromR9(); // [rax] = r9
+            out_.addRaxImm8(8);
+            out_.addRcxImm8(8);
+            out_.decR8();
+            out_.jmp(loop);
+            out_.def(done);
+            out_.movRaxRdx();
+            out_.ret();
+        }
+
+        // __nx_oob: clean index-out-of-bounds failure (stderr + exit 1).
+        void Generator::genOob() {
+            const std::size_t m = internString("N++ runtime error: index out of bounds\n");
+            out_.def("__nx_oob");
+            out_.leaRcxRip("str" + std::to_string(m));
+            out_.movRdxImm32(static_cast<std::uint32_t>(image_.strings[m].size()));
+            stubCall("__nx_write_err");
+            if (target_ == NativeTarget::WindowsX64) {
+                out_.andRspMinus16();
+                out_.movEcxImm32(1);
+                out_.subRsp(32);
+                out_.callIAT("__iat_ExitProcess");
+                out_.ud2();
+            } else {
+                out_.movEaxImm32(60); // sys_exit
+                out_.movEdiImm32(1);
+                out_.syscall();
+            }
+        }
+
     } // namespace detail
 } // namespace npp::native
