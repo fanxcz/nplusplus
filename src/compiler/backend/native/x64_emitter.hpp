@@ -2005,7 +2005,7 @@ namespace npp::native {
         constexpr std::uint8_t J_L = 0x8C, J_AE = 0x83, J_B = 0x82, J_G = 0x8F;
         constexpr std::uint8_t J_A = 0x87, J_LE = 0x8E, J_PE = 0x8A;
         constexpr std::uint8_t J_BE = 0x86, J_GE = 0x8D;
-        constexpr std::uint32_t kArenaSize = 0x1000000; // 16 MiB bump arena for strings
+        constexpr std::uint32_t kArenaSize = 0x4000000; // 64 MiB bump arena for values/strings
 
     } // namespace detail
 } // namespace npp::native

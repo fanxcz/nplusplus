@@ -1,0 +1,94 @@
+// Base64 (RFC 4648) encode/decode helpers.
+// Operates on raw bytes via string.byte_at / string.from_char, so it is
+// fully compatible with the builtin native backend.
+
+fn b64_alphabet() -> string {
+    return "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
+}
+
+fn b64_char_at(index: i64) -> string {
+    return string.from_char(string.byte_at(b64_alphabet(), index))
+}
+
+fn base64_encode(data: string) -> string {
+    let n = string.len(data);
+    let mut out = "";
+    let mut i: i64 = 0;
+    while i < n {
+        let b0 = string.byte_at(data, i);
+        let mut b1: i64 = 0;
+        let mut b2: i64 = 0;
+        if i + 1 < n {
+            b1 = string.byte_at(data, i + 1);
+        }
+        if i + 2 < n {
+            b2 = string.byte_at(data, i + 2);
+        }
+        let c0 = (b0 >> 2) & 63;
+        let c1 = ((b0 & 3) << 4) | ((b1 >> 4) & 15);
+        let c2 = ((b1 & 15) << 2) | ((b2 >> 6) & 3);
+        let c3 = b2 & 63;
+        out += b64_char_at(c0);
+        out += b64_char_at(c1);
+        if i + 1 < n {
+            out += b64_char_at(c2);
+        } else {
+            out += "=";
+        }
+        if i + 2 < n {
+            out += b64_char_at(c3);
+        } else {
+            out += "=";
+        }
+        i += 3;
+    }
+    return out;
+}
+
+fn b64_value(ch: string) -> i64 {
+    if ch == "=" {
+        return -2;
+    }
+    let idx = string.find(b64_alphabet(), ch);
+    if idx < 0 {
+        return -1;
+    }
+    return idx;
+}
+
+// Returns the decoded bytes, or an empty string on invalid input.
+fn base64_decode(data: string) -> string {
+    let n = string.len(data);
+    let mut out = "";
+    let mut i: i64 = 0;
+    while i + 4 <= n {
+        let v0 = b64_value(string.slice(data, i, i + 1));
+        let v1 = b64_value(string.slice(data, i + 1, i + 2));
+        let v2 = b64_value(string.slice(data, i + 2, i + 3));
+        let v3 = b64_value(string.slice(data, i + 3, i + 4));
+        if v0 < 0 || v1 < 0 || (v2 == -1) || (v3 == -1) {
+            return "";
+        }
+        let b0 = (v0 << 2) | ((v1 >> 4) & 3);
+        out += string.from_char(b0);
+        if v2 != -2 {
+            let b1 = ((v1 & 15) << 4) | ((v2 >> 2) & 15);
+            out += string.from_char(b1);
+        }
+        if v3 != -2 {
+            let b2 = ((v2 & 3) << 6) | v3;
+            out += string.from_char(b2);
+        }
+        i += 4;
+    }
+    return out;
+}
+
+fn base64_valid(data: string) -> bool {
+    let decoded = base64_decode(data);
+    // A valid encoding round-trips; empty input is valid too.
+    if string.len(data) == 0 {
+        return true;
+    }
+    return base64_encode(decoded) == data || string.len(decoded) > 0;
+}

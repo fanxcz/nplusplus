@@ -19,7 +19,7 @@ if(NOT out MATCHES "no external compiler required")
 endif()
 
 execute_process(
-  COMMAND "${NPP_BIN}" explain-backend "${NPP_SOURCE_DIR}/tests/regression_programs/types.npp" --target x86_64-linux
+  COMMAND "${NPP_BIN}" explain-backend "${NPP_SOURCE_DIR}/tests/regression_programs/fixed_width_types.npp" --target x86_64-linux
   RESULT_VARIABLE rc
   OUTPUT_VARIABLE out
   ERROR_VARIABLE err

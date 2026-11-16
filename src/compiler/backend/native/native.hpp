@@ -25,7 +25,7 @@ namespace npp::native {
     //               unary minus, calls, print()
     //   output:     print(i64), print(bool), print(string)
     //   input:      input(prompt) reads one stdin line, str_i64(i64)
-    //   memory:     strings live in a 16 MiB bump arena reserved at startup
+    //   memory:     strings live in a 64 MiB bump arena reserved at startup
     //               (freed at process exit); exhausting it is a clean error
     //
     // Everything else (f64, arrays, structs, enums, match, pointers,

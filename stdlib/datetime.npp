@@ -1,0 +1,93 @@
+// Civil-date helpers backed by time_ms() (milliseconds since the Unix
+// epoch). Conversion uses Howard Hinnant's civil-from-days algorithm;
+// all arithmetic is integer math, so this module is native-backend safe.
+
+fn dt_floor_div(a: i64, b: i64) -> i64 {
+    let q = a / b;
+    if a % b != 0 && a < 0 {
+        return q - 1;
+    }
+    return q;
+}
+
+fn dt_is_leap(year: i64) -> bool {
+    if year % 4 != 0 {
+        return false;
+    }
+    if year % 100 != 0 {
+        return true;
+    }
+    return year % 400 == 0;
+}
+
+fn dt_days_in_month(year: i64, month: i64) -> i64 {
+    if month == 2 {
+        if dt_is_leap(year) {
+            return 29;
+        }
+        return 28;
+    }
+    if month == 4 || month == 6 || month == 9 || month == 11 {
+        return 30;
+    }
+    return 31;
+}
+
+fn dt_pad2(value: i64) -> string {
+    if value < 10 {
+        return "0" + str_i64(value);
+    }
+    return str_i64(value);
+}
+
+fn dt_pad4(value: i64) -> string {
+    let s = str_i64(value);
+    if value < 1000 {
+        if value < 100 {
+            if value < 10 {
+                return "000" + s;
+            }
+            return "00" + s;
+        }
+        return "0" + s;
+    }
+    return s;
+}
+
+// Formats epoch milliseconds as "YYYY-MM-DD HH:MM:SS" (UTC).
+fn datetime_format(ms: i64) -> string {
+    let days = dt_floor_div(ms, 86400000);
+    let ms_of_day = ms - days * 86400000;
+    let z = days + 719468;
+    let era = dt_floor_div(z, 146097);
+    let doe = z - era * 146097;
+    let yoe =(doe - doe / 1460 + doe / 36524 - doe / 146096) / 365;
+    let mut year = yoe + era * 400;
+    let doy = doe -(365 * yoe + yoe / 4 - yoe / 100);
+    let mp =(5 * doy + 2) / 153;
+    let day = doy -(153 * mp + 2) / 5 + 1;
+    let mut month = mp + 3;
+    if mp >= 10 {
+        month = mp - 9;
+    }
+    if month <= 2 {
+        year += 1;
+    }
+    let hour = ms_of_day / 3600000;
+    let minute =(ms_of_day % 3600000) / 60000;
+    let second =(ms_of_day % 60000) / 1000;
+    return dt_pad4(year) + "-" + dt_pad2(month) + "-" + dt_pad2(day) + " " +
+    dt_pad2(hour) + ":" + dt_pad2(minute) + ":" + dt_pad2(second);
+}
+
+fn datetime_now() -> string { return datetime_format(time_ms()) }
+
+// Day of week for epoch milliseconds: 0 = Thursday (1970-01-01).
+fn datetime_weekday(ms: i64) -> i64 {
+    let days = dt_floor_div(ms, 86400000);
+    let w =(days + 4) % 7;
+    if w < 0 {
+        return w + 7;
+    }
+    return w;
+}

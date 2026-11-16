@@ -920,11 +920,11 @@ namespace npp::native {
                 out_.addRaxImm32(8);
                 out_.movR10Disp8FromRax(8);
             }
-            // Reserve the string bump arena before user code runs: 16 MiB of
+            // Reserve the string bump arena before user code runs: 64 MiB of
             // committed/mapped memory, tracked in the __nx_arena words.
             const std::string noArena = out_.label("start.noarena");
             if (target_ == NativeTarget::WindowsX64) {
-                // VirtualAlloc(NULL, 16 MiB, MEM_COMMIT|MEM_RESERVE, PAGE_READWRITE).
+                // VirtualAlloc(NULL, 64 MiB, MEM_COMMIT|MEM_RESERVE, PAGE_READWRITE).
                 // OS entry rsp is 8 (mod 16): reserve 8 bytes padding + 32 shadow.
                 out_.xorEcx();
                 out_.movRdxImm32(kArenaSize);
@@ -936,7 +936,7 @@ namespace npp::native {
                 out_.testRaxRax();
                 out_.jcc(J_E, noArena);
             } else {
-                // mmap(NULL, 16 MiB, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0).
+                // mmap(NULL, 64 MiB, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0).
                 out_.xorEdi();
                 out_.movRsiImm32(kArenaSize);
                 out_.movRdxImm32(3);

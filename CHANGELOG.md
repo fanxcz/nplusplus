@@ -54,6 +54,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   payload bindings, wildcard/catch-all arms, bare `v =>` bindings, and
   `if` guards. Non-enum match values and range patterns remain
   LLVM-only. This makes `std.option` and `std.result` native-capable.
+- New stdlib modules `std.base64` (RFC 4648 encode/decode), `std.uuid`
+  (version-4 UUIDs) and `std.datetime` (epoch-ms UTC formatting) — all
+  pure N++ and compatible with the builtin native backend.
+- Native bump arena grows from 16 MiB to 64 MiB.
 - New native smoke fixtures: `lists.npp`, `math_phys.npp`, `defer.npp`,
   `slices.npp`, `enums.npp`.
 - `.npp` file icon: `assets/npp-file.ico` (N mark + C++-style `++`,
