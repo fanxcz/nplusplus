@@ -114,6 +114,12 @@ npp doctor
 npp self-test
 ```
 
+`npp doctor` also reports whether `.npp` files are associated with the
+tool (`associated` / `NOT associated` / `unknown`) in both text and
+`--json` output. Re-run the platform association script
+(`scripts/set-file-icon.ps1` on Windows, `scripts/set-file-icon.sh` on
+Linux) or the installer if it reports `NOT associated`.
+
 ## IDE Integration
 
 ### VS Code

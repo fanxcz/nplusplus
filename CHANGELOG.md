@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `npp doctor` now reports the `.npp` file-association state
+  (`associated` / `NOT associated` / `unknown`) in text and `--json`
+  output, checking the registry on Windows and `mimeapps.list` on Linux.
+- Error-code reference documentation (`docs/error-codes.md`) covering
+  the `NX0000`–`NX9002` diagnostic ranges.
+
 - Native backend aggregate support: fixed-size arrays (`[T; n]`
   annotations, `[a, b, c]` literals, bounds-checked `xs[i]` reads and
   `xs[i] = v` writes, `len(array)`) and structs (fields, `P { ... }`

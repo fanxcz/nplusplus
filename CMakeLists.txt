@@ -264,6 +264,10 @@ endif()
 if (MINGW)
   target_link_options(npp PRIVATE -static -static-libgcc -static-libstdc++)
 endif()
+if (WIN32)
+  # npp doctor reads the .npp file association via the registry API.
+  target_link_libraries(npp PRIVATE advapi32)
+endif()
 target_include_directories(npp PRIVATE
     src/compiler
     src/compiler/frontend
