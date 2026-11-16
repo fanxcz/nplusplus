@@ -72,7 +72,12 @@ namespace npp::native {
             currentFn_ = &f;
             slots_.clear();
             forLimitNames_.clear();
+            forIterNames_.clear();
+            compoundNames_.clear();
+            scratchTypes_.clear();
             forLimitCounter_ = 0;
+            forIterCounter_ = 0;
+            compoundCounter_ = 0;
             slotCount_ = 0;
             for (const auto& p : f.params)
                 slots_[p.name] = slotCount_++;
@@ -133,8 +138,35 @@ namespace npp::native {
                                                       std::to_string(forLimitCounter_++);
                         forLimitNames_[f] = limitName;
                         slots_[limitName] = slotCount_++;
+                    } else if (f->collection) {
+                        // `for x in arr`: element var + hidden ptr/index slots.
+                        if (!slots_.contains(f->name))
+                            slots_[f->name] = slotCount_++;
+                        const std::string base =
+                            std::string("\x01native_for_iter_") + std::to_string(forIterCounter_++);
+                        const std::string ptrName = base + "_ptr";
+                        const std::string idxName = base + "_idx";
+                        forIterNames_[f] = {ptrName, idxName};
+                        slots_[ptrName] = slotCount_++;
+                        slots_[idxName] = slotCount_++;
                     }
                     collectLocals(f->body.get());
+                } else if (const auto* ma = dynamic_cast<const MemberAssignStmt*>(s.get())) {
+                    if (ma->op != TokenKind::Equal) {
+                        const std::string base =
+                            std::string("\x01native_cmp_") + std::to_string(compoundCounter_++);
+                        compoundNames_[ma] = {base + "_cur", base + "_rhs"};
+                        slots_[base + "_cur"] = slotCount_++;
+                        slots_[base + "_rhs"] = slotCount_++;
+                    }
+                } else if (const auto* ia = dynamic_cast<const IndexAssignStmt*>(s.get())) {
+                    if (ia->op != TokenKind::Equal) {
+                        const std::string base =
+                            std::string("\x01native_cmp_") + std::to_string(compoundCounter_++);
+                        compoundNames_[ia] = {base + "_cur", base + "_rhs"};
+                        slots_[base + "_cur"] = slotCount_++;
+                        slots_[base + "_rhs"] = slotCount_++;
+                    }
                 }
             }
         }

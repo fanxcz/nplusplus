@@ -37,8 +37,10 @@ bundled wrapper — see `npp doctor`).
   results, including recursion; `fn main()` (returning nothing or `i64`
   exit code) is required.
 - Statements: `let`/`mut`, assignment (`=`, `+=`, …), `if`/`else`,
-  `while`, desugared `for i in a..b`, `break`, `continue`, `return`,
-  member assignment (`p.field = v`), and index assignment (`xs[i] = v`).
+  `while`, `for i in a..b`, `for x in array` (iterates element copies),
+  `break`, `continue`, `return`, member assignment (`p.field = v`),
+  index assignment (`xs[i] = v`), and compound assignment on lvalues
+  (`x += v`, `p.f -= v`, `xs[i] *= v`, including `string +=`).
 - Expressions: integer `+ - * / %`, floating-point `+ - * /` on `f64`,
   unary minus, comparisons (integer and floating-point), boolean
   `&& || !`, string concatenation (`+`), string `==`/`!=`, calls,
@@ -64,9 +66,8 @@ bundled wrapper — see `npp doctor`).
   `out of string memory` error instead of corrupting memory. There is no
   per-allocation heap overhead and no leak across runs.
 
-Everything else (slices, pointers, enums, `match`, compound member/index
-assignment, `for x in collection`, file/network/graphics/audio/UI/ECS
-builtins, `extern`) is rejected with a
+Everything else (slices, pointers, enums, `match`,
+file/network/graphics/audio/UI/ECS builtins, `extern`) is rejected with a
 precise `outside the builtin native v0 subset` reason naming the construct
 and function. With `--backend auto` that reason appears only when the LLVM
 fallback also cannot proceed; `--backend native` surfaces it directly.

@@ -15,6 +15,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   literals, `p.field` access/assignment, nesting). Aggregates are
   arena-allocated and deep-copied on `let`/`=`/call boundaries, matching
   value semantics; they can be passed to and returned from functions.
+  Compound assignment (`+=`, `-=`, `*=`, `/=`, `%=`) works on variables,
+  struct fields and array elements (including `string +=`), and
+  `for x in array` iterates element copies.
 - New native smoke fixtures: `arrays.npp`, `structs.npp`.
 - Native backend `f64` support: SSE2 scalar arithmetic, `f64`
   parameters/returns, `print(f64)`/`str_f64` (shortest-round-trip decimal,

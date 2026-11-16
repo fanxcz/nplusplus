@@ -49,6 +49,21 @@ namespace npp::native {
                 return nullptr;
             }
 
+            // Scalar type combinations allowed for `lhs <binop>= rhs`.
+            bool compoundTypeOk(TokenKind bop, const Type& lt, const Type& rt) {
+                if (lt.kind == TypeKind::I64 && rt.kind == TypeKind::I64)
+                    return bop == TokenKind::Plus || bop == TokenKind::Minus ||
+                           bop == TokenKind::Star || bop == TokenKind::Slash ||
+                           bop == TokenKind::Percent || bop == TokenKind::Ampersand ||
+                           bop == TokenKind::Pipe || bop == TokenKind::Caret ||
+                           bop == TokenKind::ShiftLeft || bop == TokenKind::ShiftRight;
+                if (lt.kind == TypeKind::F64 && rt.kind == TypeKind::F64)
+                    return bop == TokenKind::Plus || bop == TokenKind::Minus ||
+                           bop == TokenKind::Star || bop == TokenKind::Slash;
+                if (lt.kind == TypeKind::String && rt.kind == TypeKind::String)
+                    return bop == TokenKind::Plus;
+                return false;
+            }
         } // namespace
 
         bool supportedType(const Type& t,
@@ -627,11 +642,6 @@ namespace npp::native {
                 return;
             }
             if (const auto* ma = dynamic_cast<const MemberAssignStmt*>(s)) {
-                if (ma->op != TokenKind::Equal) {
-                    reason = "compound member assignment is outside the builtin native v0 "
-                             "subset; use --backend llvm";
-                    return;
-                }
                 const Type obj = checkExpr(ma->object.get(), env, fns, structs, reason);
                 if (!reason.empty())
                     return;
@@ -648,18 +658,21 @@ namespace npp::native {
                 const Type v = checkExpr(ma->value.get(), env, fns, structs, reason);
                 if (!reason.empty())
                     return;
-                if (!sameType(v, f->type)) {
-                    reason = "member '" + ma->member + "' assignment has a mismatched type";
+                if (ma->op == TokenKind::Equal) {
+                    if (!sameType(v, f->type)) {
+                        reason = "member '" + ma->member + "' assignment has a mismatched type";
+                        return;
+                    }
+                    return;
+                }
+                if (!compoundTypeOk(ma->op, f->type, v)) {
+                    reason = "compound member assignment '" + ma->member +
+                             "' has an unsupported type/operator combination";
                     return;
                 }
                 return;
             }
             if (const auto* ia = dynamic_cast<const IndexAssignStmt*>(s)) {
-                if (ia->op != TokenKind::Equal) {
-                    reason = "compound index assignment is outside the builtin native v0 "
-                             "subset; use --backend llvm";
-                    return;
-                }
                 const Type obj = checkExpr(ia->object.get(), env, fns, structs, reason);
                 if (!reason.empty())
                     return;
@@ -677,8 +690,16 @@ namespace npp::native {
                 const Type v = checkExpr(ia->value.get(), env, fns, structs, reason);
                 if (!reason.empty())
                     return;
-                if (!sameType(v, *obj.element)) {
-                    reason = "index assignment has a mismatched element type";
+                if (ia->op == TokenKind::Equal) {
+                    if (!sameType(v, *obj.element)) {
+                        reason = "index assignment has a mismatched element type";
+                        return;
+                    }
+                    return;
+                }
+                if (!compoundTypeOk(ia->op, *obj.element, v)) {
+                    reason = "compound index assignment has an unsupported type/operator "
+                             "combination";
                     return;
                 }
                 return;
@@ -714,10 +735,36 @@ namespace npp::native {
                 return;
             }
             if (const auto* loop = dynamic_cast<const ForStmt*>(s)) {
+                Type elemType = Type::i64();
                 if (!loop->rangeEnd || !loop->start) {
-                    reason = "array/string iteration is outside the builtin native v0 subset; use "
-                             "--backend llvm";
-                    return;
+                    // Collection iteration: only fixed-size arrays are supported.
+                    if (!loop->collection) {
+                        reason = "this for-loop form is outside the builtin native v0 subset; "
+                                 "use --backend llvm";
+                        return;
+                    }
+                    const Type ct = checkExpr(loop->collection.get(), env, fns, structs, reason);
+                    if (!reason.empty())
+                        return;
+                    if (ct.kind != TypeKind::Array) {
+                        reason = "for-in iteration is only supported over fixed-size arrays in "
+                                 "the builtin native v0 subset (strings and slices need "
+                                 "--backend llvm)";
+                        return;
+                    }
+                    elemType = *ct.element;
+                } else {
+                    const Type start = checkExpr(loop->start.get(), env, fns, structs, reason);
+                    if (!reason.empty())
+                        return;
+                    const Type limit = checkExpr(loop->rangeEnd.get(), env, fns, structs, reason);
+                    if (!reason.empty())
+                        return;
+                    if (start.kind != TypeKind::I64 || limit.kind != TypeKind::I64) {
+                        reason = "numeric for-loop bounds must be i64 in the builtin native v0 "
+                                 "subset";
+                        return;
+                    }
                 }
                 if (env.contains(loop->name)) {
                     reason = "shadowed for-loop variable '" + loop->name +
@@ -729,18 +776,8 @@ namespace npp::native {
                              "' inside its body is outside the builtin native v0 subset";
                     return;
                 }
-                const Type start = checkExpr(loop->start.get(), env, fns, structs, reason);
-                if (!reason.empty())
-                    return;
-                const Type limit = checkExpr(loop->rangeEnd.get(), env, fns, structs, reason);
-                if (!reason.empty())
-                    return;
-                if (start.kind != TypeKind::I64 || limit.kind != TypeKind::I64) {
-                    reason = "numeric for-loop bounds must be i64 in the builtin native v0 subset";
-                    return;
-                }
                 auto saved = env;
-                env[loop->name] = i64T();
+                env[loop->name] = elemType;
                 checkBlock(loop->body.get(), env, fns, structs, true, reason);
                 env = std::move(saved);
                 return;

@@ -41,7 +41,15 @@ namespace npp::native {
                 const std::int64_t off = static_cast<std::int64_t>(fi) * 8;
                 if (off > 0)
                     out_.addRcxImm32(static_cast<std::uint32_t>(off));
-                out_.pushRcx();
+                out_.pushRcx(); // [rsp] = &field
+                if (ma->op != TokenKind::Equal) {
+                    const auto sit = structs_.find(ot.name);
+                    const Type ft = sit != structs_.end()
+                                        ? sit->second->fields[static_cast<std::size_t>(fi)].type
+                                        : Type::i64();
+                    genCompoundAssign(ma, ma->value.get(), ft, ma->op);
+                    return;
+                }
                 genExpr(ma->value.get());
                 if (needsDup(ma->value.get()))
                     genDupValue(exprType(ma->value.get()));
@@ -59,7 +67,11 @@ namespace npp::native {
                 out_.shlRdxImm8(3);
                 out_.popRcx();
                 out_.addRcxRdx();
-                out_.pushRcx();
+                out_.pushRcx(); // [rsp] = &element
+                if (ia->op != TokenKind::Equal) {
+                    genCompoundAssign(ia, ia->value.get(), *ot.element, ia->op);
+                    return;
+                }
                 genExpr(ia->value.get());
                 if (needsDup(ia->value.get()))
                     genDupValue(exprType(ia->value.get()));
@@ -93,8 +105,13 @@ namespace npp::native {
                 return;
             }
             if (const auto* f = dynamic_cast<const ForStmt*>(s)) {
-                if (!f->rangeEnd)
-                    throw std::runtime_error("builtin native v0: unsupported collection iteration");
+                if (!f->rangeEnd) {
+                    if (!f->collection)
+                        throw std::runtime_error(
+                            "builtin native v0: unsupported for-loop form reached codegen");
+                    genForCollection(f);
+                    return;
+                }
                 const std::string limitName = forLimitNames_.at(f);
                 const std::string cond = out_.label("for.cond");
                 const std::string body = out_.label("for.body");
@@ -609,6 +626,59 @@ namespace npp::native {
             throw std::runtime_error("builtin native v0: unsupported expression reached codegen");
         }
 
+        void Generator::genForCollection(const ForStmt* f) {
+            const Type ct = exprType(f->collection.get());
+            const Type et = ct.element ? *ct.element : Type::i64();
+            const Kind ek = kindOf(et);
+            const auto& names = forIterNames_.at(f);
+            const std::string& ptrName = names.first;
+            const std::string& idxName = names.second;
+            const std::string cond = out_.label("forc.cond");
+            const std::string body = out_.label("forc.body");
+            const std::string incr = out_.label("forc.incr");
+            const std::string end = out_.label("forc.end");
+
+            // Evaluate the collection once; the pointer and index live in
+            // hidden slots for the loop's duration.
+            genExpr(f->collection.get());
+            out_.movRbpFromRax(slotOff(slots_.at(ptrName)));
+            out_.xorEax();
+            out_.movRbpFromRax(slotOff(slots_.at(idxName)));
+
+            out_.jmp(cond);
+            out_.def(cond);
+            out_.movRaxFromRbp(slotOff(slots_.at(idxName)));
+            out_.cmpRaxImm32(static_cast<std::uint32_t>(ct.arraySize));
+            out_.jcc(J_AE, end);
+            out_.def(body);
+            // &elem = ptr + idx*8
+            out_.movRcxFromRbp(slotOff(slots_.at(ptrName)));
+            out_.movRdxFromRbp(slotOff(slots_.at(idxName)));
+            out_.shlRdxImm8(3);
+            out_.addRcxRdx();
+            if (ek == Kind::F64) {
+                out_.movsdXmm0FromRcx();
+                out_.movsdXmm0ToRbp(slotOff(slots_.at(f->name)));
+            } else {
+                out_.movRaxFromRcx();
+                if (ek == Kind::Ptr)
+                    genDupValue(et); // value semantics for aggregate elements
+                out_.movRbpFromRax(slotOff(slots_.at(f->name)));
+            }
+            breakStack_.push_back(end);
+            continueStack_.push_back(incr);
+            genBlock(f->body.get());
+            breakStack_.pop_back();
+            continueStack_.pop_back();
+
+            out_.def(incr);
+            out_.movRaxFromRbp(slotOff(slots_.at(idxName)));
+            out_.addRaxImm8(1);
+            out_.movRbpFromRax(slotOff(slots_.at(idxName)));
+            out_.jmp(cond);
+            out_.def(end);
+        }
+
         void Generator::genPrint(const Expr* arg) {
             if (const auto* s = dynamic_cast<const StringExpr*>(arg)) {
                 // Fast path: the literal plus its newline is emitted once.
@@ -730,6 +800,9 @@ namespace npp::native {
         }
 
         Type Generator::localType(const std::string& name) {
+            const auto scratch = scratchTypes_.find(name);
+            if (scratch != scratchTypes_.end())
+                return scratch->second;
             if (currentFn_) {
                 for (const auto& p : currentFn_->params)
                     if (p.name == name)
@@ -765,7 +838,20 @@ namespace npp::native {
                 } else if (const auto* w = dynamic_cast<const WhileStmt*>(s.get())) {
                     findLet(w->body.get(), name, found, ok);
                 } else if (const auto* f = dynamic_cast<const ForStmt*>(s.get())) {
-                    findLet(f->body.get(), name, found, ok);
+                    if (f->name == name) {
+                        if (f->collection) {
+                            const Type ct = exprType(f->collection.get());
+                            if (ct.kind == TypeKind::Array && ct.element) {
+                                found = *ct.element;
+                                ok = true;
+                            }
+                        } else {
+                            found = Type::i64();
+                            ok = true;
+                        }
+                    }
+                    if (!ok)
+                        findLet(f->body.get(), name, found, ok);
                 }
             }
         }
@@ -822,6 +908,36 @@ namespace npp::native {
                     return it->second->fields[i].type;
             }
             return Type::void_();
+        }
+
+        void Generator::genCompoundAssign(const Stmt* stmt,
+                                          const Expr* value,
+                                          const Type& targetType,
+                                          TokenKind bop) {
+            // [rsp] = &target. Load current into a scratch slot, evaluate the
+            // rhs into a second scratch slot, then reuse the binary operator
+            // codegen (which already handles f64, div-by-zero, string concat).
+            const auto& pr = compoundNames_.at(stmt);
+            const Kind k = kindOf(targetType);
+            scratchTypes_[pr.first] = targetType;
+            scratchTypes_[pr.second] = targetType;
+            out_.movRcxFromRsp();
+            genLoadFromRcx(k);
+            if (k == Kind::F64)
+                out_.movsdXmm0ToRbp(slotOff(slots_.at(pr.first)));
+            else
+                out_.movRbpFromRax(slotOff(slots_.at(pr.first)));
+            genExpr(value);
+            if (k == Kind::F64)
+                out_.movsdXmm0ToRbp(slotOff(slots_.at(pr.second)));
+            else
+                out_.movRbpFromRax(slotOff(slots_.at(pr.second)));
+            BinaryExpr combined(
+                bop, std::make_unique<VarExpr>(pr.first), std::make_unique<VarExpr>(pr.second));
+            genExpr(&combined);
+            out_.movRcxFromRsp();
+            genStoreToRcx(k);
+            out_.addRsp(8); // drop the saved address
         }
 
         void Generator::genDupValue(const Type& t) {

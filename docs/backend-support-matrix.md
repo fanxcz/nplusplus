@@ -8,7 +8,7 @@ This matrix records evidence in the source tree at the current baseline. "Suppor
 |---|---|---|---|
 | `i64`, `bool`, `string`, `f64`, `void` | Supported | Supported | Native subset declaration and native regression fixtures |
 | Functions, recursion, locals, assignment | Supported in documented subset | Supported | Native subset and regression tests |
-| `if/else`, `while`, range `for`, `break`, `continue`, `return` | Supported in documented subset | Supported | Native fixtures and compiler regression suite |
+| `if/else`, `while`, range `for`, collection `for`, `break`, `continue`, `return` | Supported in documented subset | Supported | Native fixtures and compiler regression suite |
 | Integer arithmetic, comparisons, boolean operators, calls, string concatenation/equality | Supported in documented subset | Supported | Native fixtures and parity test |
 | `print`, `input`, `input_i64`, `input_f64`, `str_i64`, `str_bool`, `str_f64`, `to_f64`, `to_i64` | Supported in documented signatures | Supported | Native emitter/runtime subset |
 | `exit`, `time_ms`, `sleep`, `random_i64`, `file_exists`, `os.args_*`, `string.len`, `string.byte_at` | Supported | Supported | Native fixtures (`sys_io.npp`, `input_i64.npp`, `exit_builtin.npp`) |

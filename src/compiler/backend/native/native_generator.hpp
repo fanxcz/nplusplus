@@ -34,6 +34,15 @@ namespace npp::native {
             std::map<std::string, const StructDecl*> structs_;
             std::map<std::string, std::size_t> slots_;
             std::map<const ForStmt*, std::string> forLimitNames_;
+            // Collection for-loops (`for x in arr`): hidden pointer + index slots.
+            std::map<const ForStmt*, std::pair<std::string, std::string>> forIterNames_;
+            std::size_t forIterCounter_ = 0;
+            // Compound member/index assignments (`p.x += 1`): two hidden
+            // scratch slots (current value, rhs value) per statement.
+            std::map<const Stmt*, std::pair<std::string, std::string>> compoundNames_;
+            std::size_t compoundCounter_ = 0;
+            // Types of hidden scratch slots, consulted by localType.
+            std::map<std::string, Type> scratchTypes_;
             std::size_t forLimitCounter_ = 0;
             std::size_t slotCount_ = 0;
             std::string endLabel_;
@@ -52,6 +61,10 @@ namespace npp::native {
             void genBlock(const Block* b);
 
             void genStmt(const Stmt* s);
+
+            // `for x in array`: index loop over an arena block. The element
+            // variable receives a copy (aggregates are deep-copied).
+            void genForCollection(const ForStmt* f);
 
             void genExpr(const Expr* e);
 
@@ -102,6 +115,15 @@ namespace npp::native {
 
             // Type of aggregate slot `i` (array element or struct field).
             Type aggregateFieldType(const Type& t, std::size_t i);
+
+            // Compound member/index assignment (`p.x += v`, `xs[i] -= v`).
+            // Expects the target address on top of the machine stack
+            // ([rsp] = &slot) and consumes it. `bop` is the binary operator
+            // equivalent of the compound token (see compoundBinOp).
+            void genCompoundAssign(const Stmt* stmt,
+                                   const Expr* value,
+                                   const Type& targetType,
+                                   TokenKind bop);
 
             // Call the shared write helper. r10/r11 do NOT survive OS calls
             // (the syscall instruction itself clobbers rcx+r11, and ntdll
