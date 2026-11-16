@@ -24,9 +24,9 @@ OUT_PNG = ROOT / "assets" / "npp-icon-256.png"
 SS = 4          # supersample factor relative to the 64-unit mark
 BASE = 64 * SS  # 256px render resolution
 
-BG = (9, 10, 11, 255)          # #090a0b
-BORDER = (42, 43, 45, 255)     # #2a2b2d
-FG = (245, 197, 24, 255)       # #f5c518
+BG = (255, 255, 255, 255)      # white tile, like the C++ logo
+BORDER = (208, 210, 214, 255)  # #d0d2d6
+FG = (0, 89, 156, 255)         # #00599c — C++ blue
 
 # N letterform from npp-mark.svg (64x64 viewBox), as a polygon.
 N_PTS = [
