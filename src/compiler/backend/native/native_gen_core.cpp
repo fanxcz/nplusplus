@@ -108,6 +108,7 @@ namespace npp::native {
             genDivZero();
             genDivOverflow();
             genPrintI64();
+            genPrintU64();
             genPrintBool();
             genEntry();
         }

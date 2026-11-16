@@ -23,7 +23,8 @@ if(NOT DEFINED NPP_NATIVE_BACKEND_SUPPORTED)
   set(NPP_NATIVE_BACKEND_SUPPORTED ON)
 endif()
 if(NPP_NATIVE_BACKEND_SUPPORTED)
-# The direct machine-code backend must reject the same feature set explicitly.
+# The direct machine-code backend supports fixed-width integers (i8/u8/etc.)
+# with wrap semantics; f32 remains LLVM-only.
 execute_process(
   COMMAND "${NPP_BIN}" build "${SOURCE}" -o "${SCRATCH}/native_reject" --backend native
   RESULT_VARIABLE native_rc
@@ -32,7 +33,7 @@ execute_process(
 )
 set(native_combined "${native_out}\n${native_err}")
 if(native_rc EQUAL 0 OR NOT native_combined MATCHES "outside the builtin native v0 subset")
-  message(FATAL_ERROR "native backend did not reject fixed-width types explicitly:\n${native_combined}")
+  message(FATAL_ERROR "native backend did not reject the f32/match fixture explicitly:\n${native_combined}")
 endif()
 
 execute_process(
@@ -42,8 +43,18 @@ execute_process(
   ERROR_VARIABLE narrow_err
 )
 set(narrow_combined "${narrow_out}\n${narrow_err}")
-if(narrow_rc EQUAL 0 OR NOT narrow_combined MATCHES "outside the builtin native v0 subset")
-  message(FATAL_ERROR "native backend accepted i8 without other unsupported constructs:\n${narrow_combined}")
+if(NOT narrow_rc EQUAL 0)
+  message(FATAL_ERROR "native backend rejected i8:\n${narrow_combined}")
+endif()
+execute_process(
+  COMMAND "${SCRATCH}/native_narrow"
+  RESULT_VARIABLE narrow_native_rc
+  OUTPUT_VARIABLE narrow_native_out
+  ERROR_VARIABLE narrow_native_err
+)
+string(STRIP "${narrow_native_out}" narrow_native_out)
+if(NOT narrow_native_rc EQUAL 0 OR NOT narrow_native_out STREQUAL "7")
+  message(FATAL_ERROR "native backend produced an incorrect i8 result:\n${narrow_native_out}\n${narrow_native_err}")
 endif()
 
 endif()

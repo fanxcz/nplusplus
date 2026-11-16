@@ -129,6 +129,46 @@ namespace npp::native {
             out_.ret();
         }
 
+        // __nx_print_u64: rax = unsigned value. Same digit loop as
+        // __nx_print_i64 but without sign handling; div-by-10 stays exact for
+        // the full u64 range because the quotient always fits in rax.
+        void Generator::genPrintU64() {
+            out_.def("__nx_print_u64");
+            out_.pushRbp();
+            out_.movRbpRsp();
+            out_.subRsp(96);
+            out_.andRspMinus16();
+            out_.leaRsiFromRbp(-48);
+            out_.decRsi();
+            out_.storeByteRsiImm8(0x0A);
+            out_.testRaxRax();
+            const std::string nonzero = out_.label("u64.nonzero");
+            const std::string write = out_.label("u64.write");
+            out_.jcc(J_NE, nonzero);
+            out_.decRsi();
+            out_.storeByteRsiImm8(0x30); // '0'
+            out_.jmp(write);
+            out_.def(nonzero);
+            out_.movRcxImm10();
+            const std::string digit = out_.label("u64.digit");
+            out_.def(digit);
+            out_.xorEdx();
+            out_.divRcx();
+            out_.addDl48();
+            out_.decRsi();
+            out_.storeDlRsi();
+            out_.testRaxRax();
+            out_.jcc(J_NE, digit);
+            out_.def(write);
+            out_.leaRdxFromRbp(-48);
+            out_.subRdxRsi();
+            out_.movRcxRsi();
+            stubCall("__nx_write");
+            out_.movRspRbp();
+            out_.popRbp();
+            out_.ret();
+        }
+
         // __nx_print_bool: rax = 0/1. Prints "true"/"false" + newline.
         void Generator::genPrintBool() {
             const std::size_t t = internString("true\n");

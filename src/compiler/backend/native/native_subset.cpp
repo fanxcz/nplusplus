@@ -14,8 +14,49 @@ namespace npp::native {
         namespace {
             constexpr const char* kSubset = "builtin native subset";
 
+            bool isNativeInt(const Type& t) {
+                switch (t.kind) {
+                case TypeKind::I8:
+                case TypeKind::I16:
+                case TypeKind::I32:
+                case TypeKind::I64:
+                case TypeKind::U8:
+                case TypeKind::U16:
+                case TypeKind::U32:
+                case TypeKind::U64:
+                    return true;
+                default:
+                    return false;
+                }
+            }
+
+            bool isUnsignedInt(TypeKind k) {
+                return k == TypeKind::U8 || k == TypeKind::U16 || k == TypeKind::U32 ||
+                       k == TypeKind::U64;
+            }
+
+            // Bit width of a native integer kind; 0 for non-integers.
+            int intWidth(TypeKind k) {
+                switch (k) {
+                case TypeKind::I8:
+                case TypeKind::U8:
+                    return 8;
+                case TypeKind::I16:
+                case TypeKind::U16:
+                    return 16;
+                case TypeKind::I32:
+                case TypeKind::U32:
+                    return 32;
+                case TypeKind::I64:
+                case TypeKind::U64:
+                    return 64;
+                default:
+                    return 0;
+                }
+            }
+
             bool isScalar(const Type& t) {
-                return t.kind == TypeKind::I64 || t.kind == TypeKind::Bool ||
+                return isNativeInt(t) || t.kind == TypeKind::Bool ||
                        t.kind == TypeKind::String || t.kind == TypeKind::F64;
             }
 
@@ -90,7 +131,14 @@ namespace npp::native {
                 return false;
             }
             switch (t.kind) {
+            case TypeKind::I8:
+            case TypeKind::I16:
+            case TypeKind::I32:
             case TypeKind::I64:
+            case TypeKind::U8:
+            case TypeKind::U16:
+            case TypeKind::U32:
+            case TypeKind::U64:
             case TypeKind::Bool:
             case TypeKind::String:
             case TypeKind::F64:
@@ -155,7 +203,14 @@ namespace npp::native {
 
         Kind kindOf(const Type& t) {
             switch (t.kind) {
+            case TypeKind::I8:
+            case TypeKind::I16:
+            case TypeKind::I32:
             case TypeKind::I64:
+            case TypeKind::U8:
+            case TypeKind::U16:
+            case TypeKind::U32:
+            case TypeKind::U64:
                 return Kind::I64;
             case TypeKind::Bool:
                 return Kind::Bool;
@@ -716,14 +771,14 @@ namespace npp::native {
                        const std::map<std::string, const StructDecl*>& structs,
                        const std::map<std::string, const EnumDecl*>& enums,
                        std::string& reason) {
-            if (dynamic_cast<const IntExpr*>(e))
-                return i64T();
+            if (const auto* lit = dynamic_cast<const IntExpr*>(e))
+                return lit->literalType;
+            if (const auto* lit = dynamic_cast<const FloatExpr*>(e))
+                return lit->literalType;
             if (dynamic_cast<const BoolExpr*>(e))
                 return boolT();
             if (dynamic_cast<const StringExpr*>(e))
                 return strT();
-            if (dynamic_cast<const FloatExpr*>(e))
-                return f64T();
             if (const auto* v = dynamic_cast<const VarExpr*>(e)) {
                 const auto it = env.find(v->name);
                 if (it == env.end()) {
@@ -737,7 +792,7 @@ namespace npp::native {
                 if (!reason.empty())
                     return Type::void_();
                 if (u->op == TokenKind::Minus &&
-                    (t.kind == TypeKind::I64 || t.kind == TypeKind::F64))
+                    (isNativeInt(t) || t.kind == TypeKind::F64))
                     return t;
                 if (u->op == TokenKind::Bang && t.kind == TypeKind::Bool)
                     return boolT();
@@ -777,8 +832,8 @@ namespace npp::native {
                 const bool same = sameType(l, r);
                 switch (b->op) {
                 case TokenKind::Plus:
-                    if (l.kind == TypeKind::I64 && r.kind == TypeKind::I64)
-                        return i64T();
+                    if (same && isNativeInt(l))
+                        return l;
                     if (l.kind == TypeKind::F64 && r.kind == TypeKind::F64)
                         return f64T();
                     if (l.kind == TypeKind::String && r.kind == TypeKind::String)
@@ -787,22 +842,22 @@ namespace npp::native {
                 case TokenKind::Minus:
                 case TokenKind::Star:
                 case TokenKind::Slash:
-                    if (l.kind == TypeKind::I64 && r.kind == TypeKind::I64)
-                        return i64T();
+                    if (same && isNativeInt(l))
+                        return l;
                     if (l.kind == TypeKind::F64 && r.kind == TypeKind::F64)
                         return f64T();
                     break;
                 case TokenKind::Percent:
-                    if (l.kind == TypeKind::I64 && r.kind == TypeKind::I64)
-                        return i64T();
+                    if (same && isNativeInt(l))
+                        return l;
                     break;
                 case TokenKind::Ampersand:
                 case TokenKind::Pipe:
                 case TokenKind::Caret:
                 case TokenKind::ShiftLeft:
                 case TokenKind::ShiftRight:
-                    if (l.kind == TypeKind::I64 && r.kind == TypeKind::I64)
-                        return i64T();
+                    if (same && isNativeInt(l))
+                        return l;
                     break;
                 case TokenKind::EqualEqual:
                 case TokenKind::BangEqual:
@@ -813,7 +868,7 @@ namespace npp::native {
                 case TokenKind::LessEqual:
                 case TokenKind::Greater:
                 case TokenKind::GreaterEqual:
-                    if (same && (l.kind == TypeKind::I64 || l.kind == TypeKind::F64))
+                    if (same && (isNativeInt(l) || l.kind == TypeKind::F64))
                         return boolT();
                     break;
                 case TokenKind::AndAnd:

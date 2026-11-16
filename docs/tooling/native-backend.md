@@ -30,7 +30,9 @@ bundled wrapper — see `npp doctor`).
 
 ## Supported subset (v0)
 
-- Types: `i64`, `bool`, `string`, `f64`, `void`, fixed-size arrays
+- Types: `i64`, `bool`, `string`, `f64`, `void`, fixed-width integers
+  (`i8`/`i16`/`i32`, `u8`/`u16`/`u32`/`u64`) with wrap-around arithmetic,
+  sign/zero-extension and unsigned comparisons/division, fixed-size arrays
   (`[T; n]` syntax in annotations, `[a, b, c]` literals), structs whose
   fields are themselves supported types (including nesting), and pointers
   (`*T`, `&x`, `*p` dereference and `*p = v`) used for output parameters
@@ -53,7 +55,7 @@ bundled wrapper — see `npp doctor`).
   values: `let`/`=`/call arguments deep-copy them (nested aggregates
   included), so mutating a copy never aliases the original. Indexing is
   bounds-checked and aborts with `index out of bounds` on stderr.
-- I/O: `print(i64 | bool | string | f64)` (trailing newline, like the
+- I/O: `print(i64 | u64 | bool | string | f64 | fixed-width ints)` (trailing newline, like the
   runtime; `f64` prints shortest-round-trip decimal, fixed notation for
   decimal exponents in `[-4, 14]` and scientific notation otherwise),
   `input(prompt)` and `input_i64(prompt)`/`input_f64(prompt)` (one stdin
