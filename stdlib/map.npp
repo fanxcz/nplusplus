@@ -1,0 +1,175 @@
+// Open-addressing hash map for i64 -> i64 built on ilist handles.
+// Linear probing with tombstones; capacity doubles at 70% load.
+// Keys and values are i64 only — this is not a generic map.
+//
+// IntMap is four ilist handles passed by value; all mutation goes through
+// the shared handles, so only map_set can replace them (on grow) and
+// therefore returns the map. meta[0] holds the live entry count.
+
+struct IntMap {
+    keys: i64
+    values: i64
+    state: i64
+    meta: i64
+}
+
+fn map_hash(key: i64) -> i64 {
+    let mut h = key
+    h = h ^ (h >> 33)
+    h = h * -49064778989728563
+    h = h ^ (h >> 29)
+    h = h * -4265267296055464877
+    h = h ^ (h >> 32)
+    if h < 0 {
+        return -h
+    }
+    return h
+}
+
+fn map_cap(m: IntMap) -> i64 {
+    return ilist_len(m.state)
+}
+
+fn map_len_raw(m: IntMap) -> i64 {
+    return ilist_get(m.meta, 0)
+}
+
+fn map_new() -> IntMap {
+    return map_with_capacity(16)
+}
+
+fn map_find_slot(m: IntMap, key: i64) -> i64 {
+    // Returns the slot holding key, or the first tombstone/empty slot where
+    // it would be inserted; -1 only when no slot is usable at all.
+    let cap = map_cap(m)
+    let mut idx = map_hash(key) % cap
+    let mut first_free: i64 = -1
+    let mut probes: i64 = 0
+    while probes < cap {
+        let st = ilist_get(m.state, idx)
+        if st == 0 {
+            if first_free >= 0 {
+                return first_free
+            }
+            return idx
+        }
+        if st == 2 && first_free < 0 {
+            first_free = idx
+        }
+        if st == 1 && ilist_get(m.keys, idx) == key {
+            return idx
+        }
+        idx = (idx + 1) % cap
+        probes = probes + 1
+    }
+    return first_free
+}
+
+fn map_with_capacity(cap: i64) -> IntMap {
+    let keys = ilist_new()
+    let values = ilist_new()
+    let state = ilist_new()
+    let meta = ilist_new()
+    ilist_reserve(keys, cap)
+    ilist_reserve(values, cap)
+    ilist_reserve(state, cap)
+    let mut i: i64 = 0
+    while i < cap {
+        ilist_push(keys, 0)
+        ilist_push(values, 0)
+        ilist_push(state, 0)
+        i = i + 1
+    }
+    ilist_push(meta, 0)
+    return IntMap { keys: keys, values: values, state: state, meta: meta }
+}
+
+fn map_grow_into(old: IntMap, newcap: i64) -> IntMap {
+    let tmp = map_with_capacity(newcap)
+    let cap = map_cap(old)
+    let mut j: i64 = 0
+    while j < cap {
+        if ilist_get(old.state, j) == 1 {
+            let k = ilist_get(old.keys, j)
+            let v = ilist_get(old.values, j)
+            let slot = map_find_slot(tmp, k)
+            ilist_set(tmp.keys, slot, k)
+            ilist_set(tmp.values, slot, v)
+            ilist_set(tmp.state, slot, 1)
+        }
+        j = j + 1
+    }
+    ilist_set(tmp.meta, 0, map_len_raw(old))
+    ilist_free(old.keys)
+    ilist_free(old.values)
+    ilist_free(old.state)
+    ilist_free(old.meta)
+    return tmp
+}
+
+fn map_set(m: IntMap, key: i64, value: i64) -> IntMap {
+    let mut cur = m
+    while (map_len_raw(cur) + 1) * 10 >= map_cap(cur) * 7 {
+        cur = map_grow_into(cur, map_cap(cur) * 2)
+    }
+    let slot = map_find_slot(cur, key)
+    if slot < 0 {
+        return cur
+    }
+    if ilist_get(cur.state, slot) != 1 {
+        ilist_set(cur.meta, 0, map_len_raw(cur) + 1)
+        ilist_set(cur.state, slot, 1)
+    }
+    ilist_set(cur.keys, slot, key)
+    ilist_set(cur.values, slot, value)
+    return cur
+}
+
+fn map_contains(m: IntMap, key: i64) -> bool {
+    let slot = map_find_slot(m, key)
+    return slot >= 0 && ilist_get(m.state, slot) == 1
+}
+
+fn map_get(m: IntMap, key: i64, out: *i64) -> bool {
+    let slot = map_find_slot(m, key)
+    if slot < 0 || ilist_get(m.state, slot) != 1 {
+        return false
+    }
+    *out = ilist_get(m.values, slot)
+    return true
+}
+
+fn map_remove(m: IntMap, key: i64) -> bool {
+    let slot = map_find_slot(m, key)
+    if slot < 0 || ilist_get(m.state, slot) != 1 {
+        return false
+    }
+    ilist_set(m.state, slot, 2)
+    ilist_set(m.keys, slot, 0)
+    ilist_set(m.values, slot, 0)
+    ilist_set(m.meta, 0, map_len_raw(m) - 1)
+    return true
+}
+
+fn map_len(m: IntMap) -> i64 {
+    return map_len_raw(m)
+}
+
+fn map_clear(m: IntMap) {
+    let cap = map_cap(m)
+    let mut i: i64 = 0
+    while i < cap {
+        ilist_set(m.state, i, 0)
+        ilist_set(m.keys, i, 0)
+        ilist_set(m.values, i, 0)
+        i = i + 1
+    }
+    ilist_set(m.meta, 0, 0)
+}
+
+fn map_free(m: IntMap) {
+    ilist_free(m.keys)
+    ilist_free(m.values)
+    ilist_free(m.state)
+    ilist_free(m.meta)
+}

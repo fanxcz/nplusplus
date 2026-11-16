@@ -578,11 +578,14 @@ namespace npp::native {
             out_.movRaxFromRbp(-40);
             out_.testRaxRax();
             out_.jcc(J_E, mvDone);
-            // rdx = (index + j) * 8
-            out_.movRdxFromRbp(-24);
-            out_.movRaxFromRbp(-40);
-            out_.addRdxRax();
-            out_.shlRdxImm8(3);
+            // rdx = (len - 1 - j) * 8 : j counts remaining shifts down from
+            // len-index-1, so the destination walks index..len-2 while the
+            // source stays one slot ahead.
+            out_.movRaxFromRbp(-32);
+            out_.decRax();
+            out_.subRaxFromRbp(-40);
+            out_.shlRaxImm8(3);
+            out_.movRdxRax();
             // rcx = data + rdx (dst) ; rax = [rcx + 8] (src)
             out_.movRaxFromRbp(-8);
             out_.movRcxFromRax();
