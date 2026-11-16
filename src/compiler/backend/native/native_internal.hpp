@@ -12,7 +12,8 @@ namespace npp::native {
         // Codegen-facing kind of a value slot. All values occupy one 8-byte
         // slot; aggregates (arrays/structs) travel as pointers to arena
         // blocks of 8-byte slots, so they share Kind::Ptr.
-        enum class Kind { I64, Bool, Void, Str, F64, Ptr };
+        // f32 values occupy the low 4 bytes of their 8-byte slot.
+        enum class Kind { I64, Bool, Void, Str, F64, F32, Ptr };
 
         Kind kindOf(const Type& t);
 
