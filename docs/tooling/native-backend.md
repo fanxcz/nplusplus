@@ -81,7 +81,8 @@ bundled wrapper — see `npp doctor`).
 - Standard library: the following `std.*` modules compile and run fully
   natively — `io`, `os`, `env`, `fs`, `sys`, `string`, `text`, `math`,
   `random`, `time`, `memory`, `collections` (with `defer` cleanup),
-  `physics2d`, `collision2d`, `tilemap`, `vec2`, `vec3`, `animation2d`.
+  `physics2d`, `collision2d`, `tilemap`, `vec2`, `vec3`, `animation2d`,
+  `option`, `result`.
 - Memory: strings live in a 16 MiB bump arena reserved at startup and
   released at process exit. Exhausting it ends the program with a clean
   `out of string memory` error instead of corrupting memory. There is no
@@ -93,11 +94,19 @@ bundled wrapper — see `npp doctor`).
   pass-through call arguments. Mutable slices `mut []T` remain
   LLVM-only.
 
-Everything else (mutable slices, enums, `match`, JSON/SHA-256, networking,
+- Enums and `match`: payload enums lower to a `{tag, payload}` arena
+  block (payload travels as raw bits — f64 via `movq`, aggregates as
+  pointers). `match` supports variant patterns with payload bindings,
+  wildcard/catch-all arms, bare `v =>` bindings, and `if` guards;
+  non-enum match values, range patterns, and `mut []T` stay LLVM-only.
+  This unblocks the `std.option` and `std.result` modules natively.
+
+Everything else (mutable slices, non-enum `match`, range patterns,
+JSON/SHA-256, networking,
 graphics/audio/UI/ECS/database builtins, `extern`, `system()`) is
 rejected with a precise `outside the builtin native v0 subset` reason
 naming the construct and function. The LLVM-only stdlib modules are
-`json`, `crypto`, `net`, `db`, `shell`, `option`, `result`,
+`json`, `crypto`, `net`, `db`, `shell`,
 `audio2d`, `engine2d`, `sprite2d`, `ui`, `camera2d`, `tilemap_render`.
 With `--backend auto` that reason appears only when the LLVM fallback
 also cannot proceed; `--backend native` surfaces it directly.

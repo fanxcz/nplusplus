@@ -1,0 +1,62 @@
+enum Shape {
+    Circle(f64),
+    Rect(i64),
+    Point
+}
+
+enum Color {
+    Red,
+    Green,
+    Blue
+}
+
+fn area(s: Shape) -> f64 {
+    match s {
+        Shape::Circle(r) => { return 3.14159 * r * r }
+        Shape::Rect(w) => { return to_f64(w * w) }
+        Shape::Point => { return 0.0 }
+    }
+    return-1.0
+}
+
+fn color_code(c: Color) -> i64 {
+    match c {
+        Color::Red => { return 1 }
+        Color::Green => { return 2 }
+        v => { return 3 }
+    }
+}
+
+fn classify(x: i64) -> i64 {
+    let mut n = Shape::Point;
+    if x < 0 {
+        n = Shape::Rect(-x);
+    } else {
+        n = Shape::Circle(to_f64(x) / 10.0);
+    }
+    match n {
+        Shape::Circle(r)if r > 0.5 => { return 1 }
+        Shape::Rect(w) => { return 2 }
+        _ => { return 0 }
+    }
+}
+
+fn main() {
+    print(area(Shape::Circle(2.0)));
+    print(area(Shape::Rect(3)));
+    print(area(Shape::Point));
+    print(color_code(Color::Red));
+    print(color_code(Color::Blue));
+    print(classify(-4));
+    print(classify(9));
+    print(classify(100));
+
+    let shapes = [Shape::Circle(1.0), Shape::Point, Shape::Rect(2)];
+    for s in shapes {
+        match s {
+            Shape::Circle(r) => { print(r) }
+            Shape::Rect(w) => { print(to_f64(w)) }
+            Shape::Point => { print(0.0) }
+        }
+    }
+}

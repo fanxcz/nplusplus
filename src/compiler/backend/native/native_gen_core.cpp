@@ -15,6 +15,8 @@ namespace npp::native {
         void Generator::generate(const Program& program) {
             for (const auto& s : program.structs)
                 structs_[s.name] = &s;
+            for (const auto& e : program.enums)
+                enums_[e.name] = &e;
             for (const auto& f : program.functions) {
                 FnSig sig;
                 for (const auto& p : f.params)
@@ -212,6 +214,16 @@ namespace npp::native {
                         slots_[idxName] = slotCount_++;
                     }
                     collectLocals(f->body.get());
+                } else if (const auto* mm = dynamic_cast<const MatchStmt*>(s.get())) {
+                    const std::string base =
+                        std::string("\x01native_match_") + std::to_string(matchCounter_++);
+                    matchValueNames_[mm] = base + "_val";
+                    slots_[base + "_val"] = slotCount_++;
+                    for (const auto& arm : mm->arms) {
+                        if (!arm.binding.empty() && !slots_.contains(arm.binding))
+                            slots_[arm.binding] = slotCount_++;
+                        collectLocals(arm.body.get());
+                    }
                 } else if (const auto* ma = dynamic_cast<const MemberAssignStmt*>(s.get())) {
                     if (ma->op != TokenKind::Equal) {
                         const std::string base =

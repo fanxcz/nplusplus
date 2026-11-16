@@ -104,6 +104,10 @@ namespace npp::native {
                 (void)d;
                 return;
             }
+            if (const auto* mm = dynamic_cast<const MatchStmt*>(s)) {
+                genMatch(mm);
+                return;
+            }
             if (const auto* r = dynamic_cast<const ReturnStmt*>(s)) {
                 if (r->expr)
                     genExpr(r->expr.get());
@@ -801,7 +805,8 @@ namespace npp::native {
                         // are non-owning views and pass through unchanged.
                         const auto sit = sigs_.find(c->callee);
                         if (sit != sigs_.end() && ai < sit->second.params.size() &&
-                            sit->second.params[ai].kind != TypeKind::Slice)
+                            sit->second.params[ai].kind != TypeKind::Slice &&
+                            sit->second.params[ai].kind != TypeKind::Enum)
                             genDupValue(sit->second.params[ai]);
                     }
                     out_.pushRax();
@@ -908,6 +913,43 @@ namespace npp::native {
                 out_.def(done);
                 return;
             }
+            if (const auto* ev = dynamic_cast<const EnumVariantExpr*>(e)) {
+                // Enum value = pointer to a {tag, payload} block; the payload
+                // travels as raw bits (f64 via movq, aggregates as pointers).
+                const auto eit = enums_.find(ev->enumName);
+                if (eit == enums_.end())
+                    throw std::runtime_error("builtin native backend: unknown enum '" +
+                                             ev->enumName + "'");
+                std::int64_t tag = -1;
+                const EnumVariant* var = nullptr;
+                for (std::size_t i = 0; i < eit->second->variants.size(); ++i) {
+                    if (eit->second->variants[i].name == ev->variant) {
+                        tag = static_cast<std::int64_t>(i);
+                        var = &eit->second->variants[i];
+                        break;
+                    }
+                }
+                if (!var)
+                    throw std::runtime_error("builtin native backend: unknown variant '" +
+                                             ev->enumName + "::" + ev->variant + "'");
+                if (var->payload && ev->payload) {
+                    genExpr(ev->payload.get());
+                    if (var->payload->kind == TypeKind::F64)
+                        out_.movqRaxXmm0(); // raw double bits into the payload slot
+                } else {
+                    out_.xorEax();
+                }
+                out_.pushRax(); // payload bits
+                out_.movRaxImm64(16);
+                out_.call("__nx_alloc");
+                out_.movRcxRax(); // block
+                out_.popRax();
+                out_.movToRcxFromRaxOff(8); // [block+8] = payload
+                out_.movRaxImm64(static_cast<std::uint64_t>(tag));
+                out_.movToRcxFromRax(); // [block] = tag
+                out_.movRaxRcx();
+                return;
+            }
             if (const auto* m = dynamic_cast<const MemberExpr*>(e)) {
                 const Type ot = exprType(m->object.get());
                 genExpr(m->object.get());
@@ -1002,7 +1044,10 @@ namespace npp::native {
                 out_.movsdXmm0ToRbp(slotOff(slots_.at(f->name)));
             } else {
                 out_.movRaxFromRcx();
-                if (ek == Kind::Ptr)
+                // Slices/enums share their immutable header block; only true
+                // aggregates (arrays/structs) need a deep copy per element.
+                if (ek == Kind::Ptr && et.kind != TypeKind::Slice &&
+                    et.kind != TypeKind::Enum)
                     genDupValue(et); // value semantics for aggregate elements
                 out_.movRbpFromRax(slotOff(slots_.at(f->name)));
             }
@@ -1018,6 +1063,106 @@ namespace npp::native {
             out_.movRbpFromRax(slotOff(slots_.at(idxName)));
             out_.jmp(cond);
             out_.def(end);
+        }
+
+        std::int64_t Generator::enumTag(const std::string& enumName,
+                                        const std::string& variant) {
+            const auto it = enums_.find(enumName);
+            if (it == enums_.end())
+                throw std::runtime_error("builtin native backend: unknown enum '" + enumName +
+                                         "'");
+            for (std::size_t i = 0; i < it->second->variants.size(); ++i)
+                if (it->second->variants[i].name == variant)
+                    return static_cast<std::int64_t>(i);
+            throw std::runtime_error("builtin native backend: unknown variant '" + enumName +
+                                     "::" + variant + "'");
+        }
+
+        void Generator::genMatch(const MatchStmt* m) {
+            // The matched enum value (a {tag, payload} block pointer) lives in
+            // a hidden slot; each arm compares the tag and binds the payload.
+            const std::string& valName = matchValueNames_.at(m);
+            const std::int64_t valOff = slotOff(slots_.at(valName));
+            genExpr(m->value.get());
+            out_.movRbpFromRax(valOff);
+
+            const std::string endLabel = out_.label("match.end");
+            const std::size_t n = m->arms.size();
+            std::vector<std::string> nextTests;
+            for (std::size_t k = 0; k < n; ++k)
+                nextTests.push_back(k + 1 < n ? out_.label("match.test") : endLabel);
+
+            for (std::size_t k = 0; k < n; ++k) {
+                const MatchArm& arm = m->arms[k];
+                const std::string& next = nextTests[k];
+                if (k > 0)
+                    out_.def(nextTests[k - 1]);
+
+                const bool unconditional = arm.wildcard || !arm.pattern;
+                if (!unconditional) {
+                    const auto* ev =
+                        static_cast<const EnumVariantExpr*>(arm.pattern.get());
+                    const std::int64_t tag = enumTag(ev->enumName, ev->variant);
+                    out_.movRaxFromRbp(valOff);
+                    out_.movRcxRax();
+                    out_.movRaxFromRcx(); // tag
+                    out_.cmpRaxImm32(static_cast<std::uint32_t>(tag));
+                    out_.jcc(J_NE, next);
+                }
+
+                // Payload binding: variant arms bind [block+8], bare
+                // binding arms (`v =>`) bind the whole enum value.
+                Type bindType = Type::void_();
+                bool hasBind = !arm.binding.empty();
+                if (hasBind) {
+                    bindType = exprType(m->value.get());
+                    if (const auto* ev =
+                            dynamic_cast<const EnumVariantExpr*>(arm.pattern.get())) {
+                        const auto eit = enums_.find(ev->enumName);
+                        if (eit != enums_.end())
+                            for (const auto& v : eit->second->variants)
+                                if (v.name == ev->variant && v.payload) {
+                                    bindType = *v.payload;
+                                    break;
+                                }
+                    }
+                    const std::int64_t bindOff = slotOff(slots_.at(arm.binding));
+                    out_.movRaxFromRbp(valOff);
+                    if (!unconditional || arm.pattern) {
+                        // Variant arm: payload lives at [block+8].
+                        out_.movRcxRax();
+                        out_.movRaxFromRcxOff(8);
+                    }
+                    if (bindType.kind == TypeKind::F64) {
+                        out_.movqXmm0Rax();
+                        out_.movsdXmm0ToRbp(bindOff);
+                    } else {
+                        out_.movRbpFromRax(bindOff);
+                    }
+                }
+
+                const auto prevBind = matchBindTypes_.find(arm.binding);
+                const bool hadBind = prevBind != matchBindTypes_.end();
+                const Type savedBind = hadBind ? prevBind->second : Type::void_();
+                if (hasBind)
+                    matchBindTypes_[arm.binding] = bindType;
+
+                if (arm.guard) {
+                    genExpr(arm.guard.get());
+                    out_.testRaxRax();
+                    out_.jcc(J_E, next);
+                }
+                genBlock(arm.body.get());
+
+                if (hasBind) {
+                    if (hadBind)
+                        matchBindTypes_[arm.binding] = savedBind;
+                    else
+                        matchBindTypes_.erase(arm.binding);
+                }
+                out_.jmp(endLabel);
+            }
+            out_.def(endLabel);
         }
 
         void Generator::genPrint(const Expr* arg) {
@@ -1166,6 +1311,9 @@ namespace npp::native {
                     return Type::slice(*ot.element);
                 return Type::void_();
             }
+            if (dynamic_cast<const EnumVariantExpr*>(e))
+                return Type::enumerated(
+                    static_cast<const EnumVariantExpr*>(e)->enumName);
             if (const auto* m = dynamic_cast<const MemberExpr*>(e)) {
                 const Type ot = exprType(m->object.get());
                 if (ot.kind != TypeKind::Struct)
@@ -1191,6 +1339,9 @@ namespace npp::native {
         }
 
         Type Generator::localType(const std::string& name) {
+            const auto mb = matchBindTypes_.find(name);
+            if (mb != matchBindTypes_.end())
+                return mb->second;
             const auto scratch = scratchTypes_.find(name);
             if (scratch != scratchTypes_.end())
                 return scratch->second;
@@ -1277,9 +1428,10 @@ namespace npp::native {
         bool Generator::needsDup(const Expr* e) {
             if (exprKind(e) != Kind::Ptr)
                 return false;
-            // Slices are non-owning {data, len} views: copying shares the
+            // Slices and enums are non-owning {..} views: copying shares the
             // immutable header block, matching LLVM value semantics.
-            if (exprType(e).kind == TypeKind::Slice)
+            const Type et = exprType(e);
+            if (et.kind == TypeKind::Slice || et.kind == TypeKind::Enum)
                 return false;
             return !dynamic_cast<const ArrayExpr*>(e) && !dynamic_cast<const StructInitExpr*>(e);
         }

@@ -68,6 +68,7 @@ check_native(lists "3\n20\n99\ntrue\n30\ntrue\n30\n2\n7\ntrue\n7\n2\ntrue\ntrue\
 check_native(math_phys "4\n1.4142135623731\n0\n1\n1\n-1\n1\n0.785398163397448\n2.35619449019234\n1024\n2\n0.01\n3\n-4\n4\n-3\ntrue\nfalse\nfalse\ntrue")
 check_native(defer "2\ntwo items\ncleanup ran")
 check_native(slices "4\n2\n10\n20\n30\n1\n20\n0\n2\n10\n60")
+check_native(enums "12.56636\n9\n0\n1\n3\n2\n1\n1\n1\n0\n2")
 
 # input.npp reads one line from stdin; pipe a fixed name in.
 if(WIN32)
@@ -210,8 +211,10 @@ endif()
 message(STATUS "  PASS input_f64.npp")
 
 # Programs outside the subset must fail with an actionable error.
+# types.npp (structs + payload enums + match) is now native-supported, so
+# the rejection fixture uses fixed-width types instead.
 execute_process(
-  COMMAND "${NPP_BIN}" build "${NPP_SOURCE_DIR}/tests/regression_programs/types.npp"
+  COMMAND "${NPP_BIN}" build "${NPP_SOURCE_DIR}/tests/regression_programs/fixed_width_types.npp"
     -o "${SCRATCH}/rejected" --backend native
   RESULT_VARIABLE rc
   OUTPUT_VARIABLE out

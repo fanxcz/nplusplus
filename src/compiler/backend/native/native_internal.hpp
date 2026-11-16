@@ -27,11 +27,13 @@ namespace npp::native {
                        const std::map<std::string, Type>& env,
                        const std::map<std::string, FnSig>& fns,
                        const std::map<std::string, const StructDecl*>& structs,
+                       const std::map<std::string, const EnumDecl*>& enums,
                        std::string& reason);
         void checkBlock(const Block* b,
                         std::map<std::string, Type>& env,
                         const std::map<std::string, FnSig>& fns,
                         const std::map<std::string, const StructDecl*>& structs,
+                        const std::map<std::string, const EnumDecl*>& enums,
                         bool inLoop,
                         bool fnScope,
                         std::string& reason);

@@ -49,6 +49,20 @@ namespace npp::native {
                 return nullptr;
             }
 
+            const EnumDecl* findEnum(const std::map<std::string, const EnumDecl*>& enums,
+                                     const std::string& name) {
+                const auto it = enums.find(name);
+                return it == enums.end() ? nullptr : it->second;
+            }
+
+            const EnumVariant* findVariant(const EnumDecl& decl, const std::string& name) {
+                for (const auto& v : decl.variants) {
+                    if (v.name == name)
+                        return &v;
+                }
+                return nullptr;
+            }
+
             // Scalar type combinations allowed for `lhs <binop>= rhs`.
             bool compoundTypeOk(TokenKind bop, const Type& lt, const Type& rt) {
                 if (lt.kind == TypeKind::I64 && rt.kind == TypeKind::I64)
@@ -80,6 +94,7 @@ namespace npp::native {
             case TypeKind::Bool:
             case TypeKind::String:
             case TypeKind::F64:
+            case TypeKind::Enum:
                 return true;
             case TypeKind::Array:
                 if (!t.element || t.arraySize == 0) {
@@ -121,7 +136,7 @@ namespace npp::native {
             default:
                 reason = "type '" + std::to_string(static_cast<int>(t.kind)) + "' is outside the " +
                          std::string(kSubset) +
-                         " (slices, enums, and mutable references need --backend "
+                         " (mutable slices and other advanced types need --backend "
                          "llvm)";
                 return false;
             }
@@ -153,6 +168,7 @@ namespace npp::native {
             case TypeKind::Array:
             case TypeKind::Struct:
             case TypeKind::Slice:
+            case TypeKind::Enum:
                 return Kind::Ptr;
             default:
                 return Kind::Void;
@@ -163,6 +179,7 @@ namespace npp::native {
                        const std::map<std::string, Type>& env,
                        const std::map<std::string, FnSig>& fns,
                        const std::map<std::string, const StructDecl*>& structs,
+                       const std::map<std::string, const EnumDecl*>& enums,
                        std::string& reason) {
             if (c->callee == "print") {
                 if (c->args.size() != 1) {
@@ -171,7 +188,7 @@ namespace npp::native {
                              "argument is supported)";
                     return voidT();
                 }
-                const Type a = checkExpr(c->args[0].get(), env, fns, structs, reason);
+                const Type a = checkExpr(c->args[0].get(), env, fns, structs, enums, reason);
                 if (!reason.empty())
                     return voidT();
                 if (!isScalar(a)) {
@@ -186,7 +203,7 @@ namespace npp::native {
                     reason = "len() takes exactly 1 argument";
                     return i64T();
                 }
-                const Type a = checkExpr(c->args[0].get(), env, fns, structs, reason);
+                const Type a = checkExpr(c->args[0].get(), env, fns, structs, enums, reason);
                 if (!reason.empty())
                     return i64T();
                 if (a.kind == TypeKind::String || a.kind == TypeKind::Array ||
@@ -206,7 +223,7 @@ namespace npp::native {
                         reason = c->callee + "() takes exactly 1 argument";
                         return strT();
                     }
-                    const Type a = checkExpr(c->args[0].get(), env, fns, structs, reason);
+                    const Type a = checkExpr(c->args[0].get(), env, fns, structs, enums, reason);
                     if (!reason.empty())
                         return strT();
                     if (a.kind != want) {
@@ -225,7 +242,7 @@ namespace npp::native {
                                : ret == TypeKind::I64  ? i64T()
                                                        : f64T();
                     }
-                    const Type a = checkExpr(c->args[0].get(), env, fns, structs, reason);
+                    const Type a = checkExpr(c->args[0].get(), env, fns, structs, enums, reason);
                     if (!reason.empty())
                         return ret == TypeKind::String ? strT()
                                : ret == TypeKind::I64  ? i64T()
@@ -267,7 +284,7 @@ namespace npp::native {
                         reason = "os.args_get() takes exactly 1 argument (index)";
                         return strT();
                     }
-                    const Type a = checkExpr(c->args[0].get(), env, fns, structs, reason);
+                    const Type a = checkExpr(c->args[0].get(), env, fns, structs, enums, reason);
                     if (!reason.empty())
                         return strT();
                     if (a.kind != TypeKind::I64) {
@@ -281,7 +298,7 @@ namespace npp::native {
                         reason = "string.len() takes exactly 1 argument";
                         return i64T();
                     }
-                    const Type a = checkExpr(c->args[0].get(), env, fns, structs, reason);
+                    const Type a = checkExpr(c->args[0].get(), env, fns, structs, enums, reason);
                     if (!reason.empty())
                         return i64T();
                     if (a.kind != TypeKind::String) {
@@ -295,14 +312,14 @@ namespace npp::native {
                         reason = "string.byte_at() takes exactly 2 arguments (string, index)";
                         return i64T();
                     }
-                    const Type a = checkExpr(c->args[0].get(), env, fns, structs, reason);
+                    const Type a = checkExpr(c->args[0].get(), env, fns, structs, enums, reason);
                     if (!reason.empty())
                         return i64T();
                     if (a.kind != TypeKind::String) {
                         reason = "string.byte_at() first argument must be a string";
                         return i64T();
                     }
-                    const Type b = checkExpr(c->args[1].get(), env, fns, structs, reason);
+                    const Type b = checkExpr(c->args[1].get(), env, fns, structs, enums, reason);
                     if (!reason.empty())
                         return i64T();
                     if (b.kind != TypeKind::I64) {
@@ -316,7 +333,7 @@ namespace npp::native {
                         reason = c->callee + "() takes exactly 1 argument (i64)";
                         return voidT();
                     }
-                    const Type a = checkExpr(c->args[0].get(), env, fns, structs, reason);
+                    const Type a = checkExpr(c->args[0].get(), env, fns, structs, enums, reason);
                     if (!reason.empty())
                         return voidT();
                     if (a.kind != TypeKind::I64) {
@@ -330,10 +347,10 @@ namespace npp::native {
                         reason = "random_i64() takes exactly 2 arguments (min, max)";
                         return i64T();
                     }
-                    const Type a = checkExpr(c->args[0].get(), env, fns, structs, reason);
+                    const Type a = checkExpr(c->args[0].get(), env, fns, structs, enums, reason);
                     if (!reason.empty())
                         return i64T();
-                    const Type b = checkExpr(c->args[1].get(), env, fns, structs, reason);
+                    const Type b = checkExpr(c->args[1].get(), env, fns, structs, enums, reason);
                     if (!reason.empty())
                         return i64T();
                     if (a.kind != TypeKind::I64 || b.kind != TypeKind::I64) {
@@ -347,7 +364,7 @@ namespace npp::native {
                         reason = "to_f64() takes exactly 1 argument (i64)";
                         return f64T();
                     }
-                    const Type a = checkExpr(c->args[0].get(), env, fns, structs, reason);
+                    const Type a = checkExpr(c->args[0].get(), env, fns, structs, enums, reason);
                     if (!reason.empty())
                         return f64T();
                     if (a.kind != TypeKind::I64) {
@@ -361,7 +378,7 @@ namespace npp::native {
                         reason = "to_i64() takes exactly 1 argument (f64)";
                         return i64T();
                     }
-                    const Type a = checkExpr(c->args[0].get(), env, fns, structs, reason);
+                    const Type a = checkExpr(c->args[0].get(), env, fns, structs, enums, reason);
                     if (!reason.empty())
                         return i64T();
                     if (a.kind != TypeKind::F64) {
@@ -375,7 +392,7 @@ namespace npp::native {
                         reason = "file_exists() takes exactly 1 argument (path)";
                         return boolT();
                     }
-                    const Type a = checkExpr(c->args[0].get(), env, fns, structs, reason);
+                    const Type a = checkExpr(c->args[0].get(), env, fns, structs, enums, reason);
                     if (!reason.empty())
                         return boolT();
                     if (a.kind != TypeKind::String) {
@@ -389,7 +406,7 @@ namespace npp::native {
                         reason = "env() takes exactly 1 argument (name)";
                         return strT();
                     }
-                    const Type a = checkExpr(c->args[0].get(), env, fns, structs, reason);
+                    const Type a = checkExpr(c->args[0].get(), env, fns, structs, enums, reason);
                     if (!reason.empty())
                         return strT();
                     if (a.kind != TypeKind::String) {
@@ -403,7 +420,7 @@ namespace npp::native {
                         reason = "file_read() takes exactly 1 argument (path)";
                         return strT();
                     }
-                    const Type a = checkExpr(c->args[0].get(), env, fns, structs, reason);
+                    const Type a = checkExpr(c->args[0].get(), env, fns, structs, enums, reason);
                     if (!reason.empty())
                         return strT();
                     if (a.kind != TypeKind::String) {
@@ -417,14 +434,14 @@ namespace npp::native {
                         reason = "file_read_checked() takes exactly 2 arguments (path, out)";
                         return boolT();
                     }
-                    const Type a = checkExpr(c->args[0].get(), env, fns, structs, reason);
+                    const Type a = checkExpr(c->args[0].get(), env, fns, structs, enums, reason);
                     if (!reason.empty())
                         return boolT();
                     if (a.kind != TypeKind::String) {
                         reason = "file_read_checked() first argument must be a string path";
                         return boolT();
                     }
-                    const Type b = checkExpr(c->args[1].get(), env, fns, structs, reason);
+                    const Type b = checkExpr(c->args[1].get(), env, fns, structs, enums, reason);
                     if (!reason.empty())
                         return boolT();
                     if (b.kind != TypeKind::Pointer || !b.pointee ||
@@ -439,10 +456,10 @@ namespace npp::native {
                         reason = "file_write() takes exactly 2 arguments (path, data)";
                         return i64T();
                     }
-                    const Type a = checkExpr(c->args[0].get(), env, fns, structs, reason);
+                    const Type a = checkExpr(c->args[0].get(), env, fns, structs, enums, reason);
                     if (!reason.empty())
                         return i64T();
-                    const Type b = checkExpr(c->args[1].get(), env, fns, structs, reason);
+                    const Type b = checkExpr(c->args[1].get(), env, fns, structs, enums, reason);
                     if (!reason.empty())
                         return i64T();
                     if (a.kind != TypeKind::String || b.kind != TypeKind::String) {
@@ -456,7 +473,7 @@ namespace npp::native {
                         reason = "mem_alloc() takes exactly 1 argument (bytes)";
                         return i64T();
                     }
-                    const Type a = checkExpr(c->args[0].get(), env, fns, structs, reason);
+                    const Type a = checkExpr(c->args[0].get(), env, fns, structs, enums, reason);
                     if (!reason.empty())
                         return i64T();
                     if (a.kind != TypeKind::I64) {
@@ -470,7 +487,7 @@ namespace npp::native {
                         reason = c->callee + "() takes exactly 1 argument (i64)";
                         return c->callee == "mem_free" ? voidT() : i64T();
                     }
-                    const Type a = checkExpr(c->args[0].get(), env, fns, structs, reason);
+                    const Type a = checkExpr(c->args[0].get(), env, fns, structs, enums, reason);
                     if (!reason.empty())
                         return c->callee == "mem_free" ? voidT() : i64T();
                     if (a.kind != TypeKind::I64) {
@@ -485,7 +502,7 @@ namespace npp::native {
                         return voidT();
                     }
                     for (const auto& arg : c->args) {
-                        const Type a = checkExpr(arg.get(), env, fns, structs, reason);
+                        const Type a = checkExpr(arg.get(), env, fns, structs, enums, reason);
                         if (!reason.empty())
                             return voidT();
                         if (a.kind != TypeKind::I64) {
@@ -501,7 +518,7 @@ namespace npp::native {
                         reason = c->callee + "() takes exactly 1 argument (f64)";
                         return f64T();
                     }
-                    const Type a = checkExpr(c->args[0].get(), env, fns, structs, reason);
+                    const Type a = checkExpr(c->args[0].get(), env, fns, structs, enums, reason);
                     if (!reason.empty())
                         return f64T();
                     if (a.kind != TypeKind::F64) {
@@ -516,7 +533,7 @@ namespace npp::native {
                         return f64T();
                     }
                     for (const auto& arg : c->args) {
-                        const Type a = checkExpr(arg.get(), env, fns, structs, reason);
+                        const Type a = checkExpr(arg.get(), env, fns, structs, enums, reason);
                         if (!reason.empty())
                             return f64T();
                         if (a.kind != TypeKind::F64) {
@@ -534,7 +551,7 @@ namespace npp::native {
                         return boolT();
                     }
                     for (const auto& arg : c->args) {
-                        const Type a = checkExpr(arg.get(), env, fns, structs, reason);
+                        const Type a = checkExpr(arg.get(), env, fns, structs, enums, reason);
                         if (!reason.empty())
                             return boolT();
                         if (a.kind != TypeKind::F64) {
@@ -568,7 +585,7 @@ namespace npp::native {
                                                                                       : strT();
                     }
                     auto argIs = [&](std::size_t i, TypeKind k) {
-                        const Type a = checkExpr(c->args[i].get(), env, fns, structs, reason);
+                        const Type a = checkExpr(c->args[i].get(), env, fns, structs, enums, reason);
                         if (!reason.empty())
                             return false;
                         if (a.kind != k) {
@@ -633,7 +650,7 @@ namespace npp::native {
                         return retT;
                     }
                     auto argIs = [&](std::size_t i, const Type& wantT) {
-                        const Type a = checkExpr(c->args[i].get(), env, fns, structs, reason);
+                        const Type a = checkExpr(c->args[i].get(), env, fns, structs, enums, reason);
                         if (!reason.empty())
                             return false;
                         bool kindOk = a.kind == wantT.kind;
@@ -680,7 +697,7 @@ namespace npp::native {
                 return voidT();
             }
             for (std::size_t i = 0; i < c->args.size(); ++i) {
-                const Type a = checkExpr(c->args[i].get(), env, fns, structs, reason);
+                const Type a = checkExpr(c->args[i].get(), env, fns, structs, enums, reason);
                 if (!reason.empty())
                     return voidT();
                 if (!sameType(a, it->second.params[i])) {
@@ -697,6 +714,7 @@ namespace npp::native {
                        const std::map<std::string, Type>& env,
                        const std::map<std::string, FnSig>& fns,
                        const std::map<std::string, const StructDecl*>& structs,
+                       const std::map<std::string, const EnumDecl*>& enums,
                        std::string& reason) {
             if (dynamic_cast<const IntExpr*>(e))
                 return i64T();
@@ -715,7 +733,7 @@ namespace npp::native {
                 return it->second;
             }
             if (const auto* u = dynamic_cast<const UnaryExpr*>(e)) {
-                const Type t = checkExpr(u->rhs.get(), env, fns, structs, reason);
+                const Type t = checkExpr(u->rhs.get(), env, fns, structs, enums, reason);
                 if (!reason.empty())
                     return Type::void_();
                 if (u->op == TokenKind::Minus &&
@@ -750,10 +768,10 @@ namespace npp::native {
                 return Type::void_();
             }
             if (const auto* b = dynamic_cast<const BinaryExpr*>(e)) {
-                const Type l = checkExpr(b->lhs.get(), env, fns, structs, reason);
+                const Type l = checkExpr(b->lhs.get(), env, fns, structs, enums, reason);
                 if (!reason.empty())
                     return Type::void_();
-                const Type r = checkExpr(b->rhs.get(), env, fns, structs, reason);
+                const Type r = checkExpr(b->rhs.get(), env, fns, structs, enums, reason);
                 if (!reason.empty())
                     return Type::void_();
                 const bool same = sameType(l, r);
@@ -810,17 +828,17 @@ namespace npp::native {
                 return Type::void_();
             }
             if (const auto* c = dynamic_cast<const CallExpr*>(e))
-                return checkCall(c, env, fns, structs, reason);
+                return checkCall(c, env, fns, structs, enums, reason);
             if (const auto* a = dynamic_cast<const ArrayExpr*>(e)) {
                 if (a->elements.empty()) {
                     reason = "empty array literals are outside the builtin native v0 subset";
                     return Type::void_();
                 }
-                const Type elem = checkExpr(a->elements[0].get(), env, fns, structs, reason);
+                const Type elem = checkExpr(a->elements[0].get(), env, fns, structs, enums, reason);
                 if (!reason.empty())
                     return Type::void_();
                 for (const auto& el : a->elements) {
-                    const Type t = checkExpr(el.get(), env, fns, structs, reason);
+                    const Type t = checkExpr(el.get(), env, fns, structs, enums, reason);
                     if (!reason.empty())
                         return Type::void_();
                     if (!sameType(t, elem)) {
@@ -831,10 +849,10 @@ namespace npp::native {
                 return Type::array(elem, a->elements.size());
             }
             if (const auto* x = dynamic_cast<const IndexExpr*>(e)) {
-                const Type obj = checkExpr(x->object.get(), env, fns, structs, reason);
+                const Type obj = checkExpr(x->object.get(), env, fns, structs, enums, reason);
                 if (!reason.empty())
                     return Type::void_();
-                const Type idx = checkExpr(x->index.get(), env, fns, structs, reason);
+                const Type idx = checkExpr(x->index.get(), env, fns, structs, enums, reason);
                 if (!reason.empty())
                     return Type::void_();
                 if (obj.kind != TypeKind::Array && obj.kind != TypeKind::Slice) {
@@ -850,7 +868,7 @@ namespace npp::native {
                 return *obj.element;
             }
             if (const auto* m = dynamic_cast<const MemberExpr*>(e)) {
-                const Type obj = checkExpr(m->object.get(), env, fns, structs, reason);
+                const Type obj = checkExpr(m->object.get(), env, fns, structs, enums, reason);
                 if (!reason.empty())
                     return Type::void_();
                 if (obj.kind != TypeKind::Struct) {
@@ -884,7 +902,7 @@ namespace npp::native {
                         reason = "struct '" + s->typeName + "' has no member '" + fname + "'";
                         return Type::void_();
                     }
-                    const Type t = checkExpr(fexpr.get(), env, fns, structs, reason);
+                    const Type t = checkExpr(fexpr.get(), env, fns, structs, enums, reason);
                     if (!reason.empty())
                         return Type::void_();
                     if (!sameType(t, f->type)) {
@@ -895,8 +913,41 @@ namespace npp::native {
                 }
                 return Type::named(s->typeName);
             }
+            if (const auto* ev = dynamic_cast<const EnumVariantExpr*>(e)) {
+                const EnumDecl* decl = findEnum(enums, ev->enumName);
+                if (!decl) {
+                    reason = "enum '" + ev->enumName +
+                             "' is outside the builtin native v0 subset";
+                    return Type::void_();
+                }
+                const EnumVariant* var = findVariant(*decl, ev->variant);
+                if (!var) {
+                    reason = "unknown enum variant '" + ev->enumName + "::" + ev->variant + "'";
+                    return Type::void_();
+                }
+                if (var->payload) {
+                    if (!ev->payload) {
+                        reason = "enum variant '" + ev->enumName + "::" + ev->variant +
+                                 "' requires a payload";
+                        return Type::void_();
+                    }
+                    const Type pt = checkExpr(ev->payload.get(), env, fns, structs, enums, reason);
+                    if (!reason.empty())
+                        return Type::void_();
+                    if (!sameType(pt, *var->payload)) {
+                        reason = "payload of '" + ev->enumName + "::" + ev->variant +
+                                 "' has a mismatched type";
+                        return Type::void_();
+                    }
+                } else if (ev->payload) {
+                    reason = "enum variant '" + ev->enumName + "::" + ev->variant +
+                             "' takes no payload";
+                    return Type::void_();
+                }
+                return Type::enumerated(ev->enumName);
+            }
             if (const auto* sl = dynamic_cast<const SliceExpr*>(e)) {
-                const Type obj = checkExpr(sl->object.get(), env, fns, structs, reason);
+                const Type obj = checkExpr(sl->object.get(), env, fns, structs, enums, reason);
                 if (!reason.empty())
                     return Type::void_();
                 if ((obj.kind != TypeKind::Array && obj.kind != TypeKind::Slice) ||
@@ -905,10 +956,10 @@ namespace npp::native {
                              "v0 subset";
                     return Type::void_();
                 }
-                const Type st = checkExpr(sl->start.get(), env, fns, structs, reason);
+                const Type st = checkExpr(sl->start.get(), env, fns, structs, enums, reason);
                 if (!reason.empty())
                     return Type::void_();
-                const Type en = checkExpr(sl->end.get(), env, fns, structs, reason);
+                const Type en = checkExpr(sl->end.get(), env, fns, structs, enums, reason);
                 if (!reason.empty())
                     return Type::void_();
                 if (st.kind != TypeKind::I64 || en.kind != TypeKind::I64) {
@@ -918,7 +969,8 @@ namespace npp::native {
                 return Type::slice(*obj.element);
             }
             reason = "this expression is outside the builtin native v0 subset "
-                     "(slices, enums, and match values need --backend llvm)";
+                     "(mutable slices, try-expressions, and other advanced forms need "
+                     "--backend llvm)";
             return Type::void_();
         }
 
@@ -951,6 +1003,7 @@ namespace npp::native {
                         std::map<std::string, Type>& env,
                         const std::map<std::string, FnSig>& fns,
                         const std::map<std::string, const StructDecl*>& structs,
+                        const std::map<std::string, const EnumDecl*>& enums,
                         bool inLoop,
                         bool fnScope,
                         std::string& reason);
@@ -959,6 +1012,7 @@ namespace npp::native {
                        std::map<std::string, Type>& env,
                        const std::map<std::string, FnSig>& fns,
                        const std::map<std::string, const StructDecl*>& structs,
+                       const std::map<std::string, const EnumDecl*>& enums,
                        bool inLoop,
                        bool fnScope,
                        std::string& reason) {
@@ -966,7 +1020,7 @@ namespace npp::native {
                 return;
             if (const auto* nested = dynamic_cast<const Block*>(s)) {
                 auto saved = env;
-                checkBlock(nested, env, fns, structs, inLoop, false, reason);
+                checkBlock(nested, env, fns, structs, enums, inLoop, false, reason);
                 env = std::move(saved);
                 return;
             }
@@ -977,7 +1031,7 @@ namespace npp::native {
                         "' has a declared type outside the builtin native v0 subset: " + reason;
                     return;
                 }
-                const Type actual = checkExpr(l->init.get(), env, fns, structs, reason);
+                const Type actual = checkExpr(l->init.get(), env, fns, structs, enums, reason);
                 if (!reason.empty())
                     return;
                 if (!sameType(actual, l->type)) {
@@ -994,7 +1048,7 @@ namespace npp::native {
                     reason = "assignment to unknown variable '" + a->name + "'";
                     return;
                 }
-                const Type v = checkExpr(a->value.get(), env, fns, structs, reason);
+                const Type v = checkExpr(a->value.get(), env, fns, structs, enums, reason);
                 if (!reason.empty())
                     return;
                 if (!sameType(v, it->second)) {
@@ -1004,14 +1058,14 @@ namespace npp::native {
                 return;
             }
             if (const auto* da = dynamic_cast<const DerefAssignStmt*>(s)) {
-                const Type t = checkExpr(da->target.get(), env, fns, structs, reason);
+                const Type t = checkExpr(da->target.get(), env, fns, structs, enums, reason);
                 if (!reason.empty())
                     return;
                 if (t.kind != TypeKind::Pointer || !t.pointee) {
                     reason = "dereference assignment requires a pointer target";
                     return;
                 }
-                const Type v = checkExpr(da->value.get(), env, fns, structs, reason);
+                const Type v = checkExpr(da->value.get(), env, fns, structs, enums, reason);
                 if (!reason.empty())
                     return;
                 if (da->op == TokenKind::Equal) {
@@ -1029,7 +1083,7 @@ namespace npp::native {
                 return;
             }
             if (const auto* ma = dynamic_cast<const MemberAssignStmt*>(s)) {
-                const Type obj = checkExpr(ma->object.get(), env, fns, structs, reason);
+                const Type obj = checkExpr(ma->object.get(), env, fns, structs, enums, reason);
                 if (!reason.empty())
                     return;
                 if (obj.kind != TypeKind::Struct) {
@@ -1042,7 +1096,7 @@ namespace npp::native {
                     reason = "struct '" + obj.name + "' has no member '" + ma->member + "'";
                     return;
                 }
-                const Type v = checkExpr(ma->value.get(), env, fns, structs, reason);
+                const Type v = checkExpr(ma->value.get(), env, fns, structs, enums, reason);
                 if (!reason.empty())
                     return;
                 if (ma->op == TokenKind::Equal) {
@@ -1060,10 +1114,10 @@ namespace npp::native {
                 return;
             }
             if (const auto* ia = dynamic_cast<const IndexAssignStmt*>(s)) {
-                const Type obj = checkExpr(ia->object.get(), env, fns, structs, reason);
+                const Type obj = checkExpr(ia->object.get(), env, fns, structs, enums, reason);
                 if (!reason.empty())
                     return;
-                const Type idx = checkExpr(ia->index.get(), env, fns, structs, reason);
+                const Type idx = checkExpr(ia->index.get(), env, fns, structs, enums, reason);
                 if (!reason.empty())
                     return;
                 if (obj.kind != TypeKind::Array) {
@@ -1074,7 +1128,7 @@ namespace npp::native {
                     reason = "array index must be an i64";
                     return;
                 }
-                const Type v = checkExpr(ia->value.get(), env, fns, structs, reason);
+                const Type v = checkExpr(ia->value.get(), env, fns, structs, enums, reason);
                 if (!reason.empty())
                     return;
                 if (ia->op == TokenKind::Equal) {
@@ -1092,7 +1146,7 @@ namespace npp::native {
                 return;
             }
             if (const auto* e = dynamic_cast<const ExprStmt*>(s)) {
-                checkExpr(e->expr.get(), env, fns, structs, reason);
+                checkExpr(e->expr.get(), env, fns, structs, enums, reason);
                 return;
             }
             if (const auto* d = dynamic_cast<const DeferStmt*>(s)) {
@@ -1107,7 +1161,7 @@ namespace npp::native {
                     reason = "defer requires a call expression";
                     return;
                 }
-                const Type t = checkExpr(d->call.get(), env, fns, structs, reason);
+                const Type t = checkExpr(d->call.get(), env, fns, structs, enums, reason);
                 if (!reason.empty())
                     return;
                 if (t.kind != TypeKind::Void) {
@@ -1119,11 +1173,11 @@ namespace npp::native {
             }
             if (const auto* r = dynamic_cast<const ReturnStmt*>(s)) {
                 if (r->expr)
-                    checkExpr(r->expr.get(), env, fns, structs, reason);
+                    checkExpr(r->expr.get(), env, fns, structs, enums, reason);
                 return;
             }
             if (const auto* i = dynamic_cast<const IfStmt*>(s)) {
-                const Type t = checkExpr(i->cond.get(), env, fns, structs, reason);
+                const Type t = checkExpr(i->cond.get(), env, fns, structs, enums, reason);
                 if (!reason.empty())
                     return;
                 if (t.kind != TypeKind::Bool) {
@@ -1131,10 +1185,10 @@ namespace npp::native {
                     return;
                 }
                 auto saved = env;
-                checkBlock(i->thenBlock.get(), env, fns, structs, inLoop, false, reason);
+                checkBlock(i->thenBlock.get(), env, fns, structs, enums, inLoop, false, reason);
                 env = saved;
                 if (i->elseBlock) {
-                    checkBlock(i->elseBlock.get(), env, fns, structs, inLoop, false, reason);
+                    checkBlock(i->elseBlock.get(), env, fns, structs, enums, inLoop, false, reason);
                     env = saved;
                 }
                 return;
@@ -1148,7 +1202,7 @@ namespace npp::native {
                                  "use --backend llvm";
                         return;
                     }
-                    const Type ct = checkExpr(loop->collection.get(), env, fns, structs, reason);
+                    const Type ct = checkExpr(loop->collection.get(), env, fns, structs, enums, reason);
                     if (!reason.empty())
                         return;
                     if (ct.kind != TypeKind::Array && ct.kind != TypeKind::Slice) {
@@ -1159,10 +1213,10 @@ namespace npp::native {
                     }
                     elemType = *ct.element;
                 } else {
-                    const Type start = checkExpr(loop->start.get(), env, fns, structs, reason);
+                    const Type start = checkExpr(loop->start.get(), env, fns, structs, enums, reason);
                     if (!reason.empty())
                         return;
-                    const Type limit = checkExpr(loop->rangeEnd.get(), env, fns, structs, reason);
+                    const Type limit = checkExpr(loop->rangeEnd.get(), env, fns, structs, enums, reason);
                     if (!reason.empty())
                         return;
                     if (start.kind != TypeKind::I64 || limit.kind != TypeKind::I64) {
@@ -1183,12 +1237,12 @@ namespace npp::native {
                 }
                 auto saved = env;
                 env[loop->name] = elemType;
-                checkBlock(loop->body.get(), env, fns, structs, true, false, reason);
+                checkBlock(loop->body.get(), env, fns, structs, enums, true, false, reason);
                 env = std::move(saved);
                 return;
             }
             if (const auto* w = dynamic_cast<const WhileStmt*>(s)) {
-                const Type t = checkExpr(w->cond.get(), env, fns, structs, reason);
+                const Type t = checkExpr(w->cond.get(), env, fns, structs, enums, reason);
                 if (!reason.empty())
                     return;
                 if (t.kind != TypeKind::Bool) {
@@ -1196,13 +1250,76 @@ namespace npp::native {
                     return;
                 }
                 auto saved = env;
-                checkBlock(w->body.get(), env, fns, structs, true, false, reason);
+                checkBlock(w->body.get(), env, fns, structs, enums, true, false, reason);
                 env = saved;
                 return;
             }
             if (dynamic_cast<const BreakStmt*>(s) || dynamic_cast<const ContinueStmt*>(s)) {
                 if (!inLoop)
                     reason = "break/continue outside a loop";
+                return;
+            }
+            if (const auto* mm = dynamic_cast<const MatchStmt*>(s)) {
+                const Type vt = checkExpr(mm->value.get(), env, fns, structs, enums, reason);
+                if (!reason.empty())
+                    return;
+                if (vt.kind != TypeKind::Enum) {
+                    reason = "match on non-enum values is outside the builtin native v0 "
+                             "subset (use --backend llvm)";
+                    return;
+                }
+                const EnumDecl* decl = findEnum(enums, vt.name);
+                if (!decl) {
+                    reason = "enum '" + vt.name +
+                             "' is outside the builtin native v0 subset";
+                    return;
+                }
+                for (const auto& arm : mm->arms) {
+                    if (arm.rangeEnd) {
+                        reason = "match range patterns are outside the builtin native v0 "
+                                 "subset (use --backend llvm)";
+                        return;
+                    }
+                    auto armEnv = env;
+                    if (!arm.binding.empty()) {
+                        Type bt = vt;
+                        if (const auto* ev =
+                                dynamic_cast<const EnumVariantExpr*>(arm.pattern.get())) {
+                            const EnumVariant* var = findVariant(*decl, ev->variant);
+                            if (var && var->payload)
+                                bt = *var->payload;
+                        }
+                        armEnv[arm.binding] = bt;
+                    }
+                    if (arm.pattern && !arm.wildcard) {
+                        const auto* ev =
+                            dynamic_cast<const EnumVariantExpr*>(arm.pattern.get());
+                        if (!ev || ev->enumName != vt.name) {
+                            reason = "match patterns must be variants of enum '" + vt.name +
+                                     "' in the builtin native v0 subset";
+                            return;
+                        }
+                        if (!findVariant(*decl, ev->variant)) {
+                            reason = "unknown enum variant '" + ev->enumName + "::" +
+                                     ev->variant + "'";
+                            return;
+                        }
+                    }
+                    if (arm.guard) {
+                        const Type gt = checkExpr(arm.guard.get(), armEnv, fns, structs, enums,
+                                                  reason);
+                        if (!reason.empty())
+                            return;
+                        if (gt.kind != TypeKind::Bool) {
+                            reason = "match guard must be bool";
+                            return;
+                        }
+                    }
+                    checkBlock(arm.body.get(), armEnv, fns, structs, enums, inLoop, false,
+                               reason);
+                    if (!reason.empty())
+                        return;
+                }
                 return;
             }
             reason = "this statement (match or unsupported form) is outside the builtin native v0 "
@@ -1213,11 +1330,12 @@ namespace npp::native {
                         std::map<std::string, Type>& env,
                         const std::map<std::string, FnSig>& fns,
                         const std::map<std::string, const StructDecl*>& structs,
+                        const std::map<std::string, const EnumDecl*>& enums,
                         bool inLoop,
                         bool fnScope,
                         std::string& reason) {
             for (const auto& s : b->statements) {
-                checkStmt(s.get(), env, fns, structs, inLoop, fnScope, reason);
+                checkStmt(s.get(), env, fns, structs, enums, inLoop, fnScope, reason);
                 if (!reason.empty())
                     return;
             }

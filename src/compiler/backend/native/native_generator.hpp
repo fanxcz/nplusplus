@@ -32,6 +32,11 @@ namespace npp::native {
             NativeTarget target_;
             std::map<std::string, FnSig> sigs_;
             std::map<std::string, const StructDecl*> structs_;
+            std::map<std::string, const EnumDecl*> enums_;
+            // Match statements: hidden slot holding the matched value (enum
+            // block pointer) plus per-arm payload binding types.
+            std::map<const MatchStmt*, std::string> matchValueNames_;
+            std::map<std::string, Type> matchBindTypes_;
             std::map<std::string, std::size_t> slots_;
             std::map<const ForStmt*, std::string> forLimitNames_;
             // Collection for-loops (`for x in arr`): hidden pointer + index slots.
@@ -44,6 +49,7 @@ namespace npp::native {
             // Types of hidden scratch slots, consulted by localType.
             std::map<std::string, Type> scratchTypes_;
             std::size_t forLimitCounter_ = 0;
+            std::size_t matchCounter_ = 0;
             std::size_t slotCount_ = 0;
             std::string endLabel_;
             std::vector<std::string> breakStack_;
@@ -68,6 +74,13 @@ namespace npp::native {
             // `for x in array`: index loop over an arena block. The element
             // variable receives a copy (aggregates are deep-copied).
             void genForCollection(const ForStmt* f);
+
+            // `match value { ... }` over enum values: tag compares per arm,
+            // payload bindings stored into per-arm slots.
+            void genMatch(const MatchStmt* m);
+
+            // Index of an enum variant within its declaration (tag value).
+            std::int64_t enumTag(const std::string& enumName, const std::string& variant);
 
             void genExpr(const Expr* e);
 

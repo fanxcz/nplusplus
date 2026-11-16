@@ -13,14 +13,21 @@ namespace npp::native {
 
     bool supports(const Program& program, std::string& reason) {
         reason.clear();
-        if (!program.enums.empty()) {
-            reason = "enum '" + program.enums.front().name +
-                     "' is outside the builtin native v0 subset (use --backend llvm)";
-            return false;
-        }
         std::map<std::string, const StructDecl*> structs;
         for (const auto& s : program.structs)
             structs[s.name] = &s;
+        std::map<std::string, const EnumDecl*> enums;
+        for (const auto& e : program.enums) {
+            enums[e.name] = &e;
+            for (const auto& v : e.variants) {
+                if (v.payload &&
+                    !detail::supportedType(*v.payload, structs, reason)) {
+                    reason = "payload of enum variant '" + e.name + "::" + v.name +
+                             "' is outside the builtin native v0 subset: " + reason;
+                    return false;
+                }
+            }
+        }
         for (const auto& s : program.structs) {
             for (const auto& f : s.fields) {
                 if (!detail::supportedType(f.type, structs, reason)) {
@@ -79,7 +86,7 @@ namespace npp::native {
             for (std::size_t i = 0; i < f.params.size(); ++i)
                 env[f.params[i].name] = f.params[i].type;
             if (f.body)
-                detail::checkBlock(f.body.get(), env, fns, structs, false, true, reason);
+                detail::checkBlock(f.body.get(), env, fns, structs, enums, false, true, reason);
             if (!reason.empty()) {
                 reason = "in function '" + f.name + "': " + reason;
                 return false;
