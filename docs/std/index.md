@@ -21,6 +21,9 @@ The checked-in standard library is deliberately small. Each `import std.NAME` lo
 | [std.vec2](vec2.md) | Vec2 construction and 2D vector math |
 | [std.vec3](vec3.md) | Vec3 construction and 3D vector math |
 | [std.collections](collections.md) | Checked integer/string lists, shuffle and pick |
+| [std.map](map.md) | Open-addressing `i64 -> i64` hash map (native-safe) |
+| [std.set](set.md) | `i64` set on top of `std.map` (native-safe) |
+| [std.deque](deque.md) | Double-ended `i64` queue over `ilist` (native-safe) |
 | [std.ui](ui.md) | Immediate-mode widgets and rectangle layout helpers |
 | [std.option](option.md) | Concrete `Option` enum with checked extraction and fallback helpers |
 | [std.result](result.md) | Concrete `Result` enum with checked extraction and error-text retrieval |

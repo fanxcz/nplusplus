@@ -1,0 +1,63 @@
+// Double-ended queue of i64 values over ilist handles.
+// push_front/pop_front are O(n) (memmove inside ilist); prefer ilist
+// directly when both ends are not needed.
+
+fn deque_new() -> i64 {
+    return ilist_new()
+}
+
+fn deque_push_back(d: i64, value: i64) -> bool {
+    return ilist_push_checked(d, value)
+}
+
+fn deque_push_front(d: i64, value: i64) -> bool {
+    return ilist_insert(d, 0, value)
+}
+
+fn deque_pop_back(d: i64, out: *i64) -> bool {
+    return ilist_try_pop(d, out)
+}
+
+fn deque_pop_front(d: i64, out: *i64) -> bool {
+    if ilist_len(d) == 0 {
+        return false
+    }
+    return ilist_remove(d, 0, out)
+}
+
+fn deque_front(d: i64, out: *i64) -> bool {
+    if ilist_len(d) == 0 {
+        return false
+    }
+    *out = ilist_get(d, 0)
+    return true
+}
+
+fn deque_back(d: i64, out: *i64) -> bool {
+    let n = ilist_len(d)
+    if n == 0 {
+        return false
+    }
+    *out = ilist_get(d, n - 1)
+    return true
+}
+
+fn deque_get(d: i64, index: i64, out: *i64) -> bool {
+    return ilist_try_get(d, index, out)
+}
+
+fn deque_set(d: i64, index: i64, value: i64) -> bool {
+    return ilist_set_checked(d, index, value)
+}
+
+fn deque_len(d: i64) -> i64 {
+    return ilist_len(d)
+}
+
+fn deque_clear(d: i64) -> bool {
+    return ilist_clear(d)
+}
+
+fn deque_free(d: i64) -> bool {
+    return ilist_free(d)
+}

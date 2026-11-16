@@ -1,0 +1,32 @@
+// Set of i64 values implemented on top of the IntMap hash table
+// (stdlib/map.npp). Membership is O(1) average; iteration order is
+// unspecified. Values are stored as key -> key.
+import std.map
+
+fn int_set_new() -> IntMap {
+    return map_new()
+}
+
+fn int_set_add(s: IntMap, value: i64) -> IntMap {
+    return map_set(s, value, value)
+}
+
+fn int_set_contains(s: IntMap, value: i64) -> bool {
+    return map_contains(s, value)
+}
+
+fn int_set_remove(s: IntMap, value: i64) -> bool {
+    return map_remove(s, value)
+}
+
+fn int_set_len(s: IntMap) -> i64 {
+    return map_len(s)
+}
+
+fn int_set_clear(s: IntMap) {
+    map_clear(s)
+}
+
+fn int_set_free(s: IntMap) {
+    map_free(s)
+}
