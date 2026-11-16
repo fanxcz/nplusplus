@@ -153,9 +153,13 @@ namespace npp::native {
             for (std::size_t k = 0; k < nargs; ++k) {
                 const std::int64_t src = 16 + static_cast<std::int64_t>(8 * (nargs - 1 - k));
                 const std::int64_t dst = slotOff(slots_[f.params[k].name]);
-                if (typeKind(f.params[k].type) == Kind::F64) {
+                const Kind pk = typeKind(f.params[k].type);
+                if (pk == Kind::F64) {
                     out_.movsdXmm0FromRbp(src);
                     out_.movsdXmm0ToRbp(dst);
+                } else if (pk == Kind::F32) {
+                    out_.movssXmm0FromRbp(src);
+                    out_.movssXmm0ToRbp(dst);
                 } else {
                     out_.movR11FromRbp(src);
                     out_.movRbpFromR11(dst);

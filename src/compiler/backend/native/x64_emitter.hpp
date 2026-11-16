@@ -1414,6 +1414,124 @@ namespace npp::native {
                 b(0x2E);
                 b(0xC1);
             }
+
+            // ---- SSE scalar single (f32) ----------------------------------
+            // f32 values live in the low 4 bytes of their 8-byte slot; only
+            // movss (F3 prefix) touches them. ucomiss has no prefix byte.
+
+            void sseSsLoadXmm0(std::int64_t off) { // movss xmm0, [rbp+off]
+                b(0xF3);
+                b(0x0F);
+                b(0x10);
+                sseMemModrm(0x45, 0x85, off);
+            }
+            void sseSsStoreXmm0(std::int64_t off) { // movss [rbp+off], xmm0
+                b(0xF3);
+                b(0x0F);
+                b(0x11);
+                sseMemModrm(0x45, 0x85, off);
+            }
+            void movssXmm0FromRbp(std::int64_t off) { sseSsLoadXmm0(off); }
+            void movssXmm0ToRbp(std::int64_t off) { sseSsStoreXmm0(off); }
+            void movssXmm0FromRsp() { // movss xmm0, [rsp]
+                b(0xF3);
+                b(0x0F);
+                b(0x10);
+                b(0x04);
+                b(0x24);
+            }
+            void movssXmm0ToRsp() { // movss [rsp], xmm0
+                b(0xF3);
+                b(0x0F);
+                b(0x11);
+                b(0x04);
+                b(0x24);
+            }
+            void movssXmm1Xmm0() { // movss xmm1, xmm0
+                b(0xF3);
+                b(0x0F);
+                b(0x10);
+                b(0xC8);
+            }
+            void movssXmm0Xmm1() { // movss xmm0, xmm1
+                b(0xF3);
+                b(0x0F);
+                b(0x10);
+                b(0xC1);
+            }
+            void ssArithXmm0Xmm1(std::uint8_t op) { // F3 0F op /r, xmm0 op= xmm1
+                b(0xF3);
+                b(0x0F);
+                b(op);
+                b(0xC1);
+            }
+            void addssXmm0Xmm1() { ssArithXmm0Xmm1(0x58); }
+            void subssXmm0Xmm1() { ssArithXmm0Xmm1(0x5C); }
+            void mulssXmm0Xmm1() { ssArithXmm0Xmm1(0x59); }
+            void divssXmm0Xmm1() { ssArithXmm0Xmm1(0x5E); }
+            void ucomissXmm0Xmm1() { // ucomiss xmm0, xmm1
+                b(0x0F);
+                b(0x2E);
+                b(0xC1);
+            }
+            void cvtss2sdXmm0Xmm0() { // cvtss2sd xmm0, xmm0
+                b(0xF3);
+                b(0x0F);
+                b(0x5A);
+                b(0xC0);
+            }
+            void cvtsd2ssXmm0Xmm0() { // cvtsd2ss xmm0, xmm0
+                b(0xF2);
+                b(0x0F);
+                b(0x5A);
+                b(0xC0);
+            }
+            void movdXmm0Eax() { // movd xmm0, eax
+                b(0x66);
+                b(0x0F);
+                b(0x6E);
+                b(0xC0);
+            }
+            void movdEaxXmm0() { // movd eax, xmm0
+                b(0x66);
+                b(0x0F);
+                b(0x7E);
+                b(0xC0);
+            }
+            void xorEaxImm32(std::uint32_t v) { // xor eax, imm32
+                b(0x35);
+                i32(v);
+            }
+            void movssXmm0FromRcxOff(std::int64_t off) { // movss xmm0, [rcx+off]
+                b(0xF3);
+                b(0x0F);
+                b(0x10);
+                if (off >= -128 && off <= 127)
+                    rcxDisp8(0x41, off);
+                else
+                    rcxDisp32(0x81, off);
+            }
+            void movssXmm0ToRcxOff(std::int64_t off) { // movss [rcx+off], xmm0
+                b(0xF3);
+                b(0x0F);
+                b(0x11);
+                if (off >= -128 && off <= 127)
+                    rcxDisp8(0x41, off);
+                else
+                    rcxDisp32(0x81, off);
+            }
+            void movssXmm0FromRcx() { // movss xmm0, [rcx]
+                b(0xF3);
+                b(0x0F);
+                b(0x10);
+                b(0x01);
+            }
+            void movssXmm0ToRcx() { // movss [rcx], xmm0
+                b(0xF3);
+                b(0x0F);
+                b(0x11);
+                b(0x01);
+            }
             void ucomisdXmm0Xmm2() { // ucomisd xmm0, xmm2
                 b(0x66);
                 b(0x0F);

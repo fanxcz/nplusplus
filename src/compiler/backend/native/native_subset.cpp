@@ -57,7 +57,8 @@ namespace npp::native {
 
             bool isScalar(const Type& t) {
                 return isNativeInt(t) || t.kind == TypeKind::Bool ||
-                       t.kind == TypeKind::String || t.kind == TypeKind::F64;
+                       t.kind == TypeKind::String || t.kind == TypeKind::F64 ||
+                       t.kind == TypeKind::F32;
             }
 
             Type voidT() {
@@ -142,6 +143,7 @@ namespace npp::native {
             case TypeKind::Bool:
             case TypeKind::String:
             case TypeKind::F64:
+            case TypeKind::F32:
             case TypeKind::Enum:
                 return true;
             case TypeKind::Array:
@@ -218,6 +220,8 @@ namespace npp::native {
                 return Kind::Str;
             case TypeKind::F64:
                 return Kind::F64;
+            case TypeKind::F32:
+                return Kind::F32;
             case TypeKind::Pointer:
                 return Kind::I64;
             case TypeKind::Array:
@@ -792,7 +796,7 @@ namespace npp::native {
                 if (!reason.empty())
                     return Type::void_();
                 if (u->op == TokenKind::Minus &&
-                    (isNativeInt(t) || t.kind == TypeKind::F64))
+                    (isNativeInt(t) || t.kind == TypeKind::F64 || t.kind == TypeKind::F32))
                     return t;
                 if (u->op == TokenKind::Bang && t.kind == TypeKind::Bool)
                     return boolT();
@@ -836,6 +840,8 @@ namespace npp::native {
                         return l;
                     if (l.kind == TypeKind::F64 && r.kind == TypeKind::F64)
                         return f64T();
+                    if (l.kind == TypeKind::F32 && r.kind == TypeKind::F32)
+                        return l;
                     if (l.kind == TypeKind::String && r.kind == TypeKind::String)
                         return strT();
                     break;
@@ -846,6 +852,8 @@ namespace npp::native {
                         return l;
                     if (l.kind == TypeKind::F64 && r.kind == TypeKind::F64)
                         return f64T();
+                    if (l.kind == TypeKind::F32 && r.kind == TypeKind::F32)
+                        return l;
                     break;
                 case TokenKind::Percent:
                     if (same && isNativeInt(l))
@@ -868,7 +876,9 @@ namespace npp::native {
                 case TokenKind::LessEqual:
                 case TokenKind::Greater:
                 case TokenKind::GreaterEqual:
-                    if (same && (isNativeInt(l) || l.kind == TypeKind::F64))
+                    if (same &&
+                        (isNativeInt(l) || l.kind == TypeKind::F64 ||
+                         l.kind == TypeKind::F32))
                         return boolT();
                     break;
                 case TokenKind::AndAnd:

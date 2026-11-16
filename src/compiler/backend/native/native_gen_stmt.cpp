@@ -15,8 +15,11 @@ namespace npp::native {
                 genExpr(l->init.get());
                 if (needsDup(l->init.get()))
                     genDupValue(exprType(l->init.get()));
-                if (exprKind(l->init.get()) == Kind::F64)
+                const Kind lk = exprKind(l->init.get());
+                if (lk == Kind::F64)
                     out_.movsdXmm0ToRbp(slotOff(slots_.at(l->name)));
+                else if (lk == Kind::F32)
+                    out_.movssXmm0ToRbp(slotOff(slots_.at(l->name)));
                 else
                     out_.movRbpFromRax(slotOff(slots_.at(l->name)));
                 return;
@@ -25,8 +28,11 @@ namespace npp::native {
                 genExpr(a->value.get());
                 if (needsDup(a->value.get()))
                     genDupValue(exprType(a->value.get()));
-                if (exprKind(a->value.get()) == Kind::F64)
+                const Kind ak2 = exprKind(a->value.get());
+                if (ak2 == Kind::F64)
                     out_.movsdXmm0ToRbp(slotOff(slots_.at(a->name)));
+                else if (ak2 == Kind::F32)
+                    out_.movssXmm0ToRbp(slotOff(slots_.at(a->name)));
                 else
                     out_.movRbpFromRax(slotOff(slots_.at(a->name)));
                 return;
@@ -216,6 +222,16 @@ namespace npp::native {
                 return;
             }
             if (const auto* x = dynamic_cast<const FloatExpr*>(e)) {
+                if (x->literalType.kind == TypeKind::F32) {
+                    // f32 literal: round the parsed double to float precision
+                    // and move the 32-bit pattern into xmm0 via eax.
+                    const float f = static_cast<float>(x->value);
+                    std::uint32_t bits = 0;
+                    std::memcpy(&bits, &f, sizeof(bits));
+                    out_.movEaxImm32(bits);
+                    out_.movdXmm0Eax();
+                    return;
+                }
                 std::uint64_t bits = 0;
                 std::memcpy(&bits, &x->value, sizeof(bits));
                 out_.movRaxImm64(bits);
@@ -223,8 +239,13 @@ namespace npp::native {
                 return;
             }
             if (const auto* x = dynamic_cast<const VarExpr*>(e)) {
-                if (localKind(x->name) == Kind::F64) {
+                const Kind vk = localKind(x->name);
+                if (vk == Kind::F64) {
                     out_.movsdXmm0FromRbp(slotOff(slots_.at(x->name)));
+                    return;
+                }
+                if (vk == Kind::F32) {
+                    out_.movssXmm0FromRbp(slotOff(slots_.at(x->name)));
                     return;
                 }
                 out_.movRaxFromRbp(slotOff(slots_.at(x->name)));
@@ -252,13 +273,19 @@ namespace npp::native {
                     return;
                 }
                 genExpr(u->rhs.get());
+                const Kind uk = exprKind(u->rhs.get());
                 if (u->op == TokenKind::Minus) {
-                    if (exprKind(u->rhs.get()) == Kind::F64) {
+                    if (uk == Kind::F64) {
                         // Flip the sign bit: xmm0 ^= 0x8000000000000000.
                         out_.movqRaxXmm0();
                         out_.movR11Imm64(0x8000000000000000ULL);
                         out_.xorRaxR11();
                         out_.movqXmm0Rax();
+                    } else if (uk == Kind::F32) {
+                        // Flip bit 31 of the low dword: the f32 sign bit.
+                        out_.movdEaxXmm0();
+                        out_.xorEaxImm32(0x80000000U);
+                        out_.movdXmm0Eax();
                     } else {
                         out_.negRax();
                         genNormalizeInt(exprType(u->rhs.get()).kind);
@@ -368,6 +395,71 @@ namespace npp::native {
                     default:
                         throw std::runtime_error(
                             "builtin native backend: unsupported f64 operator reached codegen");
+                    }
+                }
+                // f32 arithmetic and comparisons mirror the f64 path but use
+                // scalar-single (movss/addss/…) ops; results stay in xmm0.
+                if (exprKind(b->lhs.get()) == Kind::F32) {
+                    genExpr(b->lhs.get());
+                    out_.subRsp(16);
+                    out_.movssXmm0ToRsp();
+                    genExpr(b->rhs.get());
+                    out_.movssXmm1Xmm0();    // xmm1 = rhs
+                    out_.movssXmm0FromRsp(); // xmm0 = lhs
+                    out_.addRsp(16);
+                    switch (b->op) {
+                    case TokenKind::Plus:
+                        out_.addssXmm0Xmm1();
+                        return;
+                    case TokenKind::Minus:
+                        out_.subssXmm0Xmm1();
+                        return;
+                    case TokenKind::Star:
+                        out_.mulssXmm0Xmm1();
+                        return;
+                    case TokenKind::Slash:
+                        out_.divssXmm0Xmm1();
+                        return;
+                    case TokenKind::EqualEqual:
+                    case TokenKind::BangEqual:
+                    case TokenKind::Less:
+                    case TokenKind::LessEqual:
+                    case TokenKind::Greater:
+                    case TokenKind::GreaterEqual: {
+                        out_.ucomissXmm0Xmm1();
+                        const std::string unordered = out_.label("fcmp32.unordered");
+                        const std::string done = out_.label("fcmp32.done");
+                        out_.jcc(J_PE, unordered);
+                        switch (b->op) {
+                        case TokenKind::EqualEqual:
+                            out_.setcc(CC_E);
+                            break;
+                        case TokenKind::BangEqual:
+                            out_.setcc(CC_NE);
+                            break;
+                        case TokenKind::Less:
+                            out_.setcc(CC_B);
+                            break;
+                        case TokenKind::LessEqual:
+                            out_.setcc(CC_BE);
+                            break;
+                        case TokenKind::Greater:
+                            out_.setcc(CC_A);
+                            break;
+                        default:
+                            out_.setcc(CC_AE);
+                            break;
+                        }
+                        out_.movzxEaxAl();
+                        out_.jmp(done);
+                        out_.def(unordered);
+                        out_.xorEax();
+                        out_.def(done);
+                        return;
+                    }
+                    default:
+                        throw std::runtime_error(
+                            "builtin native backend: unsupported f32 operator reached codegen");
                     }
                 }
                 genExpr(b->lhs.get());
@@ -820,6 +912,8 @@ namespace npp::native {
                     const Kind ak = exprKind(c->args[ai].get());
                     if (ak == Kind::F64)
                         out_.movqRaxXmm0(); // pass the raw double bits on the stack
+                    else if (ak == Kind::F32)
+                        out_.movdEaxXmm0(); // f32 bits zero-extended into rax
                     else if (ak == Kind::Ptr) {
                         // Aggregate arguments are copied so the callee cannot
                         // mutate the caller's block (value semantics). Slices
@@ -957,6 +1051,8 @@ namespace npp::native {
                     genExpr(ev->payload.get());
                     if (var->payload->kind == TypeKind::F64)
                         out_.movqRaxXmm0(); // raw double bits into the payload slot
+                    else if (var->payload->kind == TypeKind::F32)
+                        out_.movdEaxXmm0(); // f32 bits zero-extended into rax
                 } else {
                     out_.xorEax();
                 }
@@ -1063,6 +1159,9 @@ namespace npp::native {
             if (ek == Kind::F64) {
                 out_.movsdXmm0FromRcx();
                 out_.movsdXmm0ToRbp(slotOff(slots_.at(f->name)));
+            } else if (ek == Kind::F32) {
+                out_.movssXmm0FromRcx();
+                out_.movssXmm0ToRbp(slotOff(slots_.at(f->name)));
             } else {
                 out_.movRaxFromRcx();
                 // Slices/enums share their immutable header block; only true
@@ -1157,6 +1256,9 @@ namespace npp::native {
                     if (bindType.kind == TypeKind::F64) {
                         out_.movqXmm0Rax();
                         out_.movsdXmm0ToRbp(bindOff);
+                    } else if (bindType.kind == TypeKind::F32) {
+                        out_.movdXmm0Eax(); // payload bits -> xmm0 low dword
+                        out_.movssXmm0ToRbp(bindOff);
                     } else {
                         out_.movRbpFromRax(bindOff);
                     }
@@ -1203,6 +1305,11 @@ namespace npp::native {
                 out_.call("__nx_print_bool");
             else if (exprIsF64(arg))
                 out_.call("__nx_print_f64");
+            else if (exprKind(arg) == Kind::F32) {
+                // Match the LLVM backend: fpext to double, then f64 print.
+                out_.cvtss2sdXmm0Xmm0();
+                out_.call("__nx_print_f64");
+            }
             else if (exprType(arg).kind == TypeKind::U64)
                 out_.call("__nx_print_u64");
             else
@@ -1462,6 +1569,8 @@ namespace npp::native {
         void Generator::genLoadFromRcx(Kind k) {
             if (k == Kind::F64)
                 out_.movsdXmm0FromRcx();
+            else if (k == Kind::F32)
+                out_.movssXmm0FromRcx();
             else
                 out_.movRaxFromRcx();
         }
@@ -1469,6 +1578,8 @@ namespace npp::native {
         void Generator::genStoreToRcx(Kind k) {
             if (k == Kind::F64)
                 out_.movsdXmm0ToRcx();
+            else if (k == Kind::F32)
+                out_.movssXmm0ToRcx();
             else
                 out_.movToRcxFromRax();
         }
@@ -1529,11 +1640,15 @@ namespace npp::native {
             genLoadFromRcx(k);
             if (k == Kind::F64)
                 out_.movsdXmm0ToRbp(slotOff(slots_.at(pr.first)));
+            else if (k == Kind::F32)
+                out_.movssXmm0ToRbp(slotOff(slots_.at(pr.first)));
             else
                 out_.movRbpFromRax(slotOff(slots_.at(pr.first)));
             genExpr(value);
             if (k == Kind::F64)
                 out_.movsdXmm0ToRbp(slotOff(slots_.at(pr.second)));
+            else if (k == Kind::F32)
+                out_.movssXmm0ToRbp(slotOff(slots_.at(pr.second)));
             else
                 out_.movRbpFromRax(slotOff(slots_.at(pr.second)));
             BinaryExpr combined(

@@ -32,7 +32,8 @@ bundled wrapper — see `npp doctor`).
 
 - Types: `i64`, `bool`, `string`, `f64`, `void`, fixed-width integers
   (`i8`/`i16`/`i32`, `u8`/`u16`/`u32`/`u64`) with wrap-around arithmetic,
-  sign/zero-extension and unsigned comparisons/division, fixed-size arrays
+  sign/zero-extension and unsigned comparisons/division, `f32` (scalar-
+  single SSE ops, fpext-to-double printing like LLVM), fixed-size arrays
   (`[T; n]` syntax in annotations, `[a, b, c]` literals), structs whose
   fields are themselves supported types (including nesting), and pointers
   (`*T`, `&x`, `*p` dereference and `*p = v`) used for output parameters

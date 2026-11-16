@@ -81,6 +81,7 @@ if(NOT narrow_run_rc EQUAL 0 OR NOT narrow_run_out STREQUAL "7")
 endif()
 
 if(NPP_NATIVE_BACKEND_SUPPORTED)
+# f32 is supported natively too (scalar-single SSE ops).
 set(FLOAT_SOURCE "${SCRATCH}/native_float.npp")
 file(WRITE "${FLOAT_SOURCE}" "fn main() { let value: f32 = 1.5; print(value) }\n")
 execute_process(
@@ -90,8 +91,18 @@ execute_process(
   ERROR_VARIABLE float_err
 )
 set(float_combined "${float_out}\n${float_err}")
-if(float_rc EQUAL 0 OR NOT float_combined MATCHES "outside the builtin native v0 subset")
-  message(FATAL_ERROR "native backend accepted f32 without other unsupported constructs:\n${float_combined}")
+if(NOT float_rc EQUAL 0)
+  message(FATAL_ERROR "native backend rejected f32:\n${float_combined}")
+endif()
+execute_process(
+  COMMAND "${SCRATCH}/native_float"
+  RESULT_VARIABLE float_run_rc
+  OUTPUT_VARIABLE float_run_out
+  ERROR_VARIABLE float_run_err
+)
+string(STRIP "${float_run_out}" float_run_out)
+if(NOT float_run_rc EQUAL 0 OR NOT float_run_out STREQUAL "1.5")
+  message(FATAL_ERROR "native backend produced an incorrect f32 result:\n${float_run_out}\n${float_run_err}")
 endif()
 
 endif()
