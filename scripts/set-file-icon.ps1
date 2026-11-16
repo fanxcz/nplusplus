@@ -33,20 +33,22 @@ if (-not $Icon) {
     elseif (Test-Path $installed) { $Icon = $installed }
 }
 
-function Reg-Add([string]$Key, [string]$Name, [string]$Value, [string]$Type = 'REG_SZ') {
-    $args = @('add', "HKCU\$Key", '/f', '/v', $Name, '/t', $Type, '/d', $Value)
-    & reg.exe @args | Out-Null
-    if ($LASTEXITCODE -ne 0) { throw "reg add failed: HKCU\$Key $Name" }
+# RegistryKey.SetValue preserves embedded quotes (unlike reg.exe /d) and
+# does not disturb sibling values the way New-Item -Force can.
+function Reg-Default([string]$Key, [string]$Value) {
+    $k = [Microsoft.Win32.Registry]::CurrentUser.CreateSubKey($Key)
+    $k.SetValue('', $Value)
+    $k.Close()
 }
-function Reg-Add-Default([string]$Key, [string]$Value) {
-    $args = @('add', "HKCU\$Key", '/f', '/ve', '/d', $Value)
-    & reg.exe @args | Out-Null
-    if ($LASTEXITCODE -ne 0) { throw "reg add failed: HKCU\$Key (default)" }
+function Reg-Value([string]$Key, [string]$Name, [string]$Value) {
+    $k = [Microsoft.Win32.Registry]::CurrentUser.CreateSubKey($Key)
+    $k.SetValue($Name, $Value)
+    $k.Close()
 }
 
 if ($Unregister) {
-    & reg.exe delete 'HKCU\Software\Classes\.npp' /f 2>$null | Out-Null
-    & reg.exe delete 'HKCU\Software\Classes\NPP.SourceFile' /f 2>$null | Out-Null
+    Remove-Item -Recurse -Force 'HKCU:\Software\Classes\.npp' -ErrorAction SilentlyContinue
+    Remove-Item -Recurse -Force 'HKCU:\Software\Classes\NPP.SourceFile' -ErrorAction SilentlyContinue
     ie4uinit.exe -show 2>$null | Out-Null
     Write-Host 'Removed .npp file association (HKCU).'
     return
@@ -62,20 +64,20 @@ if (-not $Icon -or -not (Test-Path $Icon)) {
 $iconRef = '"' + $Icon + '"'
 $exe = '"' + $NppExe + '"'
 
-Reg-Add-Default 'Software\Classes\.npp' 'NPP.SourceFile'
-Reg-Add 'Software\Classes\.npp' 'Content Type' 'text/plain'
+Reg-Default 'Software\Classes\.npp' 'NPP.SourceFile'
+Reg-Value  'Software\Classes\.npp' 'Content Type' 'text/plain'
 
-Reg-Add-Default 'Software\Classes\NPP.SourceFile' 'N++ source file'
-Reg-Add 'Software\Classes\NPP.SourceFile' 'DefaultIcon' $iconRef
-Reg-Add-Default 'Software\Classes\NPP.SourceFile\shell\open\command' "$exe `"%1`""
-Reg-Add-Default 'Software\Classes\NPP.SourceFile\shell\run' 'Run with N++'
-Reg-Add 'Software\Classes\NPP.SourceFile\shell\run' 'Icon' $iconRef
-Reg-Add-Default 'Software\Classes\NPP.SourceFile\shell\run\command' "$exe run `"%1`""
+Reg-Default 'Software\Classes\NPP.SourceFile' 'N++ source file'
+Reg-Value  'Software\Classes\NPP.SourceFile' 'DefaultIcon' $iconRef
+Reg-Default 'Software\Classes\NPP.SourceFile\shell\open\command' "$exe `"%1`""
+Reg-Default 'Software\Classes\NPP.SourceFile\shell\run' 'Run with N++'
+Reg-Value  'Software\Classes\NPP.SourceFile\shell\run' 'Icon' $iconRef
+Reg-Default 'Software\Classes\NPP.SourceFile\shell\run\command' "$exe run `"%1`""
 
 # Refresh Explorer so the new icon shows up without a reboot.
 ie4uinit.exe -show 2>$null | Out-Null
 
 Write-Host "Associated .npp with N++:"
-Write-Host "  open : $exe %1"
-Write-Host "  run  : $exe run %1"
+Write-Host "  open : $exe `"%1`""
+Write-Host "  run  : $exe run `"%1`""
 Write-Host "  icon : $Icon"
