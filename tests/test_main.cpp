@@ -894,8 +894,9 @@ int main() {
             npp::SemanticAnalyzer().analyze(r);
             if (!npp::native::supports(r, reason))
                 return 10;
-            // ...while constructs outside the subset are still rejected.
-            auto s2 = parse("enum E { A, B } fn main(){ print(1) }");
+            // ...while constructs outside the subset are still rejected
+            // (enums and enum match are supported; non-enum match is not).
+            auto s2 = parse("fn main(){ let x: i64 = 1; match x { _ => { print(1) } } }");
             npp::SemanticAnalyzer().analyze(s2);
             if (npp::native::supports(s2, reason))
                 return 10;

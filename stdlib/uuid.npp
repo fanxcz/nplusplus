@@ -1,0 +1,75 @@
+// RFC 4122 version 4 UUID generation from the runtime random source.
+// Returns the canonical 8-4-4-4-12 hexadecimal form (36 characters).
+
+fn uuid_hex_digit(value: i64) -> string {
+    if value < 10 {
+        return string.from_char(48 + value);
+    }
+    return string.from_char(87 + value);
+}
+
+fn uuid_hex_byte(value: i64) -> string {
+    let hi = (value >> 4) & 15;
+    let lo = value & 15;
+    return uuid_hex_digit(hi) + uuid_hex_digit(lo);
+}
+
+fn uuid_random_byte() -> i64 {
+    return random_i64(0, 255);
+}
+
+fn uuid_group(count: i64) -> string {
+    let mut out = "";
+    let mut i: i64 = 0;
+    while i < count {
+        out += uuid_hex_byte(uuid_random_byte());
+        i += 1;
+    }
+    return out;
+}
+
+fn uuid_v4() -> string {
+    let mut out = uuid_group(4);
+    out += "-";
+    out += uuid_group(2);
+    out += "-";
+    // Version nibble: high nibble of byte 6 is 0100 (version 4),
+    // followed by 12 random bits (3 hex digits).
+    out += "4";
+    out += uuid_hex_digit(uuid_random_byte() & 15);
+    out += uuid_hex_digit(uuid_random_byte() & 15);
+    out += uuid_hex_digit(uuid_random_byte() & 15);
+    out += "-";
+    // Variant bits: top two bits of the clock-seq high byte are 10xx,
+    // then 6 random bits; the low clock-seq byte is fully random.
+    out += uuid_hex_digit(8 + (uuid_random_byte() & 3));
+    out += uuid_hex_digit(uuid_random_byte() & 15);
+    out += uuid_hex_byte(uuid_random_byte());
+    out += "-";
+    out += uuid_group(6);
+    return out;
+}
+
+fn uuid_valid(text: string) -> bool {
+    if string.len(text) != 36 {
+        return false;
+    }
+    let mut i: i64 = 0;
+    while i < 36 {
+        let c = string.byte_at(text, i);
+        let is_dash = i == 8 || i == 13 || i == 18 || i == 23;
+        if is_dash {
+            if c != 45 {
+                return false;
+            }
+        } else {
+            let is_hex = (c >= 48 && c <= 57) || (c >= 97 && c <= 102) ||
+                         (c >= 65 && c <= 70);
+            if !is_hex {
+                return false;
+            }
+        }
+        i += 1;
+    }
+    return true;
+}

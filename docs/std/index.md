@@ -38,6 +38,9 @@ The checked-in standard library is deliberately small. Each `import std.NAME` lo
 | [std.sprite2d](sprite2d.md) | Texture and sprite-sheet drawing |
 | [std.camera2d](camera2d.md) | Camera wrappers |
 | [std.audio2d](audio2d.md) | Optional audio wrappers |
+| [std.base64](base64.md) | RFC 4648 base64 encode/decode (native-safe) |
+| [std.uuid](uuid.md) | Version-4 UUID generation and validation (native-safe) |
+| [std.datetime](datetime.md) | Epoch-ms to UTC date/time formatting (native-safe) |
 
 ## Combined example
 

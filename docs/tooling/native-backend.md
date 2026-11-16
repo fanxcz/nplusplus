@@ -83,7 +83,7 @@ bundled wrapper — see `npp doctor`).
   `random`, `time`, `memory`, `collections` (with `defer` cleanup),
   `physics2d`, `collision2d`, `tilemap`, `vec2`, `vec3`, `animation2d`,
   `option`, `result`.
-- Memory: strings live in a 16 MiB bump arena reserved at startup and
+- Memory: strings live in a 64 MiB bump arena reserved at startup and
   released at process exit. Exhausting it ends the program with a clean
   `out of string memory` error instead of corrupting memory. There is no
   per-allocation heap overhead and no leak across runs.
