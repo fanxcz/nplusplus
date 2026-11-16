@@ -88,6 +88,13 @@ namespace npp::native {
                     return false;
                 }
                 return supportedType(*t.element, structs, reason, depth + 1);
+            case TypeKind::Slice:
+                if (!t.element) {
+                    reason = "malformed slice type is outside the " + std::string(kSubset) +
+                             " (use --backend llvm)";
+                    return false;
+                }
+                return supportedType(*t.element, structs, reason, depth + 1);
             case TypeKind::Pointer:
                 if (!t.pointee) {
                     reason = "malformed pointer type is outside the " + std::string(kSubset) +
@@ -145,6 +152,7 @@ namespace npp::native {
                 return Kind::I64;
             case TypeKind::Array:
             case TypeKind::Struct:
+            case TypeKind::Slice:
                 return Kind::Ptr;
             default:
                 return Kind::Void;
@@ -181,9 +189,10 @@ namespace npp::native {
                 const Type a = checkExpr(c->args[0].get(), env, fns, structs, reason);
                 if (!reason.empty())
                     return i64T();
-                if (a.kind == TypeKind::String || a.kind == TypeKind::Array)
+                if (a.kind == TypeKind::String || a.kind == TypeKind::Array ||
+                    a.kind == TypeKind::Slice)
                     return i64T();
-                reason = "len() expects a string or fixed-size array";
+                reason = "len() expects a string, slice, or fixed-size array";
                 return i64T();
             }
             const auto it = fns.find(c->callee);
@@ -828,9 +837,10 @@ namespace npp::native {
                 const Type idx = checkExpr(x->index.get(), env, fns, structs, reason);
                 if (!reason.empty())
                     return Type::void_();
-                if (obj.kind != TypeKind::Array) {
-                    reason = "indexing is only supported on fixed-size arrays in the builtin "
-                             "native v0 subset (slices and strings need --backend llvm)";
+                if (obj.kind != TypeKind::Array && obj.kind != TypeKind::Slice) {
+                    reason = "indexing is only supported on fixed-size arrays and read-only "
+                             "slices in the builtin native v0 subset (strings and mutable "
+                             "slices need --backend llvm)";
                     return Type::void_();
                 }
                 if (idx.kind != TypeKind::I64) {
@@ -884,6 +894,28 @@ namespace npp::native {
                     }
                 }
                 return Type::named(s->typeName);
+            }
+            if (const auto* sl = dynamic_cast<const SliceExpr*>(e)) {
+                const Type obj = checkExpr(sl->object.get(), env, fns, structs, reason);
+                if (!reason.empty())
+                    return Type::void_();
+                if ((obj.kind != TypeKind::Array && obj.kind != TypeKind::Slice) ||
+                    !obj.element) {
+                    reason = "slice source must be an array or slice in the builtin native "
+                             "v0 subset";
+                    return Type::void_();
+                }
+                const Type st = checkExpr(sl->start.get(), env, fns, structs, reason);
+                if (!reason.empty())
+                    return Type::void_();
+                const Type en = checkExpr(sl->end.get(), env, fns, structs, reason);
+                if (!reason.empty())
+                    return Type::void_();
+                if (st.kind != TypeKind::I64 || en.kind != TypeKind::I64) {
+                    reason = "slice bounds must be i64 in the builtin native v0 subset";
+                    return Type::void_();
+                }
+                return Type::slice(*obj.element);
             }
             reason = "this expression is outside the builtin native v0 subset "
                      "(slices, enums, and match values need --backend llvm)";
@@ -1119,10 +1151,10 @@ namespace npp::native {
                     const Type ct = checkExpr(loop->collection.get(), env, fns, structs, reason);
                     if (!reason.empty())
                         return;
-                    if (ct.kind != TypeKind::Array) {
-                        reason = "for-in iteration is only supported over fixed-size arrays in "
-                                 "the builtin native v0 subset (strings and slices need "
-                                 "--backend llvm)";
+                    if (ct.kind != TypeKind::Array && ct.kind != TypeKind::Slice) {
+                        reason = "for-in iteration is only supported over fixed-size arrays "
+                                 "and read-only slices in the builtin native v0 subset "
+                                 "(strings and mutable slices need --backend llvm)";
                         return;
                     }
                     elemType = *ct.element;

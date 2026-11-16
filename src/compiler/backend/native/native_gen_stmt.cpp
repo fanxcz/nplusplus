@@ -635,6 +635,12 @@ namespace npp::native {
                         out_.movRaxImm64(at.arraySize);
                         return;
                     }
+                    if (at.kind == TypeKind::Slice) {
+                        genExpr(c->args[0].get());
+                        out_.movRcxRax();
+                        out_.movRaxFromRcxOff(8);
+                        return;
+                    }
                     genExpr(c->args[0].get());
                     out_.call("__nx_string_len");
                     return;
@@ -791,9 +797,11 @@ namespace npp::native {
                         out_.movqRaxXmm0(); // pass the raw double bits on the stack
                     else if (ak == Kind::Ptr) {
                         // Aggregate arguments are copied so the callee cannot
-                        // mutate the caller's block (value semantics).
+                        // mutate the caller's block (value semantics). Slices
+                        // are non-owning views and pass through unchanged.
                         const auto sit = sigs_.find(c->callee);
-                        if (sit != sigs_.end() && ai < sit->second.params.size())
+                        if (sit != sigs_.end() && ai < sit->second.params.size() &&
+                            sit->second.params[ai].kind != TypeKind::Slice)
                             genDupValue(sit->second.params[ai]);
                     }
                     out_.pushRax();
@@ -823,12 +831,81 @@ namespace npp::native {
                 genExpr(x->object.get());
                 out_.pushRax();
                 genExpr(x->index.get());
+                if (ot.kind == TypeKind::Slice) {
+                    // Slice value = pointer to a {data, len} block.
+                    out_.movRdxRax(); // idx
+                    out_.popRcx();    // block
+                    out_.movRaxFromRcxOff(8);
+                    out_.cmpRdxRax(); // CF iff idx <u len
+                    const std::string ok = out_.label("sidx.ok");
+                    out_.jcc(J_B, ok);
+                    out_.jmp("__nx_oob");
+                    out_.def(ok);
+                    out_.movRaxFromRcx(); // data ptr
+                    out_.shlRdxImm8(3);
+                    out_.addRaxRdx();
+                    out_.movRcxRax();
+                    genLoadFromRcx(kindOf(*ot.element));
+                    return;
+                }
                 genIndexCheck(ot.arraySize);
                 out_.movRdxRax();
                 out_.shlRdxImm8(3);
                 out_.popRcx();
                 out_.addRcxRdx();
                 genLoadFromRcx(kindOf(*ot.element));
+                return;
+            }
+            if (const auto* sl = dynamic_cast<const SliceExpr*>(e)) {
+                // values[start..end] -> pointer to a fresh {data+start*8, end-start}
+                // block. Unsigned compares implement 0 <= start <= end <= len.
+                const Type ot = exprType(sl->object.get());
+                genExpr(sl->object.get());
+                out_.pushRax();
+                genExpr(sl->start.get());
+                out_.pushRax();
+                genExpr(sl->end.get());
+                out_.pushRax();
+                out_.popRcx(); // end
+                out_.popRdx(); // start
+                out_.popRax(); // source (array block or slice block)
+                out_.movRdiRcx();
+                if (ot.kind == TypeKind::Slice) {
+                    out_.movRsiFromRaxPtr(); // data
+                    out_.movRcxRax();
+                    out_.movRaxFromRcxOff(8); // len
+                } else {
+                    out_.movRsiRax(); // array block base is the data
+                    out_.movRaxImm64(ot.arraySize);
+                }
+                const std::string fail = out_.label("slice.bad");
+                const std::string done = out_.label("slice.done");
+                // len - end >=u 0  (end <=u len)
+                out_.movRcxRdi();
+                out_.subRaxRcx();
+                out_.jcc(J_B, fail);
+                // end - start >=u 0 (start <=u end); rcx = result length
+                out_.movRcxRdi();
+                out_.subRcxRdx();
+                out_.jcc(J_B, fail);
+                // rax = data + start*8
+                out_.movRaxRdx();
+                out_.shlRaxImm8(3);
+                out_.addRaxRsi();
+                out_.pushRcx(); // len
+                out_.pushRax(); // data ptr
+                out_.movRaxImm64(16);
+                out_.call("__nx_alloc");
+                out_.movRcxRax(); // block
+                out_.popRax();
+                out_.movToRcxFromRax(); // [block] = data ptr
+                out_.popRax();
+                out_.movToRcxFromRaxOff(8); // [block+8] = len
+                out_.movRaxRcx();
+                out_.jmp(done);
+                out_.def(fail);
+                out_.jmp("__nx_oob");
+                out_.def(done);
                 return;
             }
             if (const auto* m = dynamic_cast<const MemberExpr*>(e)) {
@@ -878,6 +955,7 @@ namespace npp::native {
 
         void Generator::genForCollection(const ForStmt* f) {
             const Type ct = exprType(f->collection.get());
+            const bool isSlice = ct.kind == TypeKind::Slice;
             const Type et = ct.element ? *ct.element : Type::i64();
             const Kind ek = kindOf(et);
             const auto& names = forIterNames_.at(f);
@@ -897,12 +975,25 @@ namespace npp::native {
 
             out_.jmp(cond);
             out_.def(cond);
-            out_.movRaxFromRbp(slotOff(slots_.at(idxName)));
-            out_.cmpRaxImm32(static_cast<std::uint32_t>(ct.arraySize));
-            out_.jcc(J_AE, end);
+            if (isSlice) {
+                // Slice header block: {data, len}; index against runtime len.
+                out_.movRcxFromRbp(slotOff(slots_.at(ptrName)));
+                out_.movRaxFromRcxOff(8);
+                out_.movRdxFromRbp(slotOff(slots_.at(idxName)));
+                out_.cmpRdxRax(); // CF iff idx <u len
+                out_.jcc(J_AE, end);
+            } else {
+                out_.movRaxFromRbp(slotOff(slots_.at(idxName)));
+                out_.cmpRaxImm32(static_cast<std::uint32_t>(ct.arraySize));
+                out_.jcc(J_AE, end);
+            }
             out_.def(body);
             // &elem = ptr + idx*8
             out_.movRcxFromRbp(slotOff(slots_.at(ptrName)));
+            if (isSlice) {
+                out_.movRaxFromRcx(); // data ptr
+                out_.movRcxRax();
+            }
             out_.movRdxFromRbp(slotOff(slots_.at(idxName)));
             out_.shlRdxImm8(3);
             out_.addRcxRdx();
@@ -1065,8 +1156,14 @@ namespace npp::native {
             }
             if (const auto* x = dynamic_cast<const IndexExpr*>(e)) {
                 const Type ot = exprType(x->object.get());
-                if (ot.kind == TypeKind::Array && ot.element)
+                if ((ot.kind == TypeKind::Array || ot.kind == TypeKind::Slice) && ot.element)
                     return *ot.element;
+                return Type::void_();
+            }
+            if (const auto* sl = dynamic_cast<const SliceExpr*>(e)) {
+                const Type ot = exprType(sl->object.get());
+                if ((ot.kind == TypeKind::Array || ot.kind == TypeKind::Slice) && ot.element)
+                    return Type::slice(*ot.element);
                 return Type::void_();
             }
             if (const auto* m = dynamic_cast<const MemberExpr*>(e)) {
@@ -1135,7 +1232,8 @@ namespace npp::native {
                     if (f->name == name) {
                         if (f->collection) {
                             const Type ct = exprType(f->collection.get());
-                            if (ct.kind == TypeKind::Array && ct.element) {
+                            if ((ct.kind == TypeKind::Array || ct.kind == TypeKind::Slice) &&
+                                ct.element) {
                                 found = *ct.element;
                                 ok = true;
                             }
@@ -1178,6 +1276,10 @@ namespace npp::native {
 
         bool Generator::needsDup(const Expr* e) {
             if (exprKind(e) != Kind::Ptr)
+                return false;
+            // Slices are non-owning {data, len} views: copying shares the
+            // immutable header block, matching LLVM value semantics.
+            if (exprType(e).kind == TypeKind::Slice)
                 return false;
             return !dynamic_cast<const ArrayExpr*>(e) && !dynamic_cast<const StructInitExpr*>(e);
         }

@@ -58,8 +58,14 @@ namespace npp::native {
             void popRcx() {
                 b(0x59);
             }
+            void popRdx() {
+                b(0x5A);
+            }
             void pushRcx() {
                 b(0x51);
+            }
+            void pushRdx() {
+                b(0x52);
             }
             void movRcxFromRsp() { // mov rcx, [rsp]
                 b(0x48);
@@ -1116,6 +1122,16 @@ namespace npp::native {
                 b(0x48);
                 b(0x89);
                 b(0xFE);
+            }
+            void movRcxRdi() { // mov rcx, rdi
+                b(0x48);
+                b(0x89);
+                b(0xF9);
+            }
+            void subRcxRdx() { // sub rcx, rdx
+                b(0x48);
+                b(0x29);
+                b(0xD1);
             }
             void subRdxRax() { // sub rdx, rax
                 b(0x48);

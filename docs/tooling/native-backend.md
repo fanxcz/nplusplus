@@ -87,7 +87,13 @@ bundled wrapper — see `npp doctor`).
   `out of string memory` error instead of corrupting memory. There is no
   per-allocation heap overhead and no leak across runs.
 
-Everything else (slices, enums, `match`, JSON/SHA-256, networking,
+- Read-only slices `[]T`: `values[start..end]` produces a non-owning
+  `{data, len}` view (16-byte arena header), with unsigned bounds
+  checks, indexing, `len`, nested slicing, parameters/returns, and
+  pass-through call arguments. Mutable slices `mut []T` remain
+  LLVM-only.
+
+Everything else (mutable slices, enums, `match`, JSON/SHA-256, networking,
 graphics/audio/UI/ECS/database builtins, `extern`, `system()`) is
 rejected with a precise `outside the builtin native v0 subset` reason
 naming the construct and function. The LLVM-only stdlib modules are

@@ -52,15 +52,22 @@ if(NOT DEFINED NPP_NATIVE_BACKEND_SUPPORTED)
   set(NPP_NATIVE_BACKEND_SUPPORTED ON)
 endif()
 if(NPP_NATIVE_BACKEND_SUPPORTED)
-# The explicit native backend must reject slices rather than emitting invalid code.
+# The native backend supports read-only slices and must produce identical output.
+set(NATIVE_EXE "${SCRATCH}/basic-native${SUFFIX}")
 execute_process(
-  COMMAND "${NPP_BIN}" build "${PROGRAM_DIR}/basic.npp" -o "${SCRATCH}/basic-native${SUFFIX}" --backend native
+  COMMAND "${NPP_BIN}" build "${PROGRAM_DIR}/basic.npp" -o "${NATIVE_EXE}" --backend native
   RESULT_VARIABLE native_rc OUTPUT_VARIABLE native_out ERROR_VARIABLE native_err)
-if(native_rc EQUAL 0)
-  message(FATAL_ERROR "native backend unexpectedly accepted the slice program")
+if(NOT native_rc EQUAL 0)
+  message(FATAL_ERROR "native backend rejected the read-only slice program:\n${native_out}\n${native_err}")
 endif()
-if(NOT "${native_out}${native_err}" MATCHES "outside the builtin native")
-  message(FATAL_ERROR "native backend rejected slices without an actionable diagnostic: ${native_out}${native_err}")
+execute_process(COMMAND "${NATIVE_EXE}" RESULT_VARIABLE native_rc OUTPUT_VARIABLE native_got ERROR_VARIABLE native_err)
+if(NOT native_rc EQUAL 0)
+  message(FATAL_ERROR "native slice executable failed with ${native_rc}: ${native_err}")
+endif()
+string(REPLACE "\r\n" "\n" native_got "${native_got}")
+string(REGEX REPLACE "\n+$" "" native_got "${native_got}")
+if(NOT native_got STREQUAL expected)
+  message(FATAL_ERROR "native slice output mismatch:\n--- got ---\n${native_got}\n--- expected ---\n${expected}")
 endif()
 endif()
 

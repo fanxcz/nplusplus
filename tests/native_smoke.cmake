@@ -67,6 +67,7 @@ check_native(sys_io "true\nfalse\nfalse\ntrue")
 check_native(lists "3\n20\n99\ntrue\n30\ntrue\n30\n2\n7\ntrue\n7\n2\ntrue\ntrue\n0\ntrue\n0\n3\nalpha\ngamma\ntrue\nbeta\ntrue\ngamma\ntrue\nmid\ntrue\nalpha\ntrue\nnew\ntrue")
 check_native(math_phys "4\n1.4142135623731\n0\n1\n1\n-1\n1\n0.785398163397448\n2.35619449019234\n1024\n2\n0.01\n3\n-4\n4\n-3\ntrue\nfalse\nfalse\ntrue")
 check_native(defer "2\ntwo items\ncleanup ran")
+check_native(slices "4\n2\n10\n20\n30\n1\n20\n0\n2\n10\n60")
 
 # input.npp reads one line from stdin; pipe a fixed name in.
 if(WIN32)

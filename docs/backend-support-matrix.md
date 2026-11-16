@@ -16,7 +16,7 @@ This matrix records evidence in the source tree at the current baseline. "Suppor
 | Fixed-width integers (`i8/i16/i32`, `u8/u16/u32/u64`) and `f32` | Not supported | Supported for documented scalar lowering paths | 1.0.0 changelog; native subset excludes these types |
 | `f64` and floating-point expressions | Supported (SSE2 scalar ops, `f64` params/returns, formatting/parsing) | Supported for documented builtins/expressions | Native fixtures (`f64.npp`, `input_f64.npp`); LLVM math tests exist |
 | Fixed arrays | Supported (arena blocks, bounds-checked indexing, `len`, copy semantics) | Supported for tested declarations, indexing and aggregate paths | Native fixtures (`arrays.npp`); regression tests exist |
-| Read-only slices `[]T` | Not supported | Supported for tested slice expressions, indexing, parameters and returns | Unreleased changelog and `tests/slice_llvm_smoke.cmake` |
+| Read-only slices `[]T` | Supported (non-owning `{data,len}` view, bounds-checked indexing, `len`, nesting, params/returns) | Supported for tested slice expressions, indexing, parameters and returns | Native fixture `tests/native_programs/slices.npp`; `tests/slice_llvm_smoke.cmake` |
 | Mutable slices `mut []T` | Not supported | Supported for documented lexical exclusive-borrow subset | Unreleased changelog and `tests/mutable_slice_smoke.cmake` |
 | Structs (fields, member access/assignment, params/returns, nesting) | Supported (arena blocks, deep-copy value semantics) | Supported for tested declaration, construction and access paths | Native fixtures (`structs.npp`); regression tests exist |
 | Enum payloads | Not supported | Supported for tested declaration, construction and access paths | Native subset excludes enums |
