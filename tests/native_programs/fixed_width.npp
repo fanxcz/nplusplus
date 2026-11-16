@@ -1,0 +1,38 @@
+fn add_i8(left: i8, right: i8) -> i8 {
+    return left + right
+}
+
+fn half_u32(value: u32) -> u32 {
+    return value / 2
+}
+
+fn main() {
+    let a: i8 = 100
+    let b: i8 = 100
+    print(a + b)
+    print(-a)
+    let u: u8 = 200
+    print(u)
+    print(u / 3)
+    print(u % 7)
+    print(u >> 1)
+    let big: u64 = 18446744073709551615
+    print(big)
+    print(big / 10)
+    let w: u32 = 4294967295
+    print(w)
+    print(w + 1)
+    let s: i16 = -300
+    print(s * 2)
+    print(add_i8(-100, -100))
+    print(half_u32(100))
+    if u > 100 {
+        print("u gt")
+    }
+    if s < 0 {
+        print("s lt")
+    }
+    let m: i32 = -7
+    print(m % 3)
+    print(m / 2)
+}

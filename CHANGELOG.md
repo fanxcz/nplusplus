@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Native backend fixed-width integers: `i8`/`i16`/`i32` and
+  `u8`/`u16`/`u32`/`u64` now compile to machine code with canonical
+  sign/zero-extended slot representation, wrap-around arithmetic,
+  unsigned division/remainder and unsigned comparisons, plus a
+  `__nx_print_u64` decimal printer for the full u64 range. `f32`
+  remains LLVM-only.
 - `npp doctor` now reports the `.npp` file-association state
   (`associated` / `NOT associated` / `unknown`) in text and `--json`
   output, checking the registry on Windows and `mimeapps.list` on Linux.

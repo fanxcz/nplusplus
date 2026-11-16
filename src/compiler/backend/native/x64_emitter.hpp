@@ -1537,6 +1537,17 @@ namespace npp::native {
                 b(0xE8);
                 b(v);
             }
+            void sarRaxImm8(std::uint8_t v) { // sar rax, imm8
+                b(0x48);
+                b(0xC1);
+                b(0xF8);
+                b(v);
+            }
+            void shrRaxCl() { // shr rax, cl
+                b(0x48);
+                b(0xD3);
+                b(0xE8);
+            }
             void andRaxImm32(std::uint32_t v) {
                 b(0x48);
                 b(0x25);

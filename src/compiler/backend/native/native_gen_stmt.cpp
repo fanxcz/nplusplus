@@ -208,6 +208,7 @@ namespace npp::native {
             if (const auto* x = dynamic_cast<const IntExpr*>(e)) {
                 const auto bits = x->negative ? (std::uint64_t{0} - x->value) : x->value;
                 out_.movRaxImm64(bits);
+                genNormalizeInt(x->literalType.kind);
                 return;
             }
             if (const auto* x = dynamic_cast<const BoolExpr*>(e)) {
@@ -260,6 +261,7 @@ namespace npp::native {
                         out_.movqXmm0Rax();
                     } else {
                         out_.negRax();
+                        genNormalizeInt(exprType(u->rhs.get()).kind);
                     }
                 } else {
                     out_.notBoolRax();
@@ -373,6 +375,10 @@ namespace npp::native {
                 genExpr(b->rhs.get());
                 out_.movRcxRax();
                 out_.popRax();
+                // Unsigned integer kinds compare with the unsigned condition
+                // codes; every other native integer compares signed.
+                const bool unsOperands =
+                    isUnsignedIntKind(exprType(b->lhs.get()).kind);
                 switch (b->op) {
                 case TokenKind::Plus:
                     out_.addRaxRcx();
@@ -392,18 +398,26 @@ namespace npp::native {
                     out_.jcc(J_NE, nonzero);
                     out_.jmp("__nx_divzero");
                     out_.def(nonzero);
-                    // x86 idiv traps for INT64_MIN / -1 (including remainder).
-                    // Check the pair explicitly so the native backend reports the
-                    // same controlled runtime error as the LLVM backend.
-                    out_.movR11Imm64(0x8000000000000000ULL);
-                    out_.cmpRaxR11();
-                    out_.jcc(J_NE, noOverflow);
-                    out_.cmpRcxImm8(0xFF); // divisor == -1
-                    out_.jcc(J_NE, noOverflow);
-                    out_.jmp("__nx_divoverflow");
-                    out_.def(noOverflow);
-                    out_.cqo();
-                    out_.idivRcx();
+                    if (unsOperands) {
+                        // Unsigned division: rdx must be zero; the quotient
+                        // always fits in rax for canonical uN values.
+                        out_.xorEdx();
+                        out_.divRcx();
+                    } else {
+                        // x86 idiv traps for INT64_MIN / -1 (including
+                        // remainder). Check the pair explicitly so the native
+                        // backend reports the same controlled runtime error as
+                        // the LLVM backend.
+                        out_.movR11Imm64(0x8000000000000000ULL);
+                        out_.cmpRaxR11();
+                        out_.jcc(J_NE, noOverflow);
+                        out_.cmpRcxImm8(0xFF); // divisor == -1
+                        out_.jcc(J_NE, noOverflow);
+                        out_.jmp("__nx_divoverflow");
+                        out_.def(noOverflow);
+                        out_.cqo();
+                        out_.idivRcx();
+                    }
                     if (b->op == TokenKind::Percent)
                         out_.movRaxRdx();
                     break;
@@ -420,22 +434,22 @@ namespace npp::native {
                     break;
                 case TokenKind::Less:
                     out_.cmpRaxRcx();
-                    out_.setcc(CC_L);
+                    out_.setcc(unsOperands ? CC_B : CC_L);
                     out_.movzxEaxAl();
                     break;
                 case TokenKind::LessEqual:
                     out_.cmpRaxRcx();
-                    out_.setcc(CC_LE);
+                    out_.setcc(unsOperands ? CC_BE : CC_LE);
                     out_.movzxEaxAl();
                     break;
                 case TokenKind::Greater:
                     out_.cmpRaxRcx();
-                    out_.setcc(CC_G);
+                    out_.setcc(unsOperands ? CC_A : CC_G);
                     out_.movzxEaxAl();
                     break;
                 case TokenKind::GreaterEqual:
                     out_.cmpRaxRcx();
-                    out_.setcc(CC_GE);
+                    out_.setcc(unsOperands ? CC_AE : CC_GE);
                     out_.movzxEaxAl();
                     break;
                 case TokenKind::AndAnd:
@@ -457,12 +471,19 @@ namespace npp::native {
                     out_.shlRaxCl();
                     break;
                 case TokenKind::ShiftRight:
-                    out_.sarRaxCl();
+                    if (unsOperands)
+                        out_.shrRaxCl();
+                    else
+                        out_.sarRaxCl();
                     break;
                 default:
                     throw std::runtime_error(
                         "builtin native v0: unsupported operator reached codegen");
                 }
+                // Arithmetic/bitwise results of narrow integer types wrap at
+                // the type width; restore the canonical slot representation.
+                // Comparisons and logic ops yield bool, which is a no-op here.
+                genNormalizeInt(exprType(b).kind);
                 return;
             }
             if (const auto* c = dynamic_cast<const CallExpr*>(e)) {
@@ -1182,6 +1203,8 @@ namespace npp::native {
                 out_.call("__nx_print_bool");
             else if (exprIsF64(arg))
                 out_.call("__nx_print_f64");
+            else if (exprType(arg).kind == TypeKind::U64)
+                out_.call("__nx_print_u64");
             else
                 out_.call("__nx_print_i64");
         }
@@ -1197,10 +1220,10 @@ namespace npp::native {
         }
 
         Type Generator::exprType(const Expr* e) {
-            if (dynamic_cast<const IntExpr*>(e))
-                return Type::i64();
-            if (dynamic_cast<const FloatExpr*>(e))
-                return Type::f64();
+            if (const auto* x = dynamic_cast<const IntExpr*>(e))
+                return x->literalType;
+            if (const auto* x = dynamic_cast<const FloatExpr*>(e))
+                return x->literalType;
             if (dynamic_cast<const BoolExpr*>(e))
                 return Type::boolean();
             if (dynamic_cast<const StringExpr*>(e))
@@ -1331,6 +1354,39 @@ namespace npp::native {
 
         Kind Generator::exprKind(const Expr* e) {
             return kindOf(exprType(e));
+        }
+
+        bool Generator::isNarrowInt(TypeKind k) {
+            return k == TypeKind::I8 || k == TypeKind::I16 || k == TypeKind::I32 ||
+                   k == TypeKind::U8 || k == TypeKind::U16 || k == TypeKind::U32;
+        }
+
+        bool Generator::isUnsignedIntKind(TypeKind k) {
+            return k == TypeKind::U8 || k == TypeKind::U16 || k == TypeKind::U32 ||
+                   k == TypeKind::U64;
+        }
+
+        // Fixed-width values live in 8-byte slots in canonical form: signed
+        // kinds are sign-extended, unsigned kinds zero-extended. shl+sar/shr
+        // pair performs the extension without a variable shift count.
+        void Generator::genNormalizeInt(TypeKind k) {
+            int width = 0;
+            bool uns = false;
+            switch (k) {
+            case TypeKind::I8: width = 8; break;
+            case TypeKind::I16: width = 16; break;
+            case TypeKind::I32: width = 32; break;
+            case TypeKind::U8: width = 8; uns = true; break;
+            case TypeKind::U16: width = 16; uns = true; break;
+            case TypeKind::U32: width = 32; uns = true; break;
+            default: return;
+            }
+            const std::uint8_t n = static_cast<std::uint8_t>(64 - width);
+            out_.shlRaxImm8(n);
+            if (uns)
+                out_.shrRaxImm8(n);
+            else
+                out_.sarRaxImm8(n);
         }
 
         // Mirrors the checker's kind rules to select the right print helper.

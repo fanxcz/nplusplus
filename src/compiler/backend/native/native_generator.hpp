@@ -106,6 +106,16 @@ namespace npp::native {
 
             Kind exprKind(const Expr* e);
 
+            // Canonicalize a fixed-width integer in rax: sign-extend signed
+            // kinds, zero-extend unsigned kinds, no-op for i64/u64.
+            void genNormalizeInt(TypeKind k);
+
+            // True when k is a fixed-width integer narrower than 64 bits.
+            static bool isNarrowInt(TypeKind k);
+
+            // True for unsigned integer kinds (u8/u16/u32/u64).
+            static bool isUnsignedIntKind(TypeKind k);
+
             Type localType(const std::string& name);
 
             Kind localKind(const std::string& name);
@@ -159,6 +169,10 @@ namespace npp::native {
 
             // __nx_print_i64: rax = value. Prints decimal + newline.
             void genPrintI64();
+
+            // __nx_print_u64: rax = unsigned 64-bit value. Prints decimal +
+            // newline (u64 values above INT64_MAX have no signed representation).
+            void genPrintU64();
 
             // __nx_print_bool: rax = 0/1. Prints "true"/"false" + newline.
             void genPrintBool();

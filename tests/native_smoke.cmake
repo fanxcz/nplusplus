@@ -69,6 +69,7 @@ check_native(math_phys "4\n1.4142135623731\n0\n1\n1\n-1\n1\n0.785398163397448\n2
 check_native(defer "2\ntwo items\ncleanup ran")
 check_native(slices "4\n2\n10\n20\n30\n1\n20\n0\n2\n10\n60")
 check_native(enums "12.56636\n9\n0\n1\n3\n2\n1\n1\n1\n0\n2")
+check_native(fixed_width "-56\n-100\n200\n66\n4\n100\n18446744073709551615\n1844674407370955161\n4294967295\n0\n-600\n56\n50\nu gt\ns lt\n-1\n-3")
 
 # input.npp reads one line from stdin; pipe a fixed name in.
 if(WIN32)
