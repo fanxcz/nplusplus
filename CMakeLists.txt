@@ -254,6 +254,12 @@ if (WIN32)
   set_property(TARGET npp PROPERTY
       MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 endif()
+# MinGW builds must not depend on mingw64\bin DLLs (libstdc++/libgcc/
+# winpthread): the installed npp.exe and file-association targets have to
+# run on machines without a compiler toolchain on PATH.
+if (MINGW)
+  target_link_options(npp PRIVATE -static -static-libgcc -static-libstdc++)
+endif()
 target_include_directories(npp PRIVATE
     src/compiler
     src/compiler/frontend
