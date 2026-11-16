@@ -51,6 +51,17 @@ namespace npp {
 
             SemanticAnalyzer().analyze(prog);
 
+            if (!emitIR) {
+                const bool hasMain = std::any_of(
+                    prog.functions.begin(), prog.functions.end(),
+                    [](const Function& fn) { return fn.name == "main"; });
+                if (!hasMain)
+                    throw std::runtime_error(
+                        "program has no 'main' entry point; library modules "
+                        "(files without fn main) can be imported but not built "
+                        "as executables");
+            }
+
             if (backend != "auto" && backend != "native" && backend != "llvm")
                 throw std::runtime_error("unknown backend: " + backend +
                                          " (expected auto|native|llvm)");
