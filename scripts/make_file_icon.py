@@ -153,8 +153,37 @@ def png_bytes(rows: list[list[tuple[int, int, int, int]]], size: int) -> bytes:
     )
 
 
+def bmp_dib(rows: list[list[tuple[int, int, int, int]]], size: int) -> bytes:
+    """Encode RGBA rows as a 32bpp DIB (bottom-up) for classic ICO entries."""
+    # BITMAPINFOHEADER: 40 bytes, height doubled for XOR+AND planes.
+    header = struct.pack(
+        "<IiiHHIIiiII", 40, size, size * 2, 1, 32, 0, 0, 0, 0, 0, 0
+    )
+    xor = bytearray()
+    and_mask = bytearray()
+    # DIB rows are bottom-up.
+    for y in range(size - 1, -1, -1):
+        for x in range(size):
+            r, g, b, a = rows[y][x]
+            xor += bytes((b, g, r, a))  # BGRA
+    # AND mask: 1 bit per pixel, rows padded to 32 bits, bottom-up.
+    row_bytes = (size + 31) // 32 * 4
+    for y in range(size - 1, -1, -1):
+        bits = bytearray(row_bytes)
+        for x in range(size):
+            if rows[y][x][3] < 128:
+                bits[x // 8] |= 0x80 >> (x % 8)
+        and_mask += bits
+    body = bytes(xor) + bytes(and_mask)
+    # biCompression=BI_RGB(0); biSizeImage covers both planes.
+    header = struct.pack(
+        "<IiiHHIIiiII", 40, size, size * 2, 1, 32, 0, len(body), 0, 0, 0, 0
+    )
+    return header + body
+
+
 def ico_bytes(images: list[tuple[int, bytes]]) -> bytes:
-    """Pack (size, png) pairs into an ICO container."""
+    """Pack (size, dib) pairs into a classic BMP-format ICO container."""
     header = struct.pack("<HHH", 0, 1, len(images))
     entries = b""
     offset = 6 + 16 * len(images)
@@ -172,12 +201,14 @@ def ico_bytes(images: list[tuple[int, bytes]]) -> bytes:
 def main() -> None:
     px = render()
     sizes = [16, 24, 32, 48, 64, 128, 256]
-    images = []
+    # Keep PNGs for documentation/Linux pixmaps; the .ico uses classic
+    # DIB entries because some shell icon paths reject PNG-compressed icons.
+    dibs = []
     for size in sizes:
         small = downsample(px, size)
-        images.append((size, png_bytes(small, size)))
-    OUT_ICO.write_bytes(ico_bytes(images))
-    OUT_PNG.write_bytes(images[-1][1])
+        dibs.append((size, bmp_dib(small, size)))
+    OUT_ICO.write_bytes(ico_bytes(dibs))
+    OUT_PNG.write_bytes(png_bytes(downsample(px, 256), 256))
     print(f"wrote {OUT_ICO} ({OUT_ICO.stat().st_size} bytes)")
     print(f"wrote {OUT_PNG}")
 

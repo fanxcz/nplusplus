@@ -246,6 +246,10 @@ if (NPP_BUILD_LIBFUZZER)
 endif()
 
 add_executable(npp ${NPP_SOURCES})
+if (WIN32)
+  # Embed the N++ icon so file associations/shortcuts can use npp.exe,0.
+  target_sources(npp PRIVATE assets/npp.rc)
+endif()
 # The official Windows portable package must run without an installed
 # Visual C++ redistributable. Statically link the MSVC CRT into the compiler.
 if (WIN32)

@@ -4,8 +4,10 @@
 #   powershell -ExecutionPolicy Bypass -File scripts\set-file-icon.ps1 -NppExe D:\path\to\npp.exe
 #   powershell -ExecutionPolicy Bypass -File scripts\set-file-icon.ps1 -Unregister
 #
-# -NppExe     path to npp.exe used by the open/run verbs (default: this repo's build)
-# -Icon       path to the .ico (default: repo assets\npp-file.ico, or the installed copy)
+# -NppExe     path to npp.exe used by the open/run verbs and as the icon
+#             source (default: this repo's build, then PATH)
+# -Icon       optional .ico override for DefaultIcon; default is npp.exe,0
+#             which is what the shell resolves most reliably
 # -Unregister removes the HKCU .npp association created by this script.
 
 [CmdletBinding()]
@@ -27,10 +29,8 @@ if (-not $NppExe) {
     }
 }
 if (-not $Icon) {
-    $repoIcon = Join-Path $root 'assets\npp-file.ico'
-    $installed = Join-Path $env:LOCALAPPDATA 'Programs\N++\share\npp\npp-file.ico'
-    if (Test-Path $repoIcon) { $Icon = $repoIcon }
-    elseif (Test-Path $installed) { $Icon = $installed }
+    # DefaultIcon = "<npp.exe>",0 — the icon embedded via assets/npp.rc.
+    $Icon = "$NppExe`,0"
 }
 
 # RegistryKey.SetValue preserves embedded quotes (unlike reg.exe /d) and
@@ -57,11 +57,16 @@ if ($Unregister) {
 if (-not $NppExe -or -not (Test-Path $NppExe)) {
     throw "npp.exe not found; pass -NppExe <path> (looked at build\npp.exe and PATH)."
 }
-if (-not $Icon -or -not (Test-Path $Icon)) {
-    throw "npp-file.ico not found; pass -Icon <path>."
+$iconPath = if ($Icon -match '^(.*),(\d+)$') { $Matches[1] } else { $Icon }
+if (-not $iconPath -or -not (Test-Path $iconPath)) {
+    throw "icon source not found; pass -Icon <path> or -NppExe <path-to-npp.exe>."
 }
 
-$iconRef = '"' + $Icon + '"'
+if ($Icon -match '^(.*),(\d+)$') {
+    $iconRef = '"' + $Matches[1] + '",' + $Matches[2]
+} else {
+    $iconRef = '"' + $Icon + '"'
+}
 $exe = '"' + $NppExe + '"'
 
 Reg-Default 'Software\Classes\.npp' 'NPP.SourceFile'

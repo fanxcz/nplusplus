@@ -67,14 +67,14 @@ Section "Install"
   WriteRegStr HKCU "Software\Classes\.npp" "" "NPP.SourceFile"
   WriteRegStr HKCU "Software\Classes\.npp" "Content Type" "text/plain"
   WriteRegStr HKCU "Software\Classes\NPP.SourceFile" "" "N++ source file"
-  WriteRegStr HKCU "Software\Classes\NPP.SourceFile" "DefaultIcon" '"$INSTDIR\share\npp\npp-file.ico"'
+  WriteRegStr HKCU "Software\Classes\NPP.SourceFile" "DefaultIcon" '"$INSTDIR\bin\npp.exe",0'
   WriteRegStr HKCU "Software\Classes\NPP.SourceFile\shell\open\command" "" '"$INSTDIR\bin\npp.exe" "%1"'
   WriteRegStr HKCU "Software\Classes\NPP.SourceFile\shell\run\command" "" '"$INSTDIR\bin\npp.exe" run "%1"'
   WriteRegStr HKCU "Software\Classes\NPP.SourceFile\shell\run" "" "Run with N++"
-  WriteRegStr HKCU "Software\Classes\NPP.SourceFile\shell\run" "Icon" '"$INSTDIR\share\npp\npp-file.ico"'
+  WriteRegStr HKCU "Software\Classes\NPP.SourceFile\shell\run" "Icon" '"$INSTDIR\bin\npp.exe",0'
 
   CreateDirectory "$SMPROGRAMS\N++"
-  CreateShortcut "$SMPROGRAMS\N++\N++ Compiler.lnk" "$INSTDIR\bin\npp.exe" "" "$INSTDIR\share\npp\npp-file.ico",0
+  CreateShortcut "$SMPROGRAMS\N++\N++ Compiler.lnk" "$INSTDIR\bin\npp.exe" "" "$INSTDIR\bin\npp.exe",0
   CreateShortcut "$SMPROGRAMS\N++\Uninstall.lnk" "$INSTDIR\Uninstall.exe"
 SectionEnd
 

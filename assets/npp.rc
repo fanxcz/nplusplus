@@ -1,0 +1,5 @@
+// Icon resource embedded into npp.exe so .npp file associations,
+// shortcuts and the taskbar can all use the N++ mark.
+#include <windows.h>
+
+IDI_ICON1 ICON "npp-file.ico"
