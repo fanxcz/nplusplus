@@ -294,6 +294,9 @@ install(DIRECTORY src/runtime/
 install(DIRECTORY stdlib/ DESTINATION ${CMAKE_INSTALL_DATADIR}/npp/stdlib OPTIONAL)
 install(DIRECTORY examples/templates/ DESTINATION ${CMAKE_INSTALL_DATADIR}/npp/project-templates OPTIONAL)
 install(DIRECTORY examples/assets/ DESTINATION ${CMAKE_INSTALL_DATADIR}/npp/assets OPTIONAL)
+# File-type icon for .npp sources (Windows DefaultIcon / Linux pixmaps).
+install(FILES assets/npp-file.ico assets/npp-icon-256.png
+        DESTINATION ${CMAKE_INSTALL_DATADIR}/npp OPTIONAL)
 
 # ============================================================================
 # Tests

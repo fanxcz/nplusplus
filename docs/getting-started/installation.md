@@ -10,7 +10,12 @@ templates, with a `.sha256` checksum sidecar.
 On Windows an NSIS installer (`npp-setup-*-windows-x86_64.exe`) is also
 published: it installs into `%LOCALAPPDATA%\Programs\N++`, adds `bin` to
 your user `PATH`, creates Start-menu shortcuts and registers `.npp` files
-so double-clicking a source file builds and runs it with `npp`.
+with the N++ file icon so double-clicking a source file builds and runs
+it with `npp` (context menu also offers *Run with N++*).
+
+Without the installer you can register the same association yourself:
+`scripts/set-file-icon.ps1` on Windows (HKCU, no admin) and
+`scripts/set-file-icon.sh` on Linux (per-user XDG mime/icon).
 
 One-line installers download the latest release, verify the checksum and
 place the tools on disk:
