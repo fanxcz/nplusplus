@@ -19,7 +19,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   struct/array/parameter/return/payload support, and print via
   cvtss2sd + the shared f64 formatter — bit-identical to the LLVM
   backend including f32 rounding (`0.1f + 0.1f + 0.1f`).
-- Stdlib containers: `std.map` (open-addressing `i64 -> i64` hash map
+- Native backend `json_*` now explicitly rejects with actionable error
+  (use --backend llvm); full emitter port is future work (runtime parser
+  is 350 lines C++).
   with tombstones and 70% load-factor growth), `std.set` (`i64` set on
   top of the map) and `std.deque` (double-ended `i64` queue over
   `ilist`). All three run on the builtin native backend.

@@ -602,6 +602,16 @@ namespace npp::native {
                     }
                     return f64T();
                 }
+                // json_* are LLVM-only: the runtime parser is a 350-line C++
+                // recursive implementation; a full native emitter port would be
+                // ~1500 lines. Reject with an actionable error message.
+                if (c->callee == "json_valid" || c->callee == "json_get" ||
+                    c->callee == "json_type" || c->callee == "json_array_len" ||
+                    c->callee == "json_array_get") {
+                    reason = "'" + c->callee + "' is outside the builtin native v0 subset " +
+                             "(use --backend llvm)";
+                    return voidT();
+                }
                 if (c->callee == "physics_aabb" || c->callee == "physics_circle") {
                     const std::size_t want = c->callee == "physics_aabb" ? 8 : 6;
                     if (c->args.size() != want) {
