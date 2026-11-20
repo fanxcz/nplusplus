@@ -503,7 +503,9 @@ namespace npp::native {
         w.w16(2); // ET_EXEC
         w.w16(62);
         w.w32(1);
-        w.w64(codeAddr + kMbHeader + image.labels.at("_start"));
+        // GRUB's multiboot2 loader hands off in 32-bit protected mode, so
+        // enter via the same trampoline QEMU's PVH loader uses.
+        w.w64(codeAddr + kMbHeader + image.labels.at("__nx_pvh_entry"));
         w.w64(64);
         w.w64(0);
         w.w32(0);
@@ -559,7 +561,21 @@ namespace npp::native {
         w.bytes(data.data(), data.size());
         w.pad(static_cast<std::size_t>(arenaOff - w.out.size()));
         w.pad(64);
+        // GRUB rejects ELFs with e_shoff == 0: append one null section header.
+        const std::uint64_t shOff = (w.out.size() + 7u) & ~7ull;
+        w.pad(static_cast<std::size_t>(shOff - w.out.size()));
+        w.pad(64);
+        for (int i = 0; i < 8; ++i)
+            w.out[0x28 + static_cast<std::size_t>(i)] =
+                static_cast<std::uint8_t>((shOff >> (8 * i)) & 0xFF);
+        w.out[0x3A] = 64; // e_shentsize
+        w.out[0x3B] = 0;
+        w.out[0x3C] = 1;  // e_shnum
+        w.out[0x3D] = 0;
+        w.out[0x3E] = 0;  // e_shstrndx
+        w.out[0x3F] = 0;
         return w.out;
     }
 
 } // namespace npp::native
+

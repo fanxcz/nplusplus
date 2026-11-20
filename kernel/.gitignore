@@ -1,10 +1,4 @@
 hello.elf
-hello.bin
+npp-kernel.iso
 serial.txt
-qemu.out
-qemu.err
-qemu.log
-qemu.mmu
-tramp.bin
-tramp.s
-tramp.o
+*.log

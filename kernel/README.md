@@ -1,53 +1,54 @@
-# N++ kernel target (work in progress)
+# N++ kernel target (freestanding, working)
 
-This directory contains a **freestanding experiment** built on the builtin
-native backend's `kernel` target. It is not a finished operating system.
+A freestanding kernel written in N++ and built with the builtin `kernel`
+target. It boots in x86-64 long mode under QEMU, with no host OS, no libc,
+no syscalls and no external assembler/linker.
 
-## What works
+## Build and run (headless)
 
-- `npp build kernel/hello.npp -o hello.elf --target kernel --backend native`
-  produces a 32-bit-entry ELF64 image with:
-  - a Multiboot2 header (for GRUB-style loaders),
-  - a Xen PVH `PHYS32_ENTRY` note (for QEMU's `-kernel`),
-  - a hand-encoded 32→64-bit trampoline (identity paging, long-mode GDT),
-  - no imports, no runtime syscalls, no host toolchain needed.
-- On QEMU the PVH loader reaches the trampoline; serial port output confirms
-  the 32-bit stub executes and the page-table words are written correctly.
+```sh
+npp build hello.npp -o hello.elf --target kernel --backend native
+qemu-system-x86_64 -kernel hello.elf -display none -serial stdio
+```
 
-## Known limitation
+On Windows, `run-kernel.ps1` does the same with no window and no console
+output on screen (QEMU is launched hidden; output goes to `serial.txt`).
 
-Booting under `qemu-system-x86_64 -kernel hello.elf` currently ends in a
-page fault (`#PF`, error code 0) immediately after `CR0.PG` is set, before
-the far jump into 64-bit code.
+## Boot via GRUB2 (Multiboot2)
 
-A GDB remote-stub trace (QEMU `-s -S`, stop at the trampoline and at
-`mov eax, cr0`, then single-step) established:
+The image also carries a Multiboot2 header. To boot it through GRUB2:
 
-- the PVH note is found and the 32-bit stub executes;
-- the identity page tables are written correctly and are readable before
-  `CR0.PG` is enabled (`0x...007` / `0x...007` / 512 x `0x83 + i*0x1000`);
-- `RAX = CR3 value` is present in the register file right before the
-  `mov cr3, eax` / `mov cr0, eax` pair;
-- the very first instruction fetch after `mov cr0, eax` fails, and GDB
-  memory reads start returning `E14` (EFAULT) for **every** address.
+1. Put `hello.elf` next to `boot/grub/grub.cfg` with:
+   ```
+   serial --unit=0 --speed=115200
+   terminal_input serial
+   terminal_output serial
+   set timeout=0
+   menuentry "N++ Kernel" {
+     multiboot2 /kernel.elf
+     boot
+   }
+   ```
+2. Build an ISO: `grub-mkrescue -o npp-kernel.iso <dir>`
+3. Boot: `qemu-system-x86_64 -cdrom npp-kernel.iso -display none -serial stdio`
 
-Tried without success: 4-KiB / 2-MiB / 1-GiB pages, tables at several
-physical addresses (inside and outside the ELF's 64-MiB BSS), `CR3` before
-and after `CR0.PG`, `invd`, dual PAE+long-mode table layouts, `ljmp` and
-`retf` far transfers, `microvm` machine type. The fault is therefore in the
-QEMU TCG paging-mode transition itself, not in the N++ program or ELF.
+`build-iso.sh` automates steps 1–2 on systems with GRUB2 installed.
 
-Because of this, `hello.npp` does **not** yet print to VGA/COM1 under QEMU.
+## How it works
 
-## Next steps
+- `writeKernelELF` emits an ELF64 at `0x101000` with a Multiboot2 header,
+  a Xen PVH note, and a null section-header table (required by GRUB).
+- `e_entry` points at a 32-bit trampoline. Both QEMU's PVH loader and
+  GRUB's Multiboot2 loader hand off in 32-bit protected mode; the trampoline
+  builds identity page tables at `0x200000`, a long-mode GDT at `0x203000`,
+  enables PAE/LME/PG and far-jumps into the 64-bit `_start`.
+- `_start` initialises the bump arena from the ELF image, calls `main`, then
+  halts. `print()` writes to the VGA text buffer and mirrors to COM1;
+  `read_key()` polls the PS/2 controller (press ESC to stop).
 
-1. Replace the hand-encoded trampoline with a small clang-assembled 32-bit
-   stub (assembler handles descriptor encodings), keeping the jump target as
-   a patchable constant.
-2. Re-check the EFER.LME / CR0.PG / far-jump ordering against QEMU's `pvh.bin`.
-3. Add a CTest smoke test that boots the image headlessly and checks COM1.
+## Verified
 
-## Files
-
-- `hello.npp` — minimal kernel written in N++ (VGA output + PS/2 key echo).
-- `run-kernel.sh`, `run-kernel.ps1` — QEMU launch helpers.
+- Direct PVH boot: `qemu-system-x86_64 -kernel hello.elf` — banner, tick
+  counter and keyboard prompt appear on COM1.
+- GRUB2 Multiboot2 boot: same output over serial.
+- `ctest`: 41/41 tests pass on the regular build.
