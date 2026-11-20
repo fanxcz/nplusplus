@@ -121,6 +121,8 @@ namespace npp::native {
         gen.generate(program);
         if (target == NativeTarget::WindowsX64)
             return writeWindowsPE(image);
+        if (target == NativeTarget::KernelX64)
+            return writeKernelELF(image);
         return writeLinuxELF(image);
     }
 

@@ -32,4 +32,8 @@ namespace npp::native {
     // No external tools are used.
     std::vector<std::uint8_t> writeLinuxELF(const CodeImage& image);
 
+    // Emit a freestanding Multiboot2 ELF64 kernel image loaded at 1 MiB.
+    // No syscalls, no imports, and no external tools are used.
+    std::vector<std::uint8_t> writeKernelELF(const CodeImage& image);
+
 } // namespace npp::native

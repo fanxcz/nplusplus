@@ -385,4 +385,181 @@ namespace npp::native {
         return w.out;
     }
 
+    std::vector<std::uint8_t> writeKernelELF(const CodeImage& image) {
+        if (!image.labels.contains("_start"))
+            throw std::runtime_error("kernel image: missing _start label");
+        if (!image.imports.empty())
+            throw std::runtime_error("kernel image: imports are not allowed");
+
+        constexpr std::uint64_t kBase = 0x100000ull; // 1 MiB, standard multiboot load address
+        constexpr std::uint64_t kMbHeader = 24;      // magic + 3 fields + end tag
+        constexpr std::uint64_t kArenaBytes = 0x4000000ull;
+        constexpr std::uint64_t kNoteOff = 0x200;
+        constexpr std::uint64_t kHdrSize = 64 + 4 * 56; // ehdr + 4 phdrs
+        const auto alignPage = [](std::uint64_t v) {
+            return (v + 0xFFFull) & ~0xFFFull;
+        };
+
+        const std::uint64_t codeOff = 0x1000;
+        const std::uint64_t codeAddr = kBase + codeOff;
+        // Prepend a Multiboot2 header; all code offsets and fixup sites shift by
+        // its size, which the writer resolves below.
+        std::vector<std::uint8_t> code;
+        {
+            const std::uint32_t magic = 0xE85250D6u;
+            const std::uint32_t arch = 0u;
+            const std::uint32_t length = static_cast<std::uint32_t>(kMbHeader);
+            for (int i = 0; i < 4; ++i)
+                code.push_back(static_cast<std::uint8_t>((magic >> (8 * i)) & 0xFF));
+            for (int i = 0; i < 4; ++i)
+                code.push_back(static_cast<std::uint8_t>((arch >> (8 * i)) & 0xFF));
+            for (int i = 0; i < 4; ++i)
+                code.push_back(static_cast<std::uint8_t>((length >> (8 * i)) & 0xFF));
+            const std::uint32_t checksum = 0u - (magic + arch + length);
+            for (int i = 0; i < 4; ++i)
+                code.push_back(static_cast<std::uint8_t>((checksum >> (8 * i)) & 0xFF));
+            code.push_back(0); // end tag: type = 0
+            code.push_back(0);
+            code.push_back(0); // end tag: flags = 0
+            code.push_back(0);
+            code.push_back(8); // end tag: size = 8
+            code.push_back(0);
+            code.push_back(0);
+            code.push_back(0);
+        }
+        code.insert(code.end(), image.bytes.begin(), image.bytes.end());
+
+        const std::uint64_t dataOff = alignPage(codeOff + code.size());
+        const std::uint64_t dataAddr = kBase + dataOff;
+        std::map<std::string, std::uint64_t> sym;
+        for (const auto& [name, off] : image.labels)
+            sym[name] = codeAddr + kMbHeader + off;
+        std::uint64_t strOff = dataOff;
+        std::vector<std::uint8_t> data;
+        for (std::size_t i = 0; i < image.strings.size(); ++i) {
+            sym["str" + std::to_string(i)] = kBase + strOff;
+            const std::string& s = image.strings[i];
+            data.insert(data.end(), s.begin(), s.end());
+            data.push_back(0);
+            strOff += s.size() + 1;
+        }
+        const std::uint64_t arenaOff = alignPage(dataOff + data.size());
+        const std::uint64_t arenaAddr = kBase + arenaOff;
+        sym["__nx_arena"] = arenaAddr;
+        sym["__nx_rng"] = arenaAddr + 16;
+        sym["__nx_vga_cursor"] = arenaAddr + kArenaBytes;
+        sym["__nx_args"] = arenaAddr + kArenaBytes + 64;
+        sym["__nx_args_raw"] = arenaAddr + kArenaBytes + 128;
+
+        for (const auto& fx : image.fixups) {
+            const auto it = sym.find(fx.symbol);
+            if (it == sym.end())
+                throw std::runtime_error("kernel image: unknown symbol '" + fx.symbol + "'");
+            const std::int64_t at = static_cast<std::int64_t>(fx.at) + static_cast<std::int64_t>(kMbHeader);
+            const std::int64_t here = static_cast<std::int64_t>(codeAddr) + at + 4;
+            const std::int64_t value = static_cast<std::int64_t>(it->second) - here + fx.addend;
+            if (value < -0x80000000ll || value > 0x7FFFFFFFll)
+                throw std::runtime_error("kernel image: fixup out of range for '" + fx.symbol + "'");
+            const std::uint32_t v = static_cast<std::uint32_t>(static_cast<std::int32_t>(value));
+            for (int i = 0; i < 4; ++i)
+                code[static_cast<std::size_t>(at) + static_cast<std::size_t>(i)] =
+                    static_cast<std::uint8_t>((v >> (8 * i)) & 0xFF);
+        }
+
+        // QEMU's `-kernel` path recognises a PVH ELF note (Xen ABI, type 18).
+        // pvh.bin switches the CPU to long mode and jumps to the physical
+        // entry address stored in the note descriptor.
+        const auto pvhIt = sym.find("__nx_pvh_entry");
+        const std::uint64_t kernelEntry = pvhIt != sym.end()
+                                              ? pvhIt->second
+                                              : codeAddr + kMbHeader + image.labels.at("_start");
+        std::vector<std::uint8_t> note;
+        const auto note32 = [&note](std::uint32_t v) {
+            for (int i = 0; i < 4; ++i)
+                note.push_back(static_cast<std::uint8_t>((v >> (8 * i)) & 0xFF));
+        };
+        note32(4);  // n_namesz = strlen("Xen") + 1
+        note32(8);  // n_descsz: QEMU reads 8 bytes for a 64-bit ELF
+        note32(18); // XEN_ELFNOTE_PHYS32_ENTRY
+        note.push_back('X');
+        note.push_back('e');
+        note.push_back('n');
+        note.push_back(0);
+        note.push_back(0); // pad namesz 4 -> 8-byte alignment
+        note.push_back(0);
+        note.push_back(0);
+        note.push_back(0);
+        for (int i = 0; i < 8; ++i)
+            note.push_back(static_cast<std::uint8_t>((kernelEntry >> (8 * i)) & 0xFF));
+
+        Writer w;
+        w.b(0x7F);
+        w.text("ELF");
+        w.b(2);
+        w.b(1);
+        w.b(1);
+        w.b(0);
+        w.pad(8);
+        w.w16(2); // ET_EXEC
+        w.w16(62);
+        w.w32(1);
+        w.w64(codeAddr + kMbHeader + image.labels.at("_start"));
+        w.w64(64);
+        w.w64(0);
+        w.w32(0);
+        w.w16(64);
+        w.w16(56);
+        w.w16(4);
+        w.w16(0);
+        w.w16(0);
+        w.w16(0);
+        // PT_LOAD code (R+X)
+        w.w32(1);
+        w.w32(5);
+        w.w64(codeOff);
+        w.w64(codeAddr);
+        w.w64(codeAddr);
+        w.w64(code.size());
+        w.w64(code.size());
+        w.w64(0x1000);
+        // PT_LOAD strings (R)
+        w.w32(1);
+        w.w32(4);
+        w.w64(dataOff);
+        w.w64(dataAddr);
+        w.w64(dataAddr);
+        w.w64(data.size());
+        w.w64(data.size());
+        w.w64(0x1000);
+        // PT_LOAD arena + cursor + stack metadata (RW, zero-filled at load)
+        w.w32(1);
+        w.w32(6);
+        w.w64(arenaOff);
+        w.w64(arenaAddr);
+        w.w64(arenaAddr);
+        w.w64(64);
+        w.w64(kArenaBytes + 4096);
+        w.w64(0x1000);
+        // PT_NOTE: the PVH entry note consumed by QEMU's pvh.bin loader.
+        w.w32(4);
+        w.w32(4);
+        w.w64(kNoteOff);
+        w.w64(kBase + kNoteOff);
+        w.w64(kBase + kNoteOff);
+        w.w64(note.size());
+        w.w64(note.size());
+        w.w64(8);
+        if (w.out.size() != kHdrSize)
+            throw std::runtime_error("kernel image: ELF header size mismatch");
+        w.pad(static_cast<std::size_t>(kNoteOff - w.out.size()));
+        w.bytes(note.data(), note.size());
+        w.pad(static_cast<std::size_t>(codeOff - w.out.size()));
+        w.bytes(code.data(), code.size());
+        w.pad(static_cast<std::size_t>(dataOff - w.out.size()));
+        w.bytes(data.data(), data.size());
+        w.pad(static_cast<std::size_t>(arenaOff - w.out.size()));
+        w.pad(64);
+        return w.out;
+    }
+
 } // namespace npp::native

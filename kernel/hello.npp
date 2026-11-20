@@ -1,0 +1,39 @@
+// A freestanding N++ kernel. Build with:
+//   npp build kernel/hello.npp -o hello.elf --target kernel --backend native
+// Run with:
+//   qemu-system-x86_64 -kernel hello.elf -serial stdio -no-reboot
+//
+// Only the builtin native v0 subset is available: no OS, no libc, no syscalls.
+// print() writes to the VGA text buffer and mirrors to COM1 for headless runs.
+// read_key() polls the PS/2 controller.
+
+fn main() {
+    print("================================")
+    print("  N++ KERNEL  --  hello, world")
+    print("================================")
+    print("freestanding Multiboot2 image; no OS, no syscalls")
+
+    let mut i: i64 = 0
+    while i < 5 {
+        print("tick ")
+        print(i)
+        i = i + 1
+    }
+
+    print("")
+    print("type characters (ESC to halt):")
+
+    let mut running = true
+    while running {
+        let scancode = read_key()
+        if scancode > 0 {
+            print("key ")
+            print(scancode)
+            if scancode == 1 {
+                running = false
+            }
+        }
+    }
+
+    print("halted.")
+}

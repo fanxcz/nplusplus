@@ -613,6 +613,17 @@ namespace npp::native {
                 b(0x0F);
                 b(0x05);
             }
+            // Privileged/device instructions used only by the freestanding
+            // kernel target.
+            void inAlDx() { // in al, dx
+                b(0xEC);
+            }
+            void outDxAl() { // out dx, al
+                b(0xEE);
+            }
+            void hlt() {
+                b(0xF4);
+            }
             void cld() {
                 b(0xFC);
             }

@@ -34,6 +34,55 @@ namespace npp::native {
                 out_.movRspRbp();
                 out_.popRbp();
                 out_.ret();
+            } else if (target_ == NativeTarget::KernelX64) {
+                // Freestanding output: write bytes into the VGA text buffer at
+                // 0xB8000 with light-grey-on-black attributes. Newlines become
+                // spaces and the cursor wraps after two screens.
+                out_.pushRbp();
+                out_.movRbpRsp();
+                out_.movRsiRcx();  // source pointer
+                out_.movRcxRdx();  // remaining byte count
+                out_.movEdxImm32(0x3F8); // COM1, mirrored to the QEMU console
+                out_.movRaxImm64(0xB8000ull);
+                out_.movRdiRax();
+                out_.leaR10Rip("__nx_vga_cursor");
+                out_.movRaxFromR10();
+                out_.shlRaxImm8(1);
+                out_.addRaxRdi();
+                out_.movRdiRax();
+                const std::string loop = out_.label("vga.loop");
+                const std::string done = out_.label("vga.done");
+                const std::string keep = out_.label("vga.keep");
+                out_.def(loop);
+                out_.testRcxRcx();
+                out_.jcc(J_E, done);
+                out_.movAlFromRsi();
+                out_.movzxEaxAl();
+                out_.outDxAl();            // serial mirror keeps real newlines
+                out_.cmpRaxImm8(0x0A);
+                const std::string notNl = out_.label("vga.notnl");
+                out_.jcc(J_NE, notNl);
+                out_.movRaxImm64(0x20);
+                out_.def(notNl);
+                out_.movBytePtrRdiFromAl();
+                out_.incRdi();
+                out_.storeByteRdiImm8(0x0F);
+                out_.incRdi();
+                out_.incRsi();
+                out_.decRcx();
+                out_.leaR10Rip("__nx_vga_cursor");
+                out_.movRaxFromR10();
+                out_.incRax();
+                out_.cmpRaxImm32(2000);
+                out_.jcc(J_L, keep);
+                out_.xorEax();
+                out_.def(keep);
+                out_.movR10Disp8FromRax(0);
+                out_.jmp(loop);
+                out_.def(done);
+                out_.movRspRbp();
+                out_.popRbp();
+                out_.ret();
             } else {
                 out_.pushRbp();
                 out_.movRbpRsp();
@@ -50,6 +99,10 @@ namespace npp::native {
         // __nx_write_err: rcx = pointer, rdx = length. Writes to stderr.
         void Generator::genWriteErr() {
             out_.def("__nx_write_err");
+            if (target_ == NativeTarget::KernelX64) {
+                out_.jmp("__nx_write");
+                return;
+            }
             if (target_ == NativeTarget::WindowsX64) {
                 out_.pushRbp();
                 out_.movRbpRsp();
@@ -950,6 +1003,78 @@ namespace npp::native {
         }
 
         void Generator::genEntry() {
+            if (target_ == NativeTarget::KernelX64) {
+                // QEMU's PVH loader enters in 32-bit protected mode, so a short
+                // trampoline has to build identity page tables, a long-mode GDT,
+                // and switch to 64-bit code before reaching our generated code.
+                out_.def("__nx_pvh_entry");
+                const auto emit8 = [this](std::initializer_list<std::uint8_t> vals) {
+                    for (std::uint8_t v : vals)
+                        out_.b(v);
+                };
+                // Two identity page-table words that are valid in *both*
+                // paging modes used during the transition:
+                //  - PAE (compatibility mode, before the far jump):
+                //      CR3 -> PDPT[0] at 0x210000 -> 2-MiB page at 0.
+                //  - long mode (after the far jump):
+                //      CR3 -> PML4[0] at 0x210000 -> 1-GiB page at 0.
+                // Both map the first gigabyte, including our code and stack.
+                emit8({0xBF, 0x00, 0x00, 0x22, 0x00, // mov edi, 0x220000
+                       0xB9, 0x00, 0x02, 0x00, 0x00, // mov ecx, 512
+                       0xB8, 0x83, 0x00, 0x00, 0x00, // mov eax, 0x83
+                       0x89, 0x07,                   // mov [edi], eax
+                       0x05, 0x00, 0x00, 0x20, 0x00, // add eax, 0x200000
+                       0x83, 0xC7, 0x08,             // add edi, 8
+                       0xE2, 0xF4});                 // loop back 12 bytes
+                emit8({0xC7, 0x05, 0x00, 0x00, 0x20, 0x00, 0x07, 0x21, 0x00, 0x00,
+                       0xC7, 0x05, 0x00, 0x00, 0x21, 0x00, 0x07, 0x22, 0x00, 0x00});
+                // Long-mode GDT at 0x83000: null, 64-bit code, 64-bit data.
+                emit8({0xC7, 0x05, 0x08, 0x30, 0x08, 0x00, 0xFF, 0xFF, 0x00, 0x00,
+                       0xC7, 0x05, 0x0C, 0x30, 0x08, 0x00, 0x00, 0x9A, 0xAF, 0x00,
+                       0xC7, 0x05, 0x10, 0x30, 0x08, 0x00, 0xFF, 0xFF, 0x00, 0x00,
+                       0xC7, 0x05, 0x14, 0x30, 0x08, 0x00, 0x00, 0x92, 0xCF, 0x00,
+                       0x66, 0xC7, 0x05, 0x18, 0x30, 0x08, 0x00, 0x17, 0x00,
+                       0xC7, 0x05, 0x1A, 0x30, 0x08, 0x00, 0x00, 0x30, 0x08, 0x00,
+                       0x0F, 0x01, 0x15, 0x18, 0x30, 0x08, 0x00}); // lgdt
+                emit8({0x0F, 0x20, 0xE0,        // mov eax, cr4
+                       0x83, 0xC8, 0x20,        // or eax, PAE
+                       0x0F, 0x22, 0xE0,        // mov cr4, eax
+                       0xB9, 0x80, 0x00, 0x00, 0xC0,
+                       0x0F, 0x32,              // rdmsr
+                       0x0D, 0x00, 0x01, 0x00, 0x00, // or eax, LME
+                       0x0F, 0x30,              // wrmsr
+                       0x0F, 0x20, 0xC0,        // mov eax, cr0
+                       0x0D, 0x00, 0x00, 0x00, 0x80, // or eax, PG
+                       0x0F, 0x22, 0xC0,        // mov cr0, eax
+                       0xB8, 0x00, 0x00, 0x20, 0x00,
+                       0x0F, 0x22, 0xD8});      // mov cr3, eax
+                // Far jump to the 64-bit continuation. The kernel image is
+                // always linked at 0x101000 with a 24-byte header, so the
+                // absolute target is known here.
+                const std::uint32_t cont =
+                    static_cast<std::uint32_t>(0x101000ull + 24 + out_.pos() + 7);
+                out_.b(0xEA); // jmp far ptr32:cont
+                out_.i32(cont);
+                out_.b(0x08); // long-mode code selector
+                out_.b(0x00);
+                out_.jmp("_start");
+
+                // Freestanding entry: no arena syscall and no exit syscall.
+                // Point the bump allocator at the zero-filled arena in our ELF
+                // image, call main, then halt forever.
+                out_.def("_start");
+                out_.andRspMinus16();
+                out_.leaR10Rip("__nx_arena");
+                out_.movRaxR10();
+                out_.movR10FromRax();
+                out_.movR10Disp8FromRax(8);
+                out_.call("main");
+                const std::string halt = out_.label("kernel.halt");
+                out_.def(halt);
+                out_.hlt();
+                out_.jmp(halt);
+                return;
+            }
             out_.def("_start");
             if (target_ == NativeTarget::LinuxX64) {
                 // Save argc/argv for os.args_*: [rsp]=argc, [rsp+8]=argv.
@@ -1836,3 +1961,4 @@ namespace npp::native {
 
     } // namespace detail
 } // namespace npp::native
+

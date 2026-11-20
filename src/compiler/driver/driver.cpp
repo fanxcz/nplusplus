@@ -44,10 +44,11 @@ namespace npp {
 
                 std::cout
                     << "native\nx86_64-linux\naarch64-linux\nx86_64-windows\naarch64-windows\n"
-                       "x86_64-macos\naarch64-macos\naarch64-android\nwasm32-wasi\n"
+                       "x86_64-macos\naarch64-macos\naarch64-android\nwasm32-wasi\nkernel\n"
                        "\nbuiltin native backend (no external toolchain):\n"
                        "  x86_64-windows: PE32+ console executable\n"
                        "  x86_64-linux:   ELF64 executable\n"
+                       "  kernel:         freestanding Multiboot2 ELF64 kernel (QEMU)\n"
                        "  native:         host default (x86-64 hosts only)\n";
 
                 return 0;

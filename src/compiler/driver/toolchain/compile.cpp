@@ -77,7 +77,8 @@ namespace npp {
                 if (backend == "native" && !known)
                     throw std::runtime_error(
                         "builtin native backend has no emitter for target '" + target +
-                        "' (x86_64 Windows/Linux are supported; use --backend llvm)");
+                        "' (x86_64 Windows/Linux and the freestanding 'kernel' target are "
+                        "supported; use --backend llvm)");
                 if (known) {
                     std::string reason;
                     if (native::supports(prog, reason)) {

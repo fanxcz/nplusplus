@@ -31,7 +31,7 @@ namespace npp::native {
     // Everything else (f64, arrays, structs, enums, match, pointers,
     // file/network/graphics/audio/UI/ECS builtins, extern functions) is rejected
     // with a precise reason so the driver can fall back to the LLVM backend.
-    enum class NativeTarget { WindowsX64, LinuxX64 };
+    enum class NativeTarget { WindowsX64, LinuxX64, KernelX64 };
 
     // True when `target` selects the builtin emitter ("native", "x86_64-windows",
     // "x86_64-linux", and matching LLVM triples are accepted).

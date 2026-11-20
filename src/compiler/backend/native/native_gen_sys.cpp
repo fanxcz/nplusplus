@@ -911,6 +911,19 @@ namespace npp::native {
                 out_.jmp(done);
                 out_.def(retVk);
                 out_.jmp(done);
+            } else if (target_ == NativeTarget::KernelX64) {
+                // Poll the PS/2 data port. Bit 7 marks key-up scancodes, which
+                // are ignored; make codes are returned as positive integers.
+                out_.def(loop);
+                out_.movEdxImm32(0x60);
+                out_.inAlDx();
+                out_.movzxEaxAl();
+                out_.movRbpFromRax(-40);
+                out_.andRaxImm32(0x80);
+                out_.testRaxRax();
+                out_.jcc(J_NE, loop);
+                out_.movRaxFromRbp(-40);
+                out_.jmp(done);
             } else {
                 out_.movRaxImm64(0xFFFFFFFFFFFFFFFFULL); // -1
             }

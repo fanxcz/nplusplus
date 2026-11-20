@@ -24,6 +24,12 @@ namespace npp::native {
             out = NativeTarget::LinuxX64;
             return true;
         }
+        // Freestanding Multiboot2 kernel image. No host OS, no syscalls.
+        if (target == "kernel" || target == "x86_64-kernel" ||
+            target == "x86_64-multiboot") {
+            out = NativeTarget::KernelX64;
+            return true;
+        }
         return false;
     }
 
