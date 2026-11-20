@@ -1,5 +1,5 @@
-# Build and boot the N++ kernel with QEMU, completely headless:
-# no window, no console, no terminal output. Serial goes to serial.txt.
+# Build and boot the N++ kernel in QEMU's own window (SDL).
+# No separate console window is spawned; the OS lives in the QEMU window.
 $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $PSScriptRoot
 $candidates = @(
@@ -36,7 +36,23 @@ if (Get-Command $qemu -ErrorAction SilentlyContinue) {
 } else {
     $exe = 'C:\Program Files\qemu\qemu-system-x86_64.exe'
 }
-Start-Process -FilePath $exe -PassThru -WindowStyle Hidden -ArgumentList @(
-    '-kernel', $elf, '-display', 'none', '-serial', "file:$log", '-no-reboot'
-) | Out-Null
-Write-Output "QEMU запущен скрыто. Serial: $log"
+$proc = Start-Process -FilePath $exe -PassThru -ArgumentList @(
+    '-kernel', $elf, '-display', 'sdl', '-serial', "file:$log", '-no-reboot'
+)
+Write-Output "QEMU PID: $($proc.Id) - QEMU window with the OS screen"
+
+# QEMU needs a moment to boot before the serial file is created.
+$deadline = (Get-Date).AddSeconds(15)
+while ((Get-Date) -lt $deadline -and -not (Test-Path $log)) {
+    Start-Sleep -Milliseconds 300
+}
+if (-not (Test-Path $log)) {
+    Write-Output "serial.txt not created yet - check the qemu-system-x86_64.exe path."
+} else {
+    $deadline = (Get-Date).AddSeconds(10)
+    while ((Get-Date) -lt $deadline -and -not (Select-String -Path $log -Pattern 'N\+\+ KERNEL' -Quiet -ErrorAction SilentlyContinue)) {
+        Start-Sleep -Milliseconds 300
+    }
+    Write-Output '=== serial ==='
+    Get-Content $log | Select-Object -First 20
+}
