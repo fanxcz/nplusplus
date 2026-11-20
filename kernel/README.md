@@ -18,17 +18,24 @@ native backend's `kernel` target. It is not a finished operating system.
 
 Booting under `qemu-system-x86_64 -kernel hello.elf` currently ends in a
 page fault (`#PF`, error code 0) immediately after `CR0.PG` is set, before
-the far jump into 64-bit code. Diagnostics performed on the QEMU monitor
-and via COM1 readback confirmed:
+the far jump into 64-bit code.
+
+A GDB remote-stub trace (QEMU `-s -S`, stop at the trampoline and at
+`mov eax, cr0`, then single-step) established:
 
 - the PVH note is found and the 32-bit stub executes;
-- PML4/PDPT/PD entries are written correctly (`0x...007`, `0x...007`, `0x83`);
-- `CR3`, `CR4.PAE`, `EFER.LME` and `CR0.PG` all hold the expected values;
-- swapping `CR3`/`CR0` ordering, using 2-MiB / 1-GiB / 4-KiB pages, moving
-  the tables to several physical addresses, and `invd` did not help.
+- the identity page tables are written correctly and are readable before
+  `CR0.PG` is enabled (`0x...007` / `0x...007` / 512 x `0x83 + i*0x1000`);
+- `RAX = CR3 value` is present in the register file right before the
+  `mov cr3, eax` / `mov cr0, eax` pair;
+- the very first instruction fetch after `mov cr0, eax` fails, and GDB
+  memory reads start returning `E14` (EFAULT) for **every** address.
 
-The remaining fault is therefore in the QEMU TCG paging-mode transition,
-not in the N++ program or the ELF layout.
+Tried without success: 4-KiB / 2-MiB / 1-GiB pages, tables at several
+physical addresses (inside and outside the ELF's 64-MiB BSS), `CR3` before
+and after `CR0.PG`, `invd`, dual PAE+long-mode table layouts, `ljmp` and
+`retf` far transfers, `microvm` machine type. The fault is therefore in the
+QEMU TCG paging-mode transition itself, not in the N++ program or ELF.
 
 Because of this, `hello.npp` does **not** yet print to VGA/COM1 under QEMU.
 

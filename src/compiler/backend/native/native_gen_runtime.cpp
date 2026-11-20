@@ -1019,16 +1019,20 @@ namespace npp::native {
                 //  - long mode (after the far jump):
                 //      CR3 -> PML4[0] at 0x210000 -> 1-GiB page at 0.
                 // Both map the first gigabyte, including our code and stack.
-                emit8({0xBF, 0x00, 0x00, 0x63, 0x00, // mov edi, 0x230000
+                // The same words are walked as PAE (3 levels) while CS.L=0
+                // and as long mode (4 levels) after the far jump. This layout
+                // maps the first 2 MiB in both cases:
+                //   PAE:  CR3 -> T1 -> T2 -> 512 x 4 KiB pages
+                //   long: CR3 -> T1 -> T2[0] (PS=1) -> 2 MiB page
+                emit8({0xBF, 0x00, 0x00, 0x06, 0x00, // mov edi, 0x620000
                        0xB9, 0x00, 0x02, 0x00, 0x00, // mov ecx, 512
                        0xB8, 0x83, 0x00, 0x00, 0x00, // mov eax, 0x83
                        0x89, 0x07,                   // mov [edi], eax
                        0x05, 0x00, 0x10, 0x00, 0x00, // add eax, 0x1000
                        0x83, 0xC7, 0x08,             // add edi, 8
                        0xE2, 0xF4});                 // loop back 12 bytes
-                emit8({0xC7, 0x05, 0x00, 0x00, 0x60, 0x00, 0x07, 0x21, 0x00, 0x00,
-                       0xC7, 0x05, 0x00, 0x00, 0x61, 0x00, 0x07, 0x22, 0x00, 0x00,
-                       0xC7, 0x05, 0x00, 0x00, 0x62, 0x00, 0x07, 0x23, 0x00, 0x00});
+                emit8({0xC7, 0x05, 0x00, 0x00, 0x04, 0x00, 0x07, 0x50, 0x00, 0x00,
+                       0xC7, 0x05, 0x00, 0x00, 0x05, 0x00, 0x07, 0x60, 0x00, 0x00});
                 // Long-mode GDT at 0x83000: null, 64-bit code, 64-bit data.
                 emit8({0xC7, 0x05, 0x08, 0x30, 0x08, 0x00, 0xFF, 0xFF, 0x00, 0x00,
                        0xC7, 0x05, 0x0C, 0x30, 0x08, 0x00, 0x00, 0x9A, 0xAF, 0x00,
@@ -1045,7 +1049,7 @@ namespace npp::native {
                        0x0D, 0x00, 0x01, 0x00, 0x00, // or eax, LME
                        0x0F, 0x30,              // wrmsr
                        // Load CR3 *before* enabling paging.
-                       0xB8, 0x00, 0x00, 0x60, 0x00,
+                       0xB8, 0x00, 0x00, 0x04, 0x00,
                        0x0F, 0x22, 0xD8,        // mov cr3, eax
                        0x0F, 0x20, 0xC0,        // mov eax, cr0
                        0x0D, 0x00, 0x00, 0x00, 0x80, // or eax, PG
@@ -1054,11 +1058,10 @@ namespace npp::native {
                 // always linked at 0x101000 with a 24-byte header, so the
                 // absolute target is known here.
                 const std::uint32_t cont =
-                    static_cast<std::uint32_t>(0x101000ull + 24 + out_.pos() + 7);
-                out_.b(0xEA); // jmp far ptr32:cont
-                out_.i32(cont);
-                out_.b(0x08); // long-mode code selector
-                out_.b(0x00);
+                    static_cast<std::uint32_t>(0x101000ull + 24 + out_.pos() + 8);
+                out_.b(0x6A); out_.b(0x08); // push long-mode code selector
+                out_.b(0x68); out_.i32(cont); // push 64-bit continuation RIP
+                out_.b(0xCB);               // retf -> 64-bit code
                 out_.jmp("_start");
 
                 // Freestanding entry: no arena syscall and no exit syscall.
@@ -1963,5 +1966,6 @@ namespace npp::native {
 
     } // namespace detail
 } // namespace npp::native
+
 
 
