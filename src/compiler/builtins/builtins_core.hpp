@@ -59,6 +59,15 @@ namespace npp {
         if (name == "capture_output")
             return BuiltinSignature{name, {T::string()}, T::string(), "npp_capture_output"};
 
+        // Shell-free variants: the argument string is split into an argv vector
+        // with quote/backslash rules and passed directly to execvp/CreateProcess.
+        // Shell metacharacters are literal arguments, not commands.
+        if (name == "system_argv")
+            return BuiltinSignature{name, {T::string()}, T::i64(), "npp_system_argv"};
+
+        if (name == "capture_output_argv")
+            return BuiltinSignature{name, {T::string()}, T::string(), "npp_capture_output_argv"};
+
         if (name == "file_read")
             return BuiltinSignature{name, {T::string()}, T::string(), "npp_file_read"};
 

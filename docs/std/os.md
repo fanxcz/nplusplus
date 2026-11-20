@@ -39,3 +39,28 @@ fn main() {
 ```
 
 `capture_output` requires the LLVM backend (`--backend llvm`) and is not part of the built-in native subset.
+
+### Shell-free execution (recommended)
+
+`system()` and `capture_output()` pass the string to a command interpreter, so
+shell metacharacters (`;`, `|`, `&&`, `$()`, ...) are interpreted. Never pass
+untrusted data to them. Instead use:
+
+| Builtin | Description |
+|---|---|
+| `system_argv(command_line: string) -> i64` | Split `command_line` into an argv vector and execute it directly, without a shell |
+| `capture_output_argv(command_line: string) -> string` | Same, but return captured stdout |
+
+Both builtins split the command line using single/double quotes and backslash
+escapes; metacharacters become literal arguments. Output captured by either
+builtin is capped at 16 MiB.
+
+```npp
+fn main() {
+    let name = input("Name? ")          // untrusted input
+    let out = capture_output_argv("echo 'hello' " + name)
+    print(out)
+}
+```
+
+These builtins also require the LLVM backend.

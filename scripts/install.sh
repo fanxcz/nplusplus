@@ -55,12 +55,15 @@ tmp="$(mktemp -d)"
 trap 'rm -rf "$tmp"' EXIT
 
 curl -fsSL "${base}/${asset}" -o "${tmp}/npp.tar.gz"
-if curl -fsSL "${base}/${asset}.sha256" -o "${tmp}/npp.tar.gz.sha256" 2>/dev/null; then
-  if command -v sha256sum >/dev/null 2>&1; then
-    (cd "$tmp" && sha256sum -c npp.tar.gz.sha256) || die "checksum mismatch"
-  else
-    (cd "$tmp" && shasum -a 256 -c npp.tar.gz.sha256) || die "checksum mismatch"
-  fi
+
+# Verification is mandatory: a missing sidecar is a hard failure, never a
+# reason to execute an unverified archive.
+curl -fsSL "${base}/${asset}.sha256" -o "${tmp}/npp.tar.gz.sha256" \
+  || die "checksum sidecar for ${asset} is missing; refusing to install"
+if command -v sha256sum >/dev/null 2>&1; then
+  (cd "$tmp" && sha256sum -c npp.tar.gz.sha256) || die "checksum mismatch"
+else
+  (cd "$tmp" && shasum -a 256 -c npp.tar.gz.sha256) || die "checksum mismatch"
 fi
 
 mkdir -p "$PREFIX"

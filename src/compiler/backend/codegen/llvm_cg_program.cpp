@@ -53,6 +53,8 @@ namespace npp {
         emitModule("declare i64 @npp_time_ms()");
         emitModule("declare i64 @npp_system(ptr)");
         emitModule("declare ptr @npp_capture_output(ptr)");
+        emitModule("declare i64 @npp_system_argv(ptr)");
+        emitModule("declare ptr @npp_capture_output_argv(ptr)");
         emitModule("declare ptr @npp_file_read(ptr)");
         emitModule("declare i1 @npp_file_read_checked(ptr, ptr)");
         emitModule("declare i64 @npp_file_write(ptr, ptr)");

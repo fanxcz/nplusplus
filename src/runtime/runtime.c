@@ -7,6 +7,7 @@
 
 #ifdef _WIN32
 #include <conio.h>
+#include <wchar.h>
 #include <windows.h>
 #else
 #include <errno.h>
@@ -287,6 +288,249 @@ int64_t npp_time_ms(void) {
 }
 int64_t npp_system(const char* command) {
     return command ? system(command) : -1;
+}
+
+/* ---- shell-free process execution --------------------------------------- */
+
+#define NX_CAPTURE_LIMIT (16u * 1024u * 1024u)
+
+/* Split a command line into argv without a shell. Quotes group arguments,
+   backslash escapes the next character; shell metacharacters stay literal. */
+static char** nx_argv_split(const char* text) {
+    if (!text)
+        return NULL;
+    size_t cap = 8, n = 0;
+    char** out = (char**)malloc(cap * sizeof(char*));
+    if (!out)
+        return NULL;
+    size_t bcap = 64, bn = 0;
+    char* buf = (char*)malloc(bcap);
+    if (!buf) {
+        free(out);
+        return NULL;
+    }
+    int started = 0, in_single = 0, in_double = 0;
+    for (const char* p = text;; ++p) {
+        char ch = *p;
+        int ends = (!in_single && !in_double &&
+                    (ch == '\0' || ch == ' ' || ch == '\t' || ch == '\r' || ch == '\n'));
+        if (ends) {
+            if (started) {
+                if (bn + 1 > bcap) {
+                    bcap *= 2;
+                    char* bigger = (char*)realloc(buf, bcap);
+                    if (!bigger) {
+                        free(buf);
+                        for (size_t i = 0; i < n; ++i) free(out[i]);
+                        free(out);
+                        return NULL;
+                    }
+                    buf = bigger;
+                }
+                buf[bn] = '\0';
+                if (n + 1 >= cap) {
+                    cap *= 2;
+                    char** bigger = (char**)realloc(out, cap * sizeof(char*));
+                    if (!bigger) { free(buf); for (size_t i=0;i<n;++i) free(out[i]); free(out); return NULL; }
+                    out = bigger;
+                }
+                out[n++] = npp_strdup(buf);
+                bn = 0;
+                started = 0;
+            }
+            if (ch == '\0')
+                break;
+            continue;
+        }
+        started = 1;
+        if (ch == '\\' && !in_single) {
+            char nxt = p[1];
+            if (nxt && (!in_double || nxt == '"' || nxt == '\\')) { ch = nxt; ++p; }
+        } else if (ch == '\'' && !in_double) { in_single = !in_single; continue; }
+        else if (ch == '"' && !in_single) { in_double = !in_double; continue; }
+        if (bn + 1 >= bcap) {
+            bcap *= 2;
+            char* bigger = (char*)realloc(buf, bcap);
+            if (!bigger) { free(buf); for (size_t i=0;i<n;++i) free(out[i]); free(out); return NULL; }
+            buf = bigger;
+        }
+        buf[bn++] = ch;
+    }
+    free(buf);
+    out[n] = NULL;
+    return out;
+}
+
+static void nx_argv_release(char** argv) {
+    if (!argv)
+        return;
+    for (size_t i = 0; argv[i]; ++i)
+        free(argv[i]);
+    free(argv);
+}
+
+#ifdef _WIN32
+static wchar_t* nx_argv_widen(const char* s) {
+    if (!s || !*s)
+        return NULL;
+    int n = MultiByteToWideChar(CP_UTF8, 0, s, -1, NULL, 0);
+    if (n <= 0)
+        return NULL;
+    wchar_t* w = (wchar_t*)malloc((size_t)n * sizeof(wchar_t));
+    if (w)
+        MultiByteToWideChar(CP_UTF8, 0, s, -1, w, n);
+    return w;
+}
+
+static void nx_wappend(wchar_t* dst, const wchar_t* src) {
+    while (*dst)
+        ++dst;
+    while ((*dst++ = *src++)) {
+    }
+}
+
+static wchar_t* nx_argv_command_line(char** argv) {
+    size_t total = 1;
+    for (size_t i = 0; argv[i]; ++i)
+        total += strlen(argv[i]) * 2 + 3;
+    wchar_t* line = (wchar_t*)malloc(total * sizeof(wchar_t));
+    if (!line)
+        return NULL;
+    line[0] = L'\0';
+    for (size_t i = 0; argv[i]; ++i) {
+        wchar_t* w = nx_argv_widen(argv[i]);
+        if (!w) { free(line); return NULL; }
+        if (i)
+            nx_wappend(line, L" ");
+        int need = (*w == L'\0');
+        for (const wchar_t* q = w; *q; ++q)
+            if (*q == L' ' || *q == L'\t' || *q == L'"' || *q == L'\n') { need = 1; break; }
+        if (!need) {
+            nx_wappend(line, w);
+        } else {
+            nx_wappend(line, L"\"");
+            size_t slashes = 0;
+            for (const wchar_t* q = w; *q; ++q) {
+                if (*q == L'\\') { ++slashes; nx_wappend(line, L"\\"); }
+                else if (*q == L'"') {
+                    for (size_t k = 0; k < slashes; ++k) nx_wappend(line, L"\\");
+                    slashes = 0; nx_wappend(line, L"\\\"");
+                } else { slashes = 0; wchar_t tmp[2] = {*q, 0}; nx_wappend(line, tmp); }
+            }
+            for (size_t k = 0; k < slashes; ++k) nx_wappend(line, L"\\");
+            nx_wappend(line, L"\"");
+        }
+        free(w);
+    }
+    return line;
+}
+#endif
+
+int64_t npp_system_argv(const char* cmdline) {
+    char** argv = nx_argv_split(cmdline);
+    if (!argv || !argv[0]) { nx_argv_release(argv); return -1; }
+#ifdef _WIN32
+    wchar_t* line = nx_argv_command_line(argv);
+    if (!line) { nx_argv_release(argv); return -1; }
+    STARTUPINFOW si; memset(&si, 0, sizeof(si)); si.cb = sizeof(si);
+    PROCESS_INFORMATION pi; memset(&pi, 0, sizeof(pi));
+    BOOL ok = CreateProcessW(NULL, line, NULL, NULL, FALSE, 0, NULL, NULL, &si, &pi);
+    free(line);
+    nx_argv_release(argv);
+    if (!ok) return -1;
+    WaitForSingleObject(pi.hProcess, INFINITE);
+    DWORD code = 0;
+    if (!GetExitCodeProcess(pi.hProcess, &code)) code = 1;
+    CloseHandle(pi.hThread);
+    CloseHandle(pi.hProcess);
+    return (int64_t)code;
+#else
+    pid_t pid = fork();
+    if (pid == 0) { execvp(argv[0], argv); _exit(127); }
+    nx_argv_release(argv);
+    if (pid < 0) return -1;
+    int status = 0;
+    while (waitpid(pid, &status, 0) < 0 && errno == EINTR) {}
+    if (WIFEXITED(status)) return WEXITSTATUS(status);
+    if (WIFSIGNALED(status)) return 128 + WTERMSIG(status);
+    return -1;
+#endif
+}
+
+char* npp_capture_output_argv(const char* cmdline) {
+    char** argv = nx_argv_split(cmdline);
+    if (!argv || !argv[0]) { nx_argv_release(argv); return npp_strdup(""); }
+    size_t used = 0;
+    size_t cap = 4096;
+    char* out = (char*)malloc(cap + 1);
+    if (!out) { nx_argv_release(argv); return npp_strdup(""); }
+#if defined(_WIN32)
+    SECURITY_ATTRIBUTES sa; memset(&sa, 0, sizeof(sa));
+    sa.nLength = sizeof(sa); sa.bInheritHandle = TRUE;
+    HANDLE rd = INVALID_HANDLE_VALUE, wr = INVALID_HANDLE_VALUE;
+    if (!CreatePipe(&rd, &wr, &sa, 0)) { free(out); nx_argv_release(argv); return npp_strdup(""); }
+    SetHandleInformation(rd, HANDLE_FLAG_INHERIT, 0);
+    STARTUPINFOW si; memset(&si, 0, sizeof(si));
+    si.cb = sizeof(si); si.dwFlags = STARTF_USESTDHANDLES;
+    si.hStdOutput = wr; si.hStdError = wr; si.hStdInput = GetStdHandle(STD_INPUT_HANDLE);
+    PROCESS_INFORMATION pi; memset(&pi, 0, sizeof(pi));
+    wchar_t* line = nx_argv_command_line(argv);
+    BOOL ok = line && CreateProcessW(NULL, line, NULL, NULL, TRUE, CREATE_NO_WINDOW,
+                                     NULL, NULL, &si, &pi);
+    free(line);
+    CloseHandle(wr);
+    nx_argv_release(argv);
+    if (!ok) { free(out); CloseHandle(rd); return npp_strdup(""); }
+    char buf[4096];
+    DWORD got = 0;
+    while (ReadFile(rd, buf, sizeof(buf), &got, NULL) && got > 0) {
+        if (used + (size_t)got > NX_CAPTURE_LIMIT) { TerminateProcess(pi.hProcess, 1); break; }
+        if (used + (size_t)got > cap) {
+            cap *= 2;
+            char* bigger = (char*)realloc(out, cap + 1);
+            if (!bigger) break;
+            out = bigger;
+        }
+        memcpy(out + used, buf, (size_t)got);
+        used += (size_t)got;
+    }
+    CloseHandle(rd);
+    WaitForSingleObject(pi.hProcess, INFINITE);
+    CloseHandle(pi.hThread);
+    CloseHandle(pi.hProcess);
+#else
+    int fds[2];
+    if (pipe(fds) != 0) { free(out); nx_argv_release(argv); return npp_strdup(""); }
+    pid_t pid = fork();
+    if (pid == 0) {
+        close(fds[0]);
+        if (dup2(fds[1], STDOUT_FILENO) < 0 || dup2(fds[1], STDERR_FILENO) < 0) _exit(127);
+        close(fds[1]);
+        execvp(argv[0], argv);
+        _exit(127);
+    }
+    nx_argv_release(argv);
+    close(fds[1]);
+    if (pid < 0) { free(out); close(fds[0]); return npp_strdup(""); }
+    char buf[4096];
+    ssize_t got = 0;
+    while ((got = read(fds[0], buf, sizeof(buf))) > 0) {
+        if (used + (size_t)got > NX_CAPTURE_LIMIT) { kill(pid, SIGKILL); break; }
+        if (used + (size_t)got > cap) {
+            cap *= 2;
+            char* bigger = (char*)realloc(out, cap + 1);
+            if (!bigger) break;
+            out = bigger;
+        }
+        memcpy(out + used, buf, (size_t)got);
+        used += (size_t)got;
+    }
+    close(fds[0]);
+    int status = 0;
+    while (waitpid(pid, &status, 0) < 0 && errno == EINTR) {}
+#endif
+    out[used] = '\0';
+    return out;
 }
 char* npp_file_read(const char* path) {
     if (!path)

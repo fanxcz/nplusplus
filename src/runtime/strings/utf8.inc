@@ -169,8 +169,11 @@ char* npp_capture_output(const char* cmd) {
     std::string out;
     char buf[4096];
     size_t n = 0;
-    while ((n = std::fread(buf, 1, sizeof(buf), p)) > 0)
+    while ((n = std::fread(buf, 1, sizeof(buf), p)) > 0) {
+        if (out.size() + n > nx_capture_limit)
+            break; // bound memory use from a runaway command
         out.append(buf, n);
+    }
 #if defined(_WIN32)
     _pclose(p);
 #else

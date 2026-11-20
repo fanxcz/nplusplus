@@ -1,7 +1,11 @@
 # `std.shell`
 
-`stdlib/shell.npp` wraps process execution builtins. Commands run through the
-platform shell — quote arguments containing spaces or shell metacharacters.
+`stdlib/shell.npp` wraps process execution builtins. By default commands run
+through the platform shell — quote arguments containing spaces or shell
+metacharacters, and **never** pass untrusted data to these functions. For
+untrusted input use `system_argv` / `capture_output_argv` instead (see
+[`std.os`](os.md#shell-free-execution-recommended)), which execute an argv
+vector directly with no shell involved.
 
 | Function | Description |
 |---|---|

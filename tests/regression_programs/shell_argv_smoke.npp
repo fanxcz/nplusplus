@@ -1,0 +1,13 @@
+// Regression coverage for the shell-free process builtins.
+// These compile to direct execvp/CreateProcess calls with no shell involved.
+fn main() {
+    let status = system_argv("echo 'hello world' ; echo injected")
+    print(status)
+
+    let out = capture_output_argv("echo 'literal ; && | text'")
+    print(string.len(out) > 0)
+
+    // Shell metacharacters must stay literal arguments, not commands.
+    let quoting = capture_output_argv("echo 'a b' \"c d\"")
+    print(string.len(quoting) > 0)
+}
