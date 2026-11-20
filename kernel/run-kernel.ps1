@@ -19,7 +19,15 @@ if (-not $npp) {
 $elf = Join-Path $PSScriptRoot 'hello.elf'
 $log = Join-Path $PSScriptRoot 'serial.txt'
 
+# A previous headless QEMU keeps hello.elf mapped, which blocks rebuilds.
+# Stop only the instances that use our image.
+Get-CimInstance Win32_Process -Filter "Name = 'qemu-system-x86_64.exe'" -ErrorAction SilentlyContinue |
+    Where-Object { $_.CommandLine -and $_.CommandLine -like '*hello.elf*' } |
+    ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
+Start-Sleep -Milliseconds 300
+
 & $npp build (Join-Path $PSScriptRoot 'hello.npp') -o $elf --target kernel --backend native
+if ($LASTEXITCODE -ne 0) { throw "kernel build failed" }
 Remove-Item -Force $log -ErrorAction SilentlyContinue
 
 $qemu = 'qemu-system-x86_64'
