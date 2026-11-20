@@ -18,10 +18,17 @@ native backend's `kernel` target. It is not a finished operating system.
 
 Booting under `qemu-system-x86_64 -kernel hello.elf` currently ends in a
 page fault (`#PF`, error code 0) immediately after `CR0.PG` is set, before
-the far jump into 64-bit code. The generated page tables are correct when
-read back before paging is enabled, so the remaining issue is in the
-transition sequence (CS descriptor cache / paging-mode interaction), not in
-the N++ program itself.
+the far jump into 64-bit code. Diagnostics performed on the QEMU monitor
+and via COM1 readback confirmed:
+
+- the PVH note is found and the 32-bit stub executes;
+- PML4/PDPT/PD entries are written correctly (`0x...007`, `0x...007`, `0x83`);
+- `CR3`, `CR4.PAE`, `EFER.LME` and `CR0.PG` all hold the expected values;
+- swapping `CR3`/`CR0` ordering, using 2-MiB / 1-GiB / 4-KiB pages, moving
+  the tables to several physical addresses, and `invd` did not help.
+
+The remaining fault is therefore in the QEMU TCG paging-mode transition,
+not in the N++ program or the ELF layout.
 
 Because of this, `hello.npp` does **not** yet print to VGA/COM1 under QEMU.
 
